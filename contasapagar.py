@@ -10,7 +10,7 @@ st.set_page_config(page_title="Sistema Financeiro", page_icon="💰", layout="wi
 
 # CONSTANTES (os dois arquivos .xlsx devem estar na mesma pasta que este script)
 EXCEL_PAGAR = "Contas a pagar 2025 Sistema.xlsx"
-EXCEL_RECEBER = "Contas a receber 2025 Sistema.xlsx"
+EXCEL_RECEBER = "Contas a Receber 2025 Sistema.xlsx"
 ANEXOS_DIR = "anexos"
 
 # FUNÇÕES AUXILIARES
