@@ -287,6 +287,8 @@ else:
             # Remove NaNs e converte para string antes de ordenar
             estados_list = df['estado'].dropna().astype(str).unique().tolist()
             status_sel = st.selectbox("Status/Estado", ['Todos'] + sorted(estados_list))
+
+        # Aplica filtros apenas se não forem "Todos"
         if forn != 'Todos':
             df = df[df['fornecedor'] == forn]
         if status_sel != 'Todos':
@@ -294,152 +296,156 @@ else:
 
         st.markdown("<hr style='border:1px solid #ddd;'>", unsafe_allow_html=True)
 
-        # ====================
-        #   LISTA DE LANÇAMENTOS
-        # ====================
-        st.subheader("📋 Lista de Lançamentos")
-        st.table(df[['data_nf', 'fornecedor', 'valor', 'vencimento', 'status_pagamento']])
-        st.markdown("---")
+        # Se após filtros o DataFrame ficar vazio, exibimos aviso e encerramos essa seção
+        if df.empty:
+            st.warning("Nenhum registro corresponde aos filtros selecionados.")
+        else:
+            # ====================
+            #   LISTA DE LANÇAMENTOS
+            # ====================
+            st.subheader("📋 Lista de Lançamentos")
+            st.table(df[['data_nf', 'fornecedor', 'valor', 'vencimento', 'status_pagamento']])
+            st.markdown("---")
 
-        # ====================
-        #    EDITAR REGISTRO
-        # ====================
-        st.subheader("✏️ Editar Registro")
-        idx = st.number_input(
-            "Índice da linha:", min_value=0, max_value=len(df) - 1, step=1
-        )
-        rec = df.loc[idx]
-
-        colv1, colv2 = st.columns(2)
-        with colv1:
-            new_valor = st.number_input(
-                "Valor:", value=float(rec['valor']), key="valores"
+            # ====================
+            #    EDITAR REGISTRO
+            # ====================
+            st.subheader("✏️ Editar Registro")
+            idx = st.number_input(
+                "Índice da linha:", min_value=0, max_value=len(df) - 1, step=1
             )
-            default_date = rec['vencimento'].date() if pd.notna(rec['vencimento']) else date.today()
-            new_venc = st.date_input("Vencimento:", value=default_date, key="vencimento")
-        with colv2:
-            # CORREÇÃO: cria lista única de 'estado' e 'situacao' e garante índice válido
-            estado_list = df['estado'].unique().tolist()
+            rec = df.iloc[idx]
+
+            colv1, colv2 = st.columns(2)
+            with colv1:
+                new_valor = st.number_input(
+                    "Valor:", value=float(rec['valor']), key="valores"
+                )
+                default_date = rec['vencimento'].date() if pd.notna(rec['vencimento']) else date.today()
+                new_venc = st.date_input("Vencimento:", value=default_date, key="vencimento")
+            with colv2:
+                # CORREÇÃO: cria lista única de 'estado' e 'situacao' e garante índice válido
+                estado_list = df['estado'].dropna().astype(str).unique().tolist()
+                try:
+                    estado_index = estado_list.index(str(rec['estado']))
+                except ValueError:
+                    estado_index = 0
+                new_estado = st.selectbox(
+                    "Estado:",
+                    options=estado_list,
+                    index=estado_index,
+                    key="estado"
+                )
+
+                situ_list = df['situacao'].dropna().astype(str).unique().tolist()
+                try:
+                    situ_index = situ_list.index(str(rec['situacao']))
+                except ValueError:
+                    situ_index = 0
+                new_sit = st.selectbox(
+                    "Situação:",
+                    options=situ_list,
+                    index=situ_index,
+                    key="situacao"
+                )
+
+            if st.button("💾 Salvar Alterações"):
+                df.loc[df.index[idx], ['valor', 'vencimento', 'estado', 'situacao']] = [
+                    new_valor, pd.to_datetime(new_venc), new_estado, new_sit
+                ]
+                save_data(excel_path, aba, df)
+                st.success("Registro atualizado no Excel.")
+
+            st.markdown("---")
+
+            # ====================
+            #    ANEXAR DOCUMENTOS
+            # ====================
+            st.subheader("📎 Anexar Documentos")
+            uploaded = st.file_uploader(
+                "Selecione o arquivo (pdf/jpg/png):", type=['pdf', 'jpg', 'png'], key=f"up_{page}_{aba}_{idx}"
+            )
+            if uploaded:
+                destino = os.path.join(ANEXOS_DIR, page, f"{page}_{aba}_{idx}_{uploaded.name}")
+                with open(destino, 'wb') as f:
+                    f.write(uploaded.getbuffer())
+                st.success(f"Documento salvo em: {destino}")
+
+            st.markdown("---")
+
+            # ====================
+            #   ADICIONAR NOVA CONTA
+            # ====================
+            st.subheader("➕ Adicionar Nova Conta")
+            with st.form(key="form_add"):
+                coln1, coln2 = st.columns(2)
+                with coln1:
+                    data_nf = st.date_input("Data N/F:", value=date.today())
+                    forma_pag = st.text_input("Forma de Pagamento:")
+                    forn_new = st.text_input("Fornecedor:")
+                with coln2:
+                    os_new = st.text_input("OS Interna:")
+                    venc_new = st.date_input("Data de Vencimento:", value=date.today())
+                    valor_new = st.number_input("Valor (R$):", min_value=0.0, format="%.2f")
+
+                if page == 'Contas a Pagar':
+                    estado_opt = ['Em Aberto', 'Pago']
+                    situ_opt = ['Em Atraso', 'Pago', 'Em Aberto']
+                else:
+                    estado_opt = ['A Receber', 'Recebido']
+                    situ_opt = ['Em Atraso', 'Recebido', 'A Receber']
+
+                estado_new = st.selectbox("Estado:", options=estado_opt)
+                situ_new = st.selectbox("Situação:", options=situ_opt)
+                boleto_file = st.file_uploader("Boleto (opcional):", type=['pdf', 'jpg', 'png'])
+                comprov_file = st.file_uploader("Comprovante (opcional):", type=['pdf', 'jpg', 'png'])
+                submit_add = st.form_submit_button("➕ Adicionar Conta")
+
+            if submit_add:
+                boleto_path = ''
+                comprov_path = ''
+                if boleto_file:
+                    boleto_path = os.path.join(ANEXOS_DIR, page, f"{page}_{aba}_boleto_{boleto_file.name}")
+                    with open(boleto_path, 'wb') as f:
+                        f.write(boleto_file.getbuffer())
+                if comprov_file:
+                    comprov_path = os.path.join(ANEXOS_DIR, page, f"{page}_{aba}_comprov_{comprov_file.name}")
+                    with open(comprov_path, 'wb') as f:
+                        f.write(comprov_file.getbuffer())
+
+                record = {
+                    'data_nf': data_nf,
+                    'forma_pagamento': forma_pag,
+                    'fornecedor': forn_new,
+                    'os': os_new,
+                    'vencimento': venc_new,
+                    'valor': valor_new,
+                    'estado': estado_new,
+                    'situacao': situ_new,
+                    'boleto': boleto_path,
+                    'comprovante': comprov_path
+                }
+                add_record(excel_path, aba, record)
+                st.success("Nova conta adicionada com sucesso!")
+
+            # ------------------------------------
+            # SEÇÃO OPCIONAL: Exportar Aba Atual
+            # ------------------------------------
+            st.markdown("---")
+            st.subheader("💾 Exportar Aba Atual")
             try:
-                estado_index = estado_list.index(rec['estado'])
-            except ValueError:
-                estado_index = 0
-            new_estado = st.selectbox(
-                "Estado:",
-                options=estado_list,
-                index=estado_index,
-                key="estado"
-            )
-
-            situ_list = df['situacao'].unique().tolist()
-            try:
-                situ_index = situ_list.index(rec['situacao'])
-            except ValueError:
-                situ_index = 0
-            new_sit = st.selectbox(
-                "Situação:",
-                options=situ_list,
-                index=situ_index,
-                key="situacao"
-            )
-
-        if st.button("💾 Salvar Alterações"):
-            df.loc[idx, ['valor', 'vencimento', 'estado', 'situacao']] = [
-                new_valor, pd.to_datetime(new_venc), new_estado, new_sit
-            ]
-            save_data(excel_path, aba, df)
-            st.success("Registro atualizado no Excel.")
-
-        st.markdown("---")
-
-        # ====================
-        #    ANEXAR DOCUMENTOS
-        # ====================
-        st.subheader("📎 Anexar Documentos")
-        uploaded = st.file_uploader(
-            "Selecione o arquivo (pdf/jpg/png):", type=['pdf', 'jpg', 'png'], key=f"up_{page}_{aba}_{idx}"
-        )
-        if uploaded:
-            destino = os.path.join(ANEXOS_DIR, page, f"{page}_{aba}_{idx}_{uploaded.name}")
-            with open(destino, 'wb') as f:
-                f.write(uploaded.getbuffer())
-            st.success(f"Documento salvo em: {destino}")
-
-        st.markdown("---")
-
-        # ====================
-        #   ADICIONAR NOVA CONTA
-        # ====================
-        st.subheader("➕ Adicionar Nova Conta")
-        with st.form(key="form_add"):
-            coln1, coln2 = st.columns(2)
-            with coln1:
-                data_nf = st.date_input("Data N/F:", value=date.today())
-                forma_pag = st.text_input("Forma de Pagamento:")
-                forn_new = st.text_input("Fornecedor:")
-            with coln2:
-                os_new = st.text_input("OS Interna:")
-                venc_new = st.date_input("Data de Vencimento:", value=date.today())
-                valor_new = st.number_input("Valor (R$):", min_value=0.0, format="%.2f")
-
-            if page == 'Contas a Pagar':
-                estado_opt = ['Em Aberto', 'Pago']
-                situ_opt = ['Em Atraso', 'Pago', 'Em Aberto']
-            else:
-                estado_opt = ['A Receber', 'Recebido']
-                situ_opt = ['Em Atraso', 'Recebido', 'A Receber']
-
-            estado_new = st.selectbox("Estado:", options=estado_opt)
-            situ_new = st.selectbox("Situação:", options=situ_opt)
-            boleto_file = st.file_uploader("Boleto (opcional):", type=['pdf', 'jpg', 'png'])
-            comprov_file = st.file_uploader("Comprovante (opcional):", type=['pdf', 'jpg', 'png'])
-            submit_add = st.form_submit_button("➕ Adicionar Conta")
-
-        if submit_add:
-            boleto_path = ''
-            comprov_path = ''
-            if boleto_file:
-                boleto_path = os.path.join(ANEXOS_DIR, page, f"{page}_{aba}_boleto_{boleto_file.name}")
-                with open(boleto_path, 'wb') as f:
-                    f.write(boleto_file.getbuffer())
-            if comprov_file:
-                comprov_path = os.path.join(ANEXOS_DIR, page, f"{page}_{aba}_comprov_{comprov_file.name}")
-                with open(comprov_path, 'wb') as f:
-                    f.write(comprov_file.getbuffer())
-
-            record = {
-                'data_nf': data_nf,
-                'forma_pagamento': forma_pag,
-                'fornecedor': forn_new,
-                'os': os_new,
-                'vencimento': venc_new,
-                'valor': valor_new,
-                'estado': estado_new,
-                'situacao': situ_new,
-                'boleto': boleto_path,
-                'comprovante': comprov_path
-            }
-            add_record(excel_path, aba, record)
-            st.success("Nova conta adicionada com sucesso!")
-
-        # ------------------------------------
-        # SEÇÃO OPCIONAL: Exportar Aba Atual
-        # ------------------------------------
-        st.markdown("---")
-        st.subheader("💾 Exportar Aba Atual")
-        try:
-            # Antes de exportar, certifique-se de salvar as alterações feitas na aba atual
-            save_data(excel_path, aba, df)
-            with open(excel_path, "rb") as f:
-                excel_bytes = f.read()
-            st.download_button(
-                label=f"Exportar '{aba}' para Excel",
-                data=excel_bytes,
-                file_name=f"{page} - {aba}.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
-        except Exception as e:
-            st.error(f"Falha ao preparar o download: {e}")
+                # Antes de exportar, certifique-se de salvar as alterações feitas na aba atual
+                save_data(excel_path, aba, df)
+                with open(excel_path, "rb") as f:
+                    excel_bytes = f.read()
+                st.download_button(
+                    label=f"Exportar '{aba}' para Excel",
+                    data=excel_bytes,
+                    file_name=f"{page} - {aba}.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
+            except Exception as e:
+                st.error(f"Falha ao preparar o download: {e}")
 
 # RODAPÉ
 st.markdown(
