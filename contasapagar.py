@@ -222,6 +222,39 @@ if page == 'Dashboard':
             st.markdown("<div style='text-align:center;'><strong>Receitas Mensais</strong></div>", unsafe_allow_html=True)
             st.bar_chart(pd.Series(monthly_r), use_container_width=True)
 
+    # -----------------------------------------------------
+    # NOVA SEÇÃO: Exportar Planilhas (Download dos Arquivos)
+    # -----------------------------------------------------
+    st.markdown("---")
+    st.subheader("💾 Exportar Planilhas Originais")
+    export_col1, export_col2 = st.columns(2)
+
+    with export_col1:
+        try:
+            with open(EXCEL_PAGAR, "rb") as f:
+                bytes_data_p = f.read()
+            st.download_button(
+                label="Exportar Contas a Pagar",
+                data=bytes_data_p,
+                file_name=EXCEL_PAGAR,
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
+        except FileNotFoundError:
+            st.error(f"Arquivo '{EXCEL_PAGAR}' não encontrado.")
+
+    with export_col2:
+        try:
+            with open(EXCEL_RECEBER, "rb") as f:
+                bytes_data_r = f.read()
+            st.download_button(
+                label="Exportar Contas a Receber",
+                data=bytes_data_r,
+                file_name=EXCEL_RECEBER,
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
+        except FileNotFoundError:
+            st.error(f"Arquivo '{EXCEL_RECEBER}' não encontrado.")
+
 # ===========================
 #    SEÇÃO: CONTAS A PAGAR
 #    ou CONTAS A RECEBER
@@ -374,6 +407,25 @@ else:
             }
             add_record(excel_path, aba, record)
             st.success("Nova conta adicionada com sucesso!")
+
+        # ------------------------------------
+        # SEÇÃO OPCIONAL: Exportar Aba Atual
+        # ------------------------------------
+        st.markdown("---")
+        st.subheader("💾 Exportar Aba Atual")
+        try:
+            # Antes de exportar, certifique-se de salvar as alterações feitas na aba atual
+            save_data(excel_path, aba, df)
+            with open(excel_path, "rb") as f:
+                excel_bytes = f.read()
+            st.download_button(
+                label=f"Exportar '{aba}' para Excel",
+                data=excel_bytes,
+                file_name=f"{page} - {aba}.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
+        except Exception as e:
+            st.error(f"Falha ao preparar o download: {e}")
 
 # RODAPÉ
 st.markdown(
