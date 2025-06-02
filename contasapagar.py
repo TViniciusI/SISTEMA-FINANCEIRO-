@@ -6,23 +6,27 @@ from datetime import datetime, date
 from openpyxl import load_workbook
 
 # CONFIGURAÇÃO DE PÁGINA
-st.set_page_config(page_title="Sistema Financeiro", page_icon="💰", layout="wide")
+st.set_page_config(
+    page_title="💼 Sistema Financeiro 2025",
+    page_icon="💰",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
 # CONSTANTES (os dois arquivos .xlsx devem estar na mesma pasta que este script)
 EXCEL_PAGAR = "Contas a pagar 2025 Sistema.xlsx"
 EXCEL_RECEBER = "Contas a Receber 2025 Sistema.xlsx"
 ANEXOS_DIR = "anexos"
 
-# ------------------------------
+# ===============================
 # FUNÇÕES AUXILIARES
-# ------------------------------
+# ===============================
 
 def get_sheet_list(excel_path: str):
     """Retorna lista de abas, ignorando aba 'Tutorial' se existir."""
     try:
         wb = pd.ExcelFile(excel_path)
-        sheets = [s for s in wb.sheet_names if s.lower() != 'tutorial']
-        return sheets
+        return [s for s in wb.sheet_names if s.lower() != 'tutorial']
     except Exception:
         return []
 
@@ -80,7 +84,6 @@ def load_data(excel_path: str, sheet_name: str) -> pd.DataFrame:
         df = df.drop(extra_cols, axis=1)
 
     df = df.dropna(subset=["fornecedor", "valor"]).reset_index(drop=True)
-
     df["vencimento"] = pd.to_datetime(df["vencimento"], errors="coerce")
     df["valor"] = pd.to_numeric(df["valor"], errors="coerce")
 
@@ -118,12 +121,7 @@ def rename_col_index(ws, target_name: str) -> int:
         for cell in row:
             if cell.value and str(cell.value).strip().lower() == target_name.lower():
                 return cell.column
-    defaults = {
-        "vencimento": 5,
-        "valor": 6,
-        "estado": 7,
-        "situação": 8
-    }
+    defaults = {"vencimento": 5, "valor": 6, "estado": 7, "situação": 8}
     return defaults.get(target_name.lower(), 1)
 
 def save_data(excel_path: str, sheet_name: str, df: pd.DataFrame):
@@ -176,22 +174,25 @@ def add_record(excel_path: str, sheet_name: str, record: dict):
 for pasta in ["Contas a Pagar", "Contas a Receber"]:
     os.makedirs(os.path.join(ANEXOS_DIR, pasta), exist_ok=True)
 
-# ------------------------------
+# ===============================
 # LÓGICA DO STREAMLIT
-# ------------------------------
-st.sidebar.markdown("# 📂 Navegação")
-page = st.sidebar.radio("", ["Dashboard", "Contas a Pagar", "Contas a Receber"])
+# ===============================
+st.sidebar.markdown(
+    """
+    ## 📂 Navegação  
+    Selecione a seção desejada para visualizar e gerenciar  
+    suas contas a pagar e receber.  
+    """
+)
+page = st.sidebar.radio("", ["Dashboard", "Contas a Pagar", "Contas a Receber"], index=0)
 
-st.markdown(
-    "<h1 style='text-align: center; color: #4B8BBE; font-size:32px;'>💼 Sistema Financeiro 2025</h1>",
-    unsafe_allow_html=True
-)
-st.markdown(
-    "<p style='text-align: center; color: #555; font-size:16px;'>"
-    "Gestão eficiente de contas a pagar e receber com indicadores e gráficos intuitivos."
-    "</p>",
-    unsafe_allow_html=True
-)
+# Cabeçalho principal
+st.markdown("""
+<div style="text-align: center; color: #4B8BBE; margin-bottom: 10px;">
+    <h1>💼 Sistema Financeiro 2025</h1>
+    <p style="color: #555; font-size: 16px;">Gestão eficiente de contas a pagar e receber com indicadores e gráficos ilustrativos.</p>
+</div>
+""", unsafe_allow_html=True)
 st.markdown("---")
 
 # ------------------------
@@ -199,11 +200,9 @@ st.markdown("---")
 # ------------------------
 if page == "Dashboard":
     st.subheader("📊 Painel de Controle Financeiro")
-
     sheets_p = get_sheet_list(EXCEL_PAGAR)
     sheets_r = get_sheet_list(EXCEL_RECEBER)
 
-    # === KPIs Contas a Pagar ===
     if sheets_p:
         df_all_p = pd.concat([load_data(EXCEL_PAGAR, s) for s in sheets_p], ignore_index=True)
         total_p = df_all_p["valor"].sum()
@@ -214,21 +213,18 @@ if page == "Dashboard":
             (df_all_p["vencimento"] < datetime.now())
         ]["valor"].sum()
 
-        st.markdown(
-            "<div style='background-color: #E8F8F5; padding:10px; border-radius:5px;'>"
-            "<strong>Contas a Pagar - KPIs</strong></div>",
-            unsafe_allow_html=True
-        )
-        kp1, kp2, kp3, kp4 = st.columns(4)
-        kp1.metric("Total a Pagar", f"R$ {total_p:,.2f}")
-        kp2.metric("Pago", f"R$ {pago_p:,.2f}")
-        kp3.metric("Em Aberto", f"R$ {aberto_p:,.2f}")
-        kp4.metric("Vencido", f"R$ {vencido_p:,.2f}")
+        st.markdown("<div style='padding: 10px; background-color: #E8F8F5; border-radius: 8px;'>"
+                    "<strong>Contas a Pagar - KPIs</strong></div>", unsafe_allow_html=True)
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Total a Pagar", f"R$ {total_p:,.2f}")
+        c2.metric("Pago", f"R$ {pago_p:,.2f}")
+        c3.metric("Em Aberto", f"R$ {aberto_p:,.2f}")
+        c4.metric("Vencido", f"R$ {vencido_p:,.2f}")
     else:
-        st.warning("Nenhuma aba encontrada para Contas a Pagar.")
+        st.warning("Nenhuma aba encontrada em 'Contas a Pagar'.")
+
     st.markdown("---")
 
-    # === KPIs Contas a Receber ===
     if sheets_r:
         df_all_r = pd.concat([load_data(EXCEL_RECEBER, s) for s in sheets_r], ignore_index=True)
         total_r = df_all_r["valor"].sum()
@@ -239,21 +235,19 @@ if page == "Dashboard":
             (df_all_r["vencimento"] < datetime.now())
         ]["valor"].sum()
 
-        st.markdown(
-            "<div style='background-color: #FEF9E7; padding:10px; border-radius:5px;'>"
-            "<strong>Contas a Receber - KPIs</strong></div>",
-            unsafe_allow_html=True
-        )
-        kr1, kr2, kr3, kr4 = st.columns(4)
-        kr1.metric("Total a Receber", f"R$ {total_r:,.2f}")
-        kr2.metric("Recebido", f"R$ {rec_r:,.2f}")
-        kr3.metric("A Receber", f"R$ {arec_r:,.2f}")
-        kr4.metric("Atrasado", f"R$ {atras_r:,.2f}")
+        st.markdown("<div style='padding: 10px; background-color: #FEF9E7; border-radius: 8px;'>"
+                    "<strong>Contas a Receber - KPIs</strong></div>", unsafe_allow_html=True)
+        d1, d2, d3, d4 = st.columns(4)
+        d1.metric("Total a Receber", f"R$ {total_r:,.2f}")
+        d2.metric("Recebido", f"R$ {rec_r:,.2f}")
+        d3.metric("A Receber", f"R$ {arec_r:,.2f}")
+        d4.metric("Atrasado", f"R$ {atras_r:,.2f}")
     else:
-        st.warning("Nenhuma aba encontrada para Contas a Receber.")
-    st.markdown("---")
+        st.warning("Nenhuma aba encontrada em 'Contas a Receber'.")
 
-    # === Gráficos Mensais ===
+    st.markdown("---")
+    st.markdown("#### 📈 Gráficos Mensais")
+
     col1, col2 = st.columns(2)
     if sheets_p:
         monthly_p = {s: load_data(EXCEL_PAGAR, s)["valor"].sum() for s in sheets_p}
@@ -266,62 +260,61 @@ if page == "Dashboard":
             st.markdown("<div style='text-align:center;'><strong>Receitas Mensais</strong></div>", unsafe_allow_html=True)
             st.bar_chart(pd.Series(monthly_r), use_container_width=True)
 
-    # === Exportar Planilhas Originais ===
     st.markdown("---")
     st.subheader("💾 Exportar Planilhas Originais")
-    export_col1, export_col2 = st.columns(2)
-    with export_col1:
+    e1, e2 = st.columns(2)
+
+    with e1:
         try:
             with open(EXCEL_PAGAR, "rb") as f:
-                bytes_data_p = f.read()
+                dados_p = f.read()
             st.download_button(
                 label="Exportar Contas a Pagar",
-                data=bytes_data_p,
+                data=dados_p,
                 file_name=EXCEL_PAGAR,
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
         except FileNotFoundError:
-            st.error(f"Arquivo '{EXCEL_PAGAR}' não encontrado.")
-    with export_col2:
+            st.error(f"'{EXCEL_PAGAR}' não encontrado.")
+
+    with e2:
         try:
             with open(EXCEL_RECEBER, "rb") as f:
-                bytes_data_r = f.read()
+                dados_r = f.read()
             st.download_button(
                 label="Exportar Contas a Receber",
-                data=bytes_data_r,
+                data=dados_r,
                 file_name=EXCEL_RECEBER,
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
         except FileNotFoundError:
-            st.error(f"Arquivo '{EXCEL_RECEBER}' não encontrado.")
+            st.error(f"'{EXCEL_RECEBER}' não encontrado.")
 
-# -----------------------------
-# SEÇÃO: CONTAS A PAGAR ou RECEBER
-# -----------------------------
-else:
-    st.subheader(f"🗂️ {page}")
-    excel_path = EXCEL_PAGAR if page == "Contas a Pagar" else EXCEL_RECEBER
-    sheets = get_sheet_list(excel_path)
-
+# ------------------------
+# SEÇÃO: CONTAS A PAGAR
+# ------------------------
+elif page == "Contas a Pagar":
+    st.subheader("🗂️ Contas a Pagar")
+    sheets = get_sheet_list(EXCEL_PAGAR)
     if not sheets:
-        st.error(f"Arquivo '{excel_path}' não encontrado ou sem abas válidas.")
+        st.error(f"'{EXCEL_PAGAR}' não encontrado ou sem abas válidas.")
         st.stop()
 
-    # Seleção de aba (mês)
-    aba = st.selectbox("Selecione o mês:", sheets)
-    df = load_data(excel_path, aba)
+    aba = st.selectbox("Selecione o mês:", sheets, index=0)
+    df = load_data(EXCEL_PAGAR, aba)
 
     if df.empty:
         st.info("Nenhum registro encontrado para este mês.")
     else:
-        # === FILTROS ===
-        colf1, colf2 = st.columns(2)
-        with colf1:
-            fornecedores_list = df["fornecedor"].dropna().astype(str).unique().tolist()
-            forn = st.selectbox("Fornecedor", ["Todos"] + sorted(fornecedores_list))
-        with colf2:
-            estados_list = df["estado"].dropna().astype(str).unique().tolist()
-            status_sel = st.selectbox("Status/Estado", ["Todos"] + sorted(estados_list))
+        # Filtros em expander
+        with st.expander("🔍 Filtros"):
+            colf1, colf2 = st.columns(2)
+            with colf1:
+                fornec_list = df["fornecedor"].dropna().astype(str).unique().tolist()
+                forn = st.selectbox("Fornecedor", ["Todos"] + sorted(fornec_list))
+            with colf2:
+                est_list = df["estado"].dropna().astype(str).unique().tolist()
+                status_sel = st.selectbox("Estado/Status", ["Todos"] + sorted(est_list))
 
         if forn != "Todos":
             df = df[df["fornecedor"] == forn]
@@ -333,147 +326,266 @@ else:
         if df.empty:
             st.warning("Nenhum registro corresponde aos filtros selecionados.")
         else:
-            # Ajuste para evitar KeyError: mostra apenas colunas existentes
-            cols_para_exibir = [c for c in ["data_nf", "fornecedor", "valor", "vencimento", "status_pagamento"] if c in df.columns]
-            st.subheader("📋 Lista de Lançamentos")
-            st.table(df[cols_para_exibir])
+            st.markdown("#### 📋 Lista de Lançamentos")
+            st.dataframe(df[["data_nf", "fornecedor", "valor", "vencimento", "status_pagamento"]], height=250)
             st.markdown("---")
 
-            # === Editar Registro ===
-            st.subheader("✏️ Editar Registro")
-            idx = st.number_input(
-                "Índice da linha:", min_value=0, max_value=len(df) - 1, step=1
-            )
-            rec = df.iloc[idx]
+            # Seção de edição em expander
+            with st.expander("✏️ Editar Registro"):
+                idx = st.number_input("Índice da linha:", min_value=0, max_value=len(df) - 1, step=1)
+                rec = df.iloc[idx]
 
-            colv1, colv2 = st.columns(2)
-            with colv1:
-                new_valor = st.number_input(
-                    "Valor:", value=float(rec["valor"]), key="valores"
-                )
-                default_date = rec["vencimento"].date() if pd.notna(rec["vencimento"]) else date.today()
-                new_venc = st.date_input("Vencimento:", value=default_date, key="vencimento")
-            with colv2:
-                estado_list = df["estado"].dropna().astype(str).unique().tolist()
-                try:
-                    estado_index = estado_list.index(str(rec["estado"]))
-                except ValueError:
-                    estado_index = 0
-                new_estado = st.selectbox(
-                    "Estado:",
-                    options=estado_list,
-                    index=estado_index,
-                    key="estado"
-                )
+                colv1, colv2 = st.columns(2)
+                with colv1:
+                    new_val = st.number_input("Valor:", value=float(rec["valor"]), key="valores")
+                    default_dt = rec["vencimento"].date() if pd.notna(rec["vencimento"]) else date.today()
+                    new_venc = st.date_input("Vencimento:", value=default_dt, key="vencimento")
+                with colv2:
+                    estado_uni = df["estado"].dropna().astype(str).unique().tolist()
+                    try:
+                        est_idx = estado_uni.index(str(rec["estado"]))
+                    except ValueError:
+                        est_idx = 0
+                    new_estado = st.selectbox("Estado:", options=estado_uni, index=est_idx, key="estado")
 
-                situ_list = df["situacao"].dropna().astype(str).unique().tolist()
-                try:
-                    situ_index = situ_list.index(str(rec["situacao"]))
-                except ValueError:
-                    situ_index = 0
-                new_sit = st.selectbox(
-                    "Situação:",
-                    options=situ_list,
-                    index=situ_index,
-                    key="situacao"
-                )
+                    situ_uni = df["situacao"].dropna().astype(str).unique().tolist()
+                    try:
+                        sit_idx = situ_uni.index(str(rec["situacao"]))
+                    except ValueError:
+                        sit_idx = 0
+                    new_sit = st.selectbox("Situação:", options=situ_uni, index=sit_idx, key="situacao")
 
-            if st.button("💾 Salvar Alterações"):
-                df.loc[df.index[idx], ["valor", "vencimento", "estado", "situacao"]] = [
-                    new_valor, pd.to_datetime(new_venc), new_estado, new_sit
-                ]
-                save_data(excel_path, aba, df)
-                st.success("Registro atualizado no Excel.")
+                if st.button("💾 Salvar Alterações"):
+                    df.loc[df.index[idx], ["valor", "vencimento", "estado", "situacao"]] = [
+                        new_val, pd.to_datetime(new_venc), new_estado, new_sit
+                    ]
+                    save_data(EXCEL_PAGAR, aba, df)
+                    st.success("Registro atualizado com sucesso!")
 
             st.markdown("---")
 
-            # === Anexar Documentos ===
-            st.subheader("📎 Anexar Documentos")
-            uploaded = st.file_uploader(
-                "Selecione o arquivo (pdf/jpg/png):", type=["pdf", "jpg", "png"], key=f"up_{page}_{aba}_{idx}"
-            )
-            if uploaded:
-                destino = os.path.join(ANEXOS_DIR, page, f"{page}_{aba}_{idx}_{uploaded.name}")
-                with open(destino, "wb") as f:
-                    f.write(uploaded.getbuffer())
-                st.success(f"Documento salvo em: {destino}")
+            # Seção de anexar documentos em expander
+            with st.expander("📎 Anexar Documentos"):
+                idx2 = st.number_input("Índice para anexar:", min_value=0, max_value=len(df) - 1, step=1, key="idx_anex")
+                uploaded = st.file_uploader("Selecione (pdf/jpg/png):", type=["pdf", "jpg", "png"], key=f"up_pagar_{aba}_{idx2}")
+                if uploaded:
+                    destino = os.path.join(ANEXOS_DIR, "Contas a Pagar", f"Pagar_{aba}_{idx2}_{uploaded.name}")
+                    with open(destino, "wb") as f:
+                        f.write(uploaded.getbuffer())
+                    st.success(f"Documento salvo em: {destino}")
 
             st.markdown("---")
 
-            # === Adicionar Nova Conta ===
-            st.subheader("➕ Adicionar Nova Conta")
-            with st.form(key="form_add"):
+            # Seção de adicionar registro em expander
+            with st.expander("➕ Adicionar Nova Conta"):
                 coln1, coln2 = st.columns(2)
                 with coln1:
                     data_nf = st.date_input("Data N/F:", value=date.today())
-                    forma_pag = st.text_input("Forma de Pagamento:")
+                    forma_pag = st.text_input("Descrição:")
                     forn_new = st.text_input("Fornecedor:")
                 with coln2:
-                    os_new = st.text_input("OS Interna:")
+                    os_new = st.text_input("Documento/OS:")
                     venc_new = st.date_input("Data de Vencimento:", value=date.today())
                     valor_new = st.number_input("Valor (R$):", min_value=0.0, format="%.2f")
 
-                if page == "Contas a Pagar":
-                    estado_opt = ["Em Aberto", "Pago"]
-                    situ_opt = ["Em Atraso", "Pago", "Em Aberto"]
-                else:
-                    estado_opt = ["A Receber", "Recebido"]
-                    situ_opt = ["Em Atraso", "Recebido", "A Receber"]
-
+                estado_opt = ["Em Aberto", "Pago"]
+                situ_opt = ["Em Atraso", "Pago", "Em Aberto"]
                 estado_new = st.selectbox("Estado:", options=estado_opt)
                 situ_new = st.selectbox("Situação:", options=situ_opt)
-                boleto_file = st.file_uploader("Boleto (opcional):", type=["pdf", "jpg", "png"])
-                comprov_file = st.file_uploader("Comprovante (opcional):", type=["pdf", "jpg", "png"])
-                submit_add = st.form_submit_button("➕ Adicionar Conta")
+                boleto_file = st.file_uploader("Boleto (opcional):", type=["pdf", "jpg", "png"], key="boleto_pagar")
+                comprov_file = st.file_uploader("Comprovante (opcional):", type=["pdf", "jpg", "png"], key="comprov_pagar")
+                if st.button("➕ Adicionar Conta"):
+                    boleto_path = ""
+                    comprov_path = ""
+                    if boleto_file:
+                        boleto_path = os.path.join(ANEXOS_DIR, "Contas a Pagar", f"Pagar_{aba}_boleto_{boleto_file.name}")
+                        with open(boleto_path, "wb") as fb:
+                            fb.write(boleto_file.getbuffer())
+                    if comprov_file:
+                        comprov_path = os.path.join(ANEXOS_DIR, "Contas a Pagar", f"Pagar_{aba}_comprov_{comprov_file.name}")
+                        with open(comprov_path, "wb") as fc:
+                            fc.write(comprov_file.getbuffer())
 
-            if submit_add:
-                boleto_path = ""
-                comprov_path = ""
-                if boleto_file:
-                    boleto_path = os.path.join(ANEXOS_DIR, page, f"{page}_{aba}_boleto_{boleto_file.name}")
-                    with open(boleto_path, "wb") as f:
-                        f.write(boleto_file.getbuffer())
-                if comprov_file:
-                    comprov_path = os.path.join(ANEXOS_DIR, page, f"{page}_{aba}_comprov_{comprov_file.name}")
-                    with open(comprov_path, "wb") as f:
-                        f.write(comprov_file.getbuffer())
+                    record = {
+                        "data_nf": data_nf,
+                        "forma_pagamento": forma_pag,
+                        "fornecedor": forn_new,
+                        "os": os_new,
+                        "vencimento": venc_new,
+                        "valor": valor_new,
+                        "estado": estado_new,
+                        "situacao": situ_new,
+                        "boleto": boleto_path,
+                        "comprovante": comprov_path
+                    }
+                    add_record(EXCEL_PAGAR, aba, record)
+                    st.success("Nova conta adicionada com sucesso!")
 
-                record = {
-                    "data_nf": data_nf,
-                    "forma_pagamento": forma_pag,
-                    "fornecedor": forn_new,
-                    "os": os_new,
-                    "vencimento": venc_new,
-                    "valor": valor_new,
-                    "estado": estado_new,
-                    "situacao": situ_new,
-                    "boleto": boleto_path,
-                    "comprovante": comprov_path,
-                }
-                add_record(excel_path, aba, record)
-                st.success("Nova conta adicionada com sucesso!")
-
-            # === Exportar Aba Atual ===
             st.markdown("---")
+
+            # Exportar aba
             st.subheader("💾 Exportar Aba Atual")
             try:
-                save_data(excel_path, aba, df)
-                with open(excel_path, "rb") as f:
-                    excel_bytes = f.read()
+                save_data(EXCEL_PAGAR, aba, df)
+                with open(EXCEL_PAGAR, "rb") as fx:
+                    bytes_data = fx.read()
                 st.download_button(
-                    label=f"Exportar '{aba}' para Excel",
-                    data=excel_bytes,
-                    file_name=f"{page} - {aba}.xlsx",
+                    label=f"Exportar '{aba}'",
+                    data=bytes_data,
+                    file_name=f"Contas a Pagar - {aba}.xlsx",
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 )
             except Exception as e:
-                st.error(f"Falha ao preparar o download: {e}")
+                st.error(f"Erro ao preparar download: {e}")
+
+# ----------------------------
+# SEÇÃO: CONTAS A RECEBER
+# ----------------------------
+elif page == "Contas a Receber":
+    st.subheader("🗂️ Contas a Receber")
+    sheets = get_sheet_list(EXCEL_RECEBER)
+    if not sheets:
+        st.error(f"'{EXCEL_RECEBER}' não encontrado ou sem abas válidas.")
+        st.stop()
+
+    aba = st.selectbox("Selecione o mês:", sheets, index=0)
+    df = load_data(EXCEL_RECEBER, aba)
+
+    if df.empty:
+        st.info("Nenhum registro encontrado para este mês.")
+    else:
+        with st.expander("🔍 Filtros"):
+            colf1, colf2 = st.columns(2)
+            with colf1:
+                fornec_list = df["fornecedor"].dropna().astype(str).unique().tolist()
+                forn = st.selectbox("Fornecedor", ["Todos"] + sorted(fornec_list))
+            with colf2:
+                est_list = df["estado"].dropna().astype(str).unique().tolist()
+                status_sel = st.selectbox("Estado/Status", ["Todos"] + sorted(est_list))
+
+        if forn != "Todos":
+            df = df[df["fornecedor"] == forn]
+        if status_sel != "Todos":
+            df = df[df["estado"] == status_sel]
+
+        st.markdown("<hr style='border:1px solid #ddd;'>", unsafe_allow_html=True)
+
+        if df.empty:
+            st.warning("Nenhum registro corresponde aos filtros selecionados.")
+        else:
+            st.markdown("#### 📋 Lista de Lançamentos")
+            st.dataframe(df[["data_nf", "fornecedor", "valor", "vencimento", "status_pagamento"]], height=250)
+            st.markdown("---")
+
+            with st.expander("✏️ Editar Registro"):
+                idx = st.number_input("Índice da linha:", min_value=0, max_value=len(df) - 1, step=1, key="idx_rec_r")
+                rec = df.iloc[idx]
+
+                colv1, colv2 = st.columns(2)
+                with colv1:
+                    new_val = st.number_input("Valor:", value=float(rec["valor"]), key="valores_r")
+                    default_dt = rec["vencimento"].date() if pd.notna(rec["vencimento"]) else date.today()
+                    new_venc = st.date_input("Vencimento:", value=default_dt, key="vencimento_r")
+                with colv2:
+                    estado_uni = df["estado"].dropna().astype(str).unique().tolist()
+                    try:
+                        est_idx = estado_uni.index(str(rec["estado"]))
+                    except ValueError:
+                        est_idx = 0
+                    new_estado = st.selectbox("Estado:", options=estado_uni, index=est_idx, key="estado_r")
+
+                    situ_uni = df["situacao"].dropna().astype(str).unique().tolist()
+                    try:
+                        sit_idx = situ_uni.index(str(rec["situacao"]))
+                    except ValueError:
+                        sit_idx = 0
+                    new_sit = st.selectbox("Situação:", options=situ_uni, index=sit_idx, key="situacao_r")
+
+                if st.button("💾 Salvar Alterações", key="salvar_r"):
+                    df.loc[df.index[idx], ["valor", "vencimento", "estado", "situacao"]] = [
+                        new_val, pd.to_datetime(new_venc), new_estado, new_sit
+                    ]
+                    save_data(EXCEL_RECEBER, aba, df)
+                    st.success("Registro atualizado com sucesso!")
+
+            st.markdown("---")
+
+            with st.expander("📎 Anexar Documentos"):
+                idx2 = st.number_input("Índice para anexar:", min_value=0, max_value=len(df) - 1, step=1, key="idx_anex_r")
+                uploaded = st.file_uploader("Selecione (pdf/jpg/png):", type=["pdf", "jpg", "png"], key=f"up_receber_{aba}_{idx2}")
+                if uploaded:
+                    destino = os.path.join(ANEXOS_DIR, "Contas a Receber", f"Receber_{aba}_{idx2}_{uploaded.name}")
+                    with open(destino, "wb") as f:
+                        f.write(uploaded.getbuffer())
+                    st.success(f"Documento salvo em: {destino}")
+
+            st.markdown("---")
+
+            with st.expander("➕ Adicionar Nova Conta"):
+                coln1, coln2 = st.columns(2)
+                with coln1:
+                    data_nf = st.date_input("Data N/F:", value=date.today(), key="data_nf_r")
+                    forma_pag = st.text_input("Descrição:", key="forma_pag_r")
+                    forn_new = st.text_input("Fornecedor:", key="forn_r")
+                with coln2:
+                    os_new = st.text_input("Documento/OS:", key="os_r")
+                    venc_new = st.date_input("Data de Vencimento:", value=date.today(), key="venc_new_r")
+                    valor_new = st.number_input("Valor (R$):", min_value=0.0, format="%.2f", key="valor_new_r")
+
+                estado_opt = ["A Receber", "Recebido"]
+                situ_opt = ["Em Atraso", "Recebido", "A Receber"]
+                estado_new = st.selectbox("Estado:", options=estado_opt, key="estado_new_r")
+                situ_new = st.selectbox("Situação:", options=situ_opt, key="situ_new_r")
+                boleto_file = st.file_uploader("Boleto (opcional):", type=["pdf", "jpg", "png"], key="boleto_r")
+                comprov_file = st.file_uploader("Comprovante (opcional):", type=["pdf", "jpg", "png"], key="comprov_r")
+                if st.button("➕ Adicionar Conta", key="add_r"):
+                    boleto_path = ""
+                    comprov_path = ""
+                    if boleto_file:
+                        boleto_path = os.path.join(ANEXOS_DIR, "Contas a Receber", f"Receber_{aba}_boleto_{boleto_file.name}")
+                        with open(boleto_path, "wb") as fb:
+                            fb.write(boleto_file.getbuffer())
+                    if comprov_file:
+                        comprov_path = os.path.join(ANEXOS_DIR, "Contas a Receber", f"Receber_{aba}_comprov_{comprov_file.name}")
+                        with open(comprov_path, "wb") as fc:
+                            fc.write(comprov_file.getbuffer())
+
+                    record = {
+                        "data_nf": data_nf,
+                        "forma_pagamento": forma_pag,
+                        "fornecedor": forn_new,
+                        "os": os_new,
+                        "vencimento": venc_new,
+                        "valor": valor_new,
+                        "estado": estado_new,
+                        "situacao": situ_new,
+                        "boleto": boleto_path,
+                        "comprovante": comprov_path
+                    }
+                    add_record(EXCEL_RECEBER, aba, record)
+                    st.success("Nova conta adicionada com sucesso!")
+
+            st.markdown("---")
+
+            st.subheader("💾 Exportar Aba Atual")
+            try:
+                save_data(EXCEL_RECEBER, aba, df)
+                with open(EXCEL_RECEBER, "rb") as fx:
+                    bytes_data = fx.read()
+                st.download_button(
+                    label=f"Exportar '{aba}'",
+                    data=bytes_data,
+                    file_name=f"Contas a Receber - {aba}.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
+            except Exception as e:
+                st.error(f"Erro ao preparar download: {e}")
 
 # ------------------------------
 # RODAPÉ
 # ------------------------------
-st.markdown(
-    "<p style='text-align:center; font-size:12px; color:gray;'>"
-    "Desenvolvido por Vinicius Magalhães</p>",
-    unsafe_allow_html=True
-)
+st.markdown("""
+<div style="text-align: center; font-size:12px; color:gray; margin-top: 20px;">
+    <p>© 2025 Desenvolvido por Vinicius Magalhães</p>
+</div>
+""", unsafe_allow_html=True)
