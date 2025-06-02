@@ -316,16 +316,28 @@ else:
             default_date = rec['vencimento'].date() if pd.notna(rec['vencimento']) else date.today()
             new_venc = st.date_input("Vencimento:", value=default_date, key="vencimento")
         with colv2:
+            # CORREÇÃO: cria lista única de 'estado' e 'situacao' e garante índice válido
+            estado_list = df['estado'].unique().tolist()
+            try:
+                estado_index = estado_list.index(rec['estado'])
+            except ValueError:
+                estado_index = 0
             new_estado = st.selectbox(
                 "Estado:",
-                options=df['estado'].unique().tolist(),
-                index=list(df['estado'].unique()).index(rec['estado']),
+                options=estado_list,
+                index=estado_index,
                 key="estado"
             )
+
+            situ_list = df['situacao'].unique().tolist()
+            try:
+                situ_index = situ_list.index(rec['situacao'])
+            except ValueError:
+                situ_index = 0
             new_sit = st.selectbox(
                 "Situação:",
-                options=df['situacao'].unique().tolist(),
-                index=list(df['situacao'].unique()).index(rec['situacao']),
+                options=situ_list,
+                index=situ_index,
                 key="situacao"
             )
 
