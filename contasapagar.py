@@ -280,11 +280,13 @@ else:
         # ====================
         colf1, colf2 = st.columns(2)
         with colf1:
-            forn = st.selectbox("Fornecedor", ['Todos'] + sorted(df['fornecedor'].unique().tolist()))
+            # Remove NaNs e converte para string antes de ordenar
+            fornecedores_list = df['fornecedor'].dropna().astype(str).unique().tolist()
+            forn = st.selectbox("Fornecedor", ['Todos'] + sorted(fornecedores_list))
         with colf2:
-            estados = df['estado'].unique().tolist()
-            status_sel = st.selectbox("Status/Estado", ['Todos'] + sorted(estados))
-
+            # Remove NaNs e converte para string antes de ordenar
+            estados_list = df['estado'].dropna().astype(str).unique().tolist()
+            status_sel = st.selectbox("Status/Estado", ['Todos'] + sorted(estados_list))
         if forn != 'Todos':
             df = df[df['fornecedor'] == forn]
         if status_sel != 'Todos':
