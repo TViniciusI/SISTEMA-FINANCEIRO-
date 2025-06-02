@@ -31,10 +31,10 @@ if "logged_in" not in st.session_state:
 
 # Se não estiver logado, exibe formulário centralizado
 if not st.session_state.logged_in:
-    # Espaçamento vertical
+    # Espaçamento vertical para centralizar
     st.write("\n" * 5)
 
-    # Três colunas para centralizar horizontalmente
+    # Três colunas para centralização horizontal
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         st.title("🔒 Login")
@@ -44,15 +44,14 @@ if not st.session_state.logged_in:
             if check_login(username_input, password_input):
                 st.session_state.logged_in = True
                 st.session_state.username = username_input
-                # Após marcar logged_in, o restante do app será exibido
             else:
                 st.error("Usuário ou senha inválidos.")
-    st.stop()  # interrompe a execução para quem não estiver logado
+    st.stop()  # interrompe execução para quem não estiver logado
 
 # Usuário já está autenticado
 logged_user = st.session_state.username
 
-# Mostra quem está logado na sidebar (apenas informativo)
+# Exibe nome na sidebar
 st.sidebar.write(f"Logado como: **{logged_user}**")
 
 # ====================================================================================
@@ -244,6 +243,7 @@ st.markdown("---")
 # ------------------------
 if page == "Dashboard":
     st.subheader("📊 Painel de Controle Financeiro Avançado")
+
     sheets_p = get_sheet_list(EXCEL_PAGAR)
     sheets_r = get_sheet_list(EXCEL_RECEBER)
 
@@ -258,12 +258,12 @@ if page == "Dashboard":
         else:
             df_all_p = pd.concat([load_data(EXCEL_PAGAR, s) for s in sheets_p], ignore_index=True)
 
-            total_p = df_all_p["valor"].sum()
-            num_lanc_p = len(df_all_p)
-            media_p = df_all_p["valor"].mean() if num_lanc_p else 0
+            total_p     = df_all_p["valor"].sum()
+            num_lanc_p  = len(df_all_p)
+            media_p     = df_all_p["valor"].mean() if num_lanc_p else 0
             atrasados_p = df_all_p[df_all_p["status_pagamento"] == "Em Atraso"]
             num_atras_p = len(atrasados_p)
-            perc_atras_p = (num_atras_p / num_lanc_p * 100) if num_lanc_p else 0
+            perc_atras_p= (num_atras_p / num_lanc_p * 100) if num_lanc_p else 0
 
             status_counts_p = (
                 df_all_p["status_pagamento"]
@@ -278,33 +278,47 @@ if page == "Dashboard":
                 unsafe_allow_html=True
             )
             c1, c2, c3, c4, c5 = st.columns([1.5, 1.5, 1.5, 1.5, 2])
-            c1.metric("Total a Pagar", f"R$ {total_p:,.2f}")
-            c2.metric("Nº Lançamentos", f"{num_lanc_p}")
-            c3.metric("Média Valores", f="R$ {media_p:,.2f}")
-            c4.metric("Em Atraso (%)", f"{perc_atras_p:.1f}% ({num_atras_p})")
+            c1.metric("Total a Pagar",   f"R$ {total_p:,.2f}")
+            c2.metric("Nº Lançamentos",   f"{num_lanc_p}")
+            c3.metric("Média Valores",    f"R$ {media_p:,.2f}")
+            c4.metric("Em Atraso (%)",    f"{perc_atras_p:.1f}% ({num_atras_p})")
             with c5:
                 st.markdown("##### Distribuição por Status")
                 st.bar_chart(status_counts_p.set_index("status")["contagem"])
 
             st.markdown("---")
+
+            # ====== Gráfico 1: Evolução Mensal de Gastos ======
             st.markdown("#### 📈 Evolução Mensal de Gastos")
             df_all_p["mes_ano"] = df_all_p["vencimento"].dt.to_period("M")
             monthly_group_p = (
                 df_all_p
                 .groupby("mes_ano")
                 .agg(
-                    total_mes=("valor", "sum"),
-                    pagos_mes=("valor", lambda x: x[df_all_p.loc[x.index, "status_pagamento"] == "Em Dia"].sum()),
-                    pendentes_mes=("valor", lambda x: x[df_all_p.loc[x.index, "status_pagamento"] != "Em Dia"].sum())
+                    total_mes=("valor","sum"),
+                    pagos_mes=("valor", lambda x: x[df_all_p.loc[x.index,"status_pagamento"]=="Em Dia"].sum()),
+                    pendentes_mes=("valor", lambda x: x[df_all_p.loc[x.index,"status_pagamento"]!="Em Dia"].sum())
                 )
                 .reset_index()
             )
             monthly_group_p["mes_ano_str"] = monthly_group_p["mes_ano"].dt.strftime("%b/%Y")
             monthly_group_p = monthly_group_p.set_index("mes_ano_str")
-
-            st.line_chart(monthly_group_p[["total_mes", "pagos_mes", "pendentes_mes"]])
+            st.line_chart(monthly_group_p[["total_mes","pagos_mes","pendentes_mes"]])
 
             st.markdown("---")
+
+            # ====== Gráfico 2: Pie Chart de Status ======
+            st.markdown("#### 🥧 Percentual por Status de Pagamento")
+            series_status = status_counts_p.set_index("status")["contagem"]
+            import matplotlib.pyplot as plt
+            fig1, ax1 = plt.subplots()
+            ax1.pie(series_status, labels=series_status.index, autopct="%1.1f%%", startangle=90)
+            ax1.axis("equal")
+            st.pyplot(fig1)
+
+            st.markdown("---")
+
+            # ====== Botão para Exportar Planilhas Originais ======
             st.subheader("💾 Exportar Planilhas Originais (Contas a Pagar)")
             ep1, ep2 = st.columns(2)
             with ep1:
@@ -331,12 +345,12 @@ if page == "Dashboard":
         else:
             df_all_r = pd.concat([load_data(EXCEL_RECEBER, s) for s in sheets_r], ignore_index=True)
 
-            total_r = df_all_r["valor"].sum()
-            num_lanc_r = len(df_all_r)
-            media_r = df_all_r["valor"].mean() if num_lanc_r else 0
+            total_r     = df_all_r["valor"].sum()
+            num_lanc_r  = len(df_all_r)
+            media_r     = df_all_r["valor"].mean() if num_lanc_r else 0
             atrasados_r = df_all_r[df_all_r["status_pagamento"] == "Em Atraso"]
             num_atras_r = len(atrasados_r)
-            perc_atras_r = (num_atras_r / num_lanc_r * 100) if num_lanc_r else 0
+            perc_atras_r= (num_atras_r / num_lanc_r * 100) if num_lanc_r else 0
 
             status_counts_r = (
                 df_all_r["status_pagamento"]
@@ -351,33 +365,46 @@ if page == "Dashboard":
                 unsafe_allow_html=True
             )
             d1, d2, d3, d4, d5 = st.columns([1.5, 1.5, 1.5, 1.5, 2])
-            d1.metric("Total a Receber", f"R$ {total_r:,.2f}")
-            d2.metric("Nº Lançamentos", f"{num_lanc_r}")
-            d3.metric("Média Valores", f="R$ {media_r:,.2f}")
-            d4.metric("Em Atraso (%)", f"{perc_atras_r:.1f}% ({num_atras_r})")
+            d1.metric("Total a Receber",   f"R$ {total_r:,.2f}")
+            d2.metric("Nº Lançamentos",   f"{num_lanc_r}")
+            d3.metric("Média Valores",    f"R$ {media_r:,.2f}")
+            d4.metric("Em Atraso (%)",    f"{perc_atras_r:.1f}% ({num_atras_r})")
             with d5:
                 st.markdown("##### Distribuição por Status")
                 st.bar_chart(status_counts_r.set_index("status")["contagem"])
 
             st.markdown("---")
+
+            # ====== Gráfico: Evolução Mensal de Recebimentos ======
             st.markdown("#### 📈 Evolução Mensal de Recebimentos")
             df_all_r["mes_ano"] = df_all_r["vencimento"].dt.to_period("M")
             monthly_group_r = (
                 df_all_r
                 .groupby("mes_ano")
                 .agg(
-                    total_mes=("valor", "sum"),
-                    recebidos_mes=("valor", lambda x: x[df_all_r.loc[x.index, "status_pagamento"] == "Em Dia"].sum()),
-                    pendentes_mes=("valor", lambda x: x[df_all_r.loc[x.index, "status_pagamento"] != "Em Dia"].sum())
+                    total_mes=("valor","sum"),
+                    recebidos_mes=("valor", lambda x: x[df_all_r.loc[x.index,"status_pagamento"]=="Em Dia"].sum()),
+                    pendentes_mes=("valor", lambda x: x[df_all_r.loc[x.index,"status_pagamento"]!="Em Dia"].sum())
                 )
                 .reset_index()
             )
             monthly_group_r["mes_ano_str"] = monthly_group_r["mes_ano"].dt.strftime("%b/%Y")
             monthly_group_r = monthly_group_r.set_index("mes_ano_str")
-
-            st.line_chart(monthly_group_r[["total_mes", "recebidos_mes", "pendentes_mes"]])
+            st.line_chart(monthly_group_r[["total_mes","recebidos_mes","pendentes_mes"]])
 
             st.markdown("---")
+
+            # ====== Pie Chart de Status ======
+            st.markdown("#### 🥧 Percentual por Status de Recebimento")
+            series_status_r = status_counts_r.set_index("status")["contagem"]
+            fig2, ax2 = plt.subplots()
+            ax2.pie(series_status_r, labels=series_status_r.index, autopct="%1.1f%%", startangle=90)
+            ax2.axis("equal")
+            st.pyplot(fig2)
+
+            st.markdown("---")
+
+            # ====== Botão para Exportar Planilhas Originais ======
             st.subheader("💾 Exportar Planilhas Originais (Contas a Receber)")
             er1, er2 = st.columns(2)
             with er1:
