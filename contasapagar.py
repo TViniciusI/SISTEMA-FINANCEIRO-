@@ -3,7 +3,6 @@ import streamlit as st
 import pandas as pd
 import os
 from datetime import datetime, date
-import matplotlib.pyplot as plt
 from openpyxl import load_workbook
 
 # CONFIGURAÇÃO DE PÁGINA
@@ -27,14 +26,13 @@ def get_sheet_list(excel_path: str):
     """Retorna lista de abas, ignorando aba 'Tutorial' se existir."""
     try:
         wb = pd.ExcelFile(excel_path)
-        return [s for s in wb.sheet_names if s.lower() != 'tutorial']
+        return [s for s in wb.sheet_names if s.lower() != "tutorial"]
     except Exception:
         return []
 
 def find_header_row(excel_path: str, sheet_name: str) -> int:
     """
-    Lê a planilha sem header (header=None) e retorna o índice da linha
-    em que aparece a coluna 'Vencimento'. Caso não encontre, retorna 0.
+    Retorna o índice da linha onde aparece 'Vencimento' no cabeçalho.
     """
     df_raw = pd.read_excel(excel_path, sheet_name=sheet_name, header=None)
     for i, row in df_raw.iterrows():
@@ -44,12 +42,12 @@ def find_header_row(excel_path: str, sheet_name: str) -> int:
 
 def load_data(excel_path: str, sheet_name: str) -> pd.DataFrame:
     """
-    Carrega dados da aba especificada, detectando dinamicamente a linha de header
-    e renomeando colunas para padrões internos. Calcula também status_pagamento.
+    Carrega a aba, detecta header, renomeia colunas e calcula status_pagamento.
     """
     header_row = find_header_row(excel_path, sheet_name)
     df = pd.read_excel(excel_path, sheet_name=sheet_name, skiprows=header_row, header=0)
 
+    # Mapear nomes originais para nomes internos
     rename_map = {}
     for col in df.columns:
         nome = str(col).strip().lower()
@@ -88,7 +86,7 @@ def load_data(excel_path: str, sheet_name: str) -> pd.DataFrame:
     df["vencimento"] = pd.to_datetime(df["vencimento"], errors="coerce")
     df["valor"] = pd.to_numeric(df["valor"], errors="coerce")
 
-    # Determina status de pagamento
+    # Calcula status_pagamento
     status_list = []
     hoje = datetime.now().date()
     for _, row in df.iterrows():
@@ -117,7 +115,7 @@ def load_data(excel_path: str, sheet_name: str) -> pd.DataFrame:
 
 def rename_col_index(ws, target_name: str) -> int:
     """
-    Retorna o índice (1-based) da coluna cujo cabeçalho corresponde a target_name.
+    Retorna índice (1-based) da coluna cujo cabeçalho exato corresponde a target_name.
     """
     for row in ws.iter_rows(min_row=1, max_row=100, min_col=1, max_col=ws.max_column):
         for cell in row:
@@ -128,8 +126,7 @@ def rename_col_index(ws, target_name: str) -> int:
 
 def save_data(excel_path: str, sheet_name: str, df: pd.DataFrame):
     """
-    Salva as colunas 'valor', 'estado', 'situacao' e 'vencimento' de volta
-    na planilha Excel, respeitando a posição original (linha header_row + 1).
+    Salva colunas 'valor', 'estado', 'situacao' e 'vencimento' de volta na planilha.
     """
     header_row = find_header_row(excel_path, sheet_name)
     wb = load_workbook(excel_path)
@@ -148,8 +145,7 @@ def save_data(excel_path: str, sheet_name: str, df: pd.DataFrame):
 
 def add_record(excel_path: str, sheet_name: str, record: dict):
     """
-    Adiciona um novo registro na próxima linha disponível da aba especificada.
-    Campos extras (boleto e comprovante) também serão gravados se existirem.
+    Adiciona novo registro na próxima linha disponível da aba.
     """
     wb = load_workbook(excel_path)
     ws = wb[sheet_name]
@@ -172,7 +168,7 @@ def add_record(excel_path: str, sheet_name: str, record: dict):
 
     wb.save(excel_path)
 
-# Cria pastas de anexos, se não existirem
+# Garante pasta de anexos
 for pasta in ["Contas a Pagar", "Contas a Receber"]:
     os.makedirs(os.path.join(ANEXOS_DIR, pasta), exist_ok=True)
 
@@ -205,7 +201,6 @@ if page == "Dashboard":
     sheets_p = get_sheet_list(EXCEL_PAGAR)
     sheets_r = get_sheet_list(EXCEL_RECEBER)
 
-    # Abas organizadas em tabs
     tabs = st.tabs(["📥 Contas a Pagar", "📤 Contas a Receber"])
 
     # -----------------------------
@@ -215,19 +210,16 @@ if page == "Dashboard":
         if not sheets_p:
             st.warning("Nenhuma aba encontrada em 'Contas a Pagar'.")
         else:
-            # Concatena todas as abas em um único DataFrame
             df_all_p = pd.concat([load_data(EXCEL_PAGAR, s) for s in sheets_p], ignore_index=True)
 
-            # Cálculos principais
             total_p = df_all_p["valor"].sum()
             num_lanc_p = len(df_all_p)
-            media_p = df_all_p["valor"].mean()
+            media_p = df_all_p["valor"].mean() if num_lanc_p else 0
             atrasados_p = df_all_p[df_all_p["status_pagamento"] == "Em Atraso"]
             num_atras_p = len(atrasados_p)
             perc_atras_p = (num_atras_p / num_lanc_p * 100) if num_lanc_p else 0
 
-            # Agrupa por status para gráfico de pizza
-            status_counts_p = df_all_p["status_pagamento"].value_counts()
+            status_counts_p = df_all_p["status_pagamento"].value_counts().rename_axis("status").reset_index(name="contagem")
 
             st.markdown("<div style='padding: 10px; background-color: #E8F8F5; border-radius: 8px;'>"
                         "<strong>Contas a Pagar - Estatísticas Gerais</strong></div>", unsafe_allow_html=True)
@@ -236,38 +228,29 @@ if page == "Dashboard":
             c2.metric("Nº de Lançamentos", f"{num_lanc_p}")
             c3.metric("Média de Valores", f"R$ {media_p:,.2f}")
             c4.metric("Em Atraso (%)", f"{perc_atras_p:.1f}% ({num_atras_p})")
+
             with c5:
-                # Gráfico de pizza - Distribuição por status
-                fig1, ax1 = plt.subplots(figsize=(3, 3))
-                ax1.pie(status_counts_p.values,
-                        labels=status_counts_p.index,
-                        autopct="%1.1f%%",
-                        startangle=140)
-                ax1.axis("equal")
-                st.pyplot(fig1)
+                st.markdown("##### Distribuição por Status")
+                st.bar_chart(status_counts_p.set_index("status")["contagem"])
 
             st.markdown("---")
-
-            # Gráfico de evolução mensal de gastos pendentes vs pagos
             st.markdown("#### 📈 Evolução Mensal de Gastos")
-            df_all_p["mes_ano"] = df_all_p["vencimento"].dt.to_period("M")
-            monthly_group_p = df_all_p.groupby("mes_ano").agg(
-                total_mes=("valor", "sum"),
-                pagos_mes=("status_pagamento", lambda s: df_all_p.loc[s.index][s == "Em Dia"]["valor"].sum()),
-                pendentes_mes=("status_pagamento", lambda s: df_all_p.loc[s.index][s != "Em Dia"]["valor"].sum())
-            ).reset_index()
-            monthly_group_p["mes_ano_str"] = monthly_group_p["mes_ano"].dt.strftime("%b/%Y")
 
-            fig2, ax2 = plt.subplots(figsize=(6, 3))
-            ax2.plot(monthly_group_p["mes_ano_str"], monthly_group_p["total_mes"], marker="o", label="Total")
-            ax2.plot(monthly_group_p["mes_ano_str"], monthly_group_p["pagos_mes"], marker="o", label="Pago")
-            ax2.plot(monthly_group_p["mes_ano_str"], monthly_group_p["pendentes_mes"], marker="o", label="Pendente")
-            ax2.set_xticklabels(monthly_group_p["mes_ano_str"], rotation=45, ha="right")
-            ax2.set_xlabel("Mês/Ano")
-            ax2.set_ylabel("Valor (R$)")
-            ax2.legend()
-            ax2.grid(True, linestyle="--", alpha=0.5)
-            st.pyplot(fig2)
+            df_all_p["mes_ano"] = df_all_p["vencimento"].dt.to_period("M")
+            monthly_group_p = (
+                df_all_p
+                .groupby("mes_ano")
+                .agg(
+                    total_mes=("valor", "sum"),
+                    pagos_mes=("valor", lambda x: x[df_all_p.loc[x.index, "status_pagamento"] == "Em Dia"].sum()),
+                    pendentes_mes=("valor", lambda x: x[df_all_p.loc[x.index, "status_pagamento"] != "Em Dia"].sum())
+                )
+                .reset_index()
+            )
+            monthly_group_p["mes_ano_str"] = monthly_group_p["mes_ano"].dt.strftime("%b/%Y")
+            monthly_group_p = monthly_group_p.set_index("mes_ano_str")
+
+            st.line_chart(monthly_group_p[["total_mes", "pagos_mes", "pendentes_mes"]])
 
             st.markdown("---")
             st.subheader("💾 Exportar Planilhas Originais (Contas a Pagar)")
@@ -284,7 +267,6 @@ if page == "Dashboard":
                     )
                 except FileNotFoundError:
                     st.error(f"'{EXCEL_PAGAR}' não encontrado.")
-
             with ep2:
                 st.info("Para ver detalhes, acesse a aba 'Contas a Pagar' no menu lateral.")
 
@@ -299,12 +281,12 @@ if page == "Dashboard":
 
             total_r = df_all_r["valor"].sum()
             num_lanc_r = len(df_all_r)
-            media_r = df_all_r["valor"].mean()
+            media_r = df_all_r["valor"].mean() if num_lanc_r else 0
             atrasados_r = df_all_r[df_all_r["status_pagamento"] == "Em Atraso"]
             num_atras_r = len(atrasados_r)
             perc_atras_r = (num_atras_r / num_lanc_r * 100) if num_lanc_r else 0
 
-            status_counts_r = df_all_r["status_pagamento"].value_counts()
+            status_counts_r = df_all_r["status_pagamento"].value_counts().rename_axis("status").reset_index(name="contagem")
 
             st.markdown("<div style='padding: 10px; background-color: #FEF9E7; border-radius: 8px;'>"
                         "<strong>Contas a Receber - Estatísticas Gerais</strong></div>", unsafe_allow_html=True)
@@ -313,36 +295,29 @@ if page == "Dashboard":
             d2.metric("Nº de Lançamentos", f"{num_lanc_r}")
             d3.metric("Média de Valores", f"R$ {media_r:,.2f}")
             d4.metric("Em Atraso (%)", f"{perc_atras_r:.1f}% ({num_atras_r})")
+
             with d5:
-                fig3, ax3 = plt.subplots(figsize=(3, 3))
-                ax3.pie(status_counts_r.values,
-                        labels=status_counts_r.index,
-                        autopct="%1.1f%%",
-                        startangle=140)
-                ax3.axis("equal")
-                st.pyplot(fig3)
+                st.markdown("##### Distribuição por Status")
+                st.bar_chart(status_counts_r.set_index("status")["contagem"])
 
             st.markdown("---")
-
             st.markdown("#### 📈 Evolução Mensal de Recebimentos")
-            df_all_r["mes_ano"] = df_all_r["vencimento"].dt.to_period("M")
-            monthly_group_r = df_all_r.groupby("mes_ano").agg(
-                total_mes=("valor", "sum"),
-                recebidos_mes=("status_pagamento", lambda s: df_all_r.loc[s.index][s == "Em Dia"]["valor"].sum()),
-                pendentes_mes=("status_pagamento", lambda s: df_all_r.loc[s.index][s != "Em Dia"]["valor"].sum())
-            ).reset_index()
-            monthly_group_r["mes_ano_str"] = monthly_group_r["mes_ano"].dt.strftime("%b/%Y")
 
-            fig4, ax4 = plt.subplots(figsize=(6, 3))
-            ax4.plot(monthly_group_r["mes_ano_str"], monthly_group_r["total_mes"], marker="o", label="Total")
-            ax4.plot(monthly_group_r["mes_ano_str"], monthly_group_r["recebidos_mes"], marker="o", label="Recebido")
-            ax4.plot(monthly_group_r["mes_ano_str"], monthly_group_r["pendentes_mes"], marker="o", label="Pendente")
-            ax4.set_xticklabels(monthly_group_r["mes_ano_str"], rotation=45, ha="right")
-            ax4.set_xlabel("Mês/Ano")
-            ax4.set_ylabel("Valor (R$)")
-            ax4.legend()
-            ax4.grid(True, linestyle="--", alpha=0.5)
-            st.pyplot(fig4)
+            df_all_r["mes_ano"] = df_all_r["vencimento"].dt.to_period("M")
+            monthly_group_r = (
+                df_all_r
+                .groupby("mes_ano")
+                .agg(
+                    total_mes=("valor", "sum"),
+                    recebidos_mes=("valor", lambda x: x[df_all_r.loc[x.index, "status_pagamento"] == "Em Dia"].sum()),
+                    pendentes_mes=("valor", lambda x: x[df_all_r.loc[x.index, "status_pagamento"] != "Em Dia"].sum())
+                )
+                .reset_index()
+            )
+            monthly_group_r["mes_ano_str"] = monthly_group_r["mes_ano"].dt.strftime("%b/%Y")
+            monthly_group_r = monthly_group_r.set_index("mes_ano_str")
+
+            st.line_chart(monthly_group_r[["total_mes", "recebidos_mes", "pendentes_mes"]])
 
             st.markdown("---")
             st.subheader("💾 Exportar Planilhas Originais (Contas a Receber)")
@@ -438,7 +413,11 @@ elif page == "Contas a Pagar":
 
             with st.expander("📎 Anexar Documentos"):
                 idx2 = st.number_input("Índice para anexar:", min_value=0, max_value=len(df) - 1, step=1, key="idx_anex")
-                uploaded = st.file_uploader("Selecione (pdf/jpg/png):", type=["pdf", "jpg", "png"], key=f"up_pagar_{aba}_{idx2}")
+                uploaded = st.file_uploader(
+                    "Selecione (pdf/jpg/png):",
+                    type=["pdf", "jpg", "png"],
+                    key=f"up_pagar_{aba}_{idx2}"
+                )
                 if uploaded:
                     destino = os.path.join(ANEXOS_DIR, "Contas a Pagar", f"Pagar_{aba}_{idx2}_{uploaded.name}")
                     with open(destino, "wb") as f:
