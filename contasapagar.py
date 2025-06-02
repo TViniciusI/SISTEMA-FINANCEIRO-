@@ -1,4 +1,4 @@
-# Desenvolvido por Vinicius Magalhaes
+# Desenvolvido por Vinicius Magalhães
 import streamlit as st
 import pandas as pd
 import os
@@ -8,9 +8,9 @@ from openpyxl import load_workbook
 # CONFIGURAÇÃO DE PÁGINA
 st.set_page_config(page_title="Sistema Financeiro", page_icon="💰", layout="wide")
 
-# CONSTANTES
-EXCEL_PAGAR = "Contas a pagar 2025 Sistema.xlsx"       # Arquivo Contas a Pagar
-EXCEL_RECEBER = "Contas a receber 2025 Sistema.xlsx"   # Arquivo Contas a Receber
+# CONSTANTES (os dois arquivos .xlsx devem estar na mesma pasta que este script)
+EXCEL_PAGAR = "Contas a pagar 2025 Sistema.xlsx"
+EXCEL_RECEBER = "Contas a receber 2025 Sistema.xlsx"
 ANEXOS_DIR = "anexos"
 
 # FUNÇÕES AUXILIARES
@@ -29,10 +29,11 @@ def load_data(excel_path: str, sheet_name: str) -> pd.DataFrame:
     Os skiprows=7 posicionam no header correto para as colunas.
     """
     df = pd.read_excel(excel_path, sheet_name=sheet_name, skiprows=7)
-    # Se a primeira coluna vier como 'Unnamed', removemos
+    # Se a primeira coluna vier como 'Unnamed...', removemos
     if df.columns[0].lower().startswith('unnamed'):
         df = df.drop(df.columns[0], axis=1)
-    # Ajusta nome de colunas conforme quantidade de colunas detectadas
+
+    # Ajusta nome de colunas conforme a quantidade de colunas detectadas
     if df.shape[1] == 10:
         df.columns = [
             'data_nf', 'forma_pagamento', 'fornecedor', 'os',
@@ -43,33 +44,38 @@ def load_data(excel_path: str, sheet_name: str) -> pd.DataFrame:
             'data_nf', 'forma_pagamento', 'fornecedor', 'os',
             'vencimento', 'valor', 'estado', 'situacao'
         ]
-    # Remover linhas sem fornecedor ou valor
+
+    # Remove linhas sem fornecedor ou valor
     df = df.dropna(subset=['fornecedor', 'valor']).reset_index(drop=True)
+
     # Conversões de tipos
     df['vencimento'] = pd.to_datetime(df['vencimento'], errors='coerce')
     df['valor'] = pd.to_numeric(df['valor'], errors='coerce')
+
     # Cálculo de status_pagamento
     status_list = []
-    today = datetime.now().date()
-    for idx, row in df.iterrows():
-        paid = False
+    hoje = datetime.now().date()
+    for _, row in df.iterrows():
+        pago = False
         if sheet_name.lower().startswith('contas a pagar'):
             if row['estado'] == 'Pago':
-                paid = True
+                pago = True
         else:
             if row['estado'] == 'Recebido':
-                paid = True
-        due_date = row['vencimento'].date() if not pd.isna(row['vencimento']) else None
-        if paid:
+                pago = True
+
+        data_venc = row['vencimento'].date() if not pd.isna(row['vencimento']) else None
+        if pago:
             status_list.append('Em Dia')
         else:
-            if due_date:
-                if due_date < today:
+            if data_venc:
+                if data_venc < hoje:
                     status_list.append('Em Atraso')
                 else:
                     status_list.append('A Vencer')
             else:
                 status_list.append('Sem Data')
+
     df['status_pagamento'] = status_list
     return df
 
@@ -81,10 +87,10 @@ def save_data(excel_path: str, sheet_name: str, df: pd.DataFrame):
     wb = load_workbook(excel_path)
     ws = wb[sheet_name]
     for i, row in df.iterrows():
-        ws.cell(row=i+8, column=6, value=row['valor'])
-        ws.cell(row=i+8, column=7, value=row['estado'])
-        ws.cell(row=i+8, column=8, value=row['situacao'])
-        ws.cell(row=i+8, column=5, value=row['vencimento'])
+        ws.cell(row=i + 8, column=6, value=row['valor'])
+        ws.cell(row=i + 8, column=7, value=row['estado'])
+        ws.cell(row=i + 8, column=8, value=row['situacao'])
+        ws.cell(row=i + 8, column=5, value=row['vencimento'])
     wb.save(excel_path)
 
 def add_record(excel_path: str, sheet_name: str, record: dict):
@@ -95,8 +101,8 @@ def add_record(excel_path: str, sheet_name: str, record: dict):
     wb = load_workbook(excel_path)
     ws = wb[sheet_name]
     next_row = ws.max_row + 1
-    # Prepara valores em ordem de colunas
-    values = [
+
+    valores = [
         record.get('data_nf', ''),
         record.get('forma_pagamento', ''),
         record.get('fornecedor', ''),
@@ -108,13 +114,15 @@ def add_record(excel_path: str, sheet_name: str, record: dict):
         record.get('boleto', ''),
         record.get('comprovante', '')
     ]
-    for col_idx, val in enumerate(values, start=1):
+
+    for col_idx, val in enumerate(valores, start=1):
         ws.cell(row=next_row, column=col_idx, value=val)
+
     wb.save(excel_path)
 
-# Cria pastas de anexos se não existirem
-for folder in ['Contas a Pagar', 'Contas a Receber']:
-    os.makedirs(os.path.join(ANEXOS_DIR, folder), exist_ok=True)
+# Garante que as pastas de anexos existam
+for pasta in ['Contas a Pagar', 'Contas a Receber']:
+    os.makedirs(os.path.join(ANEXOS_DIR, pasta), exist_ok=True)
 
 # SIDEBAR
 st.sidebar.markdown("# 📂 Navegação")
@@ -139,7 +147,7 @@ st.markdown("---")
 if page == 'Dashboard':
     st.subheader("📊 Painel de Controle Financeiro")
 
-    # Abas de cada arquivo
+    # Obtém as abas de cada arquivo
     sheets_p = get_sheet_list(EXCEL_PAGAR)
     sheets_r = get_sheet_list(EXCEL_RECEBER)
 
@@ -151,7 +159,10 @@ if page == 'Dashboard':
         total_p = df_all_p['valor'].sum()
         pago_p = df_all_p[df_all_p['estado'] == 'Pago']['valor'].sum()
         aberto_p = df_all_p[df_all_p['estado'] == 'Em Aberto']['valor'].sum()
-        vencido_p = df_all_p[(df_all_p['estado'] == 'Em Aberto') & (df_all_p['vencimento'] < datetime.now())]['valor'].sum()
+        vencido_p = df_all_p[
+            (df_all_p['estado'] == 'Em Aberto') &
+            (df_all_p['vencimento'] < datetime.now())
+        ]['valor'].sum()
 
         st.markdown(
             "<div style='background-color: #E8F8F5; padding:10px; border-radius:5px;'>"
@@ -175,7 +186,10 @@ if page == 'Dashboard':
         total_r = df_all_r['valor'].sum()
         rec_r = df_all_r[df_all_r['estado'] == 'Recebido']['valor'].sum()
         arec_r = df_all_r[df_all_r['estado'] == 'A Receber']['valor'].sum()
-        atras_r = df_all_r[(df_all_r['estado'] == 'A Receber') & (df_all_r['vencimento'] < datetime.now())]['valor'].sum()
+        atras_r = df_all_r[
+            (df_all_r['estado'] == 'A Receber') &
+            (df_all_r['vencimento'] < datetime.now())
+        ]['valor'].sum()
 
         st.markdown(
             "<div style='background-color: #FEF9E7; padding:10px; border-radius:5px;'>"
@@ -197,14 +211,12 @@ if page == 'Dashboard':
     col1, col2 = st.columns(2)
 
     if sheets_p:
-        # Soma de valores por mês para Contas a Pagar
         monthly_p = {s: load_data(EXCEL_PAGAR, s)['valor'].sum() for s in sheets_p}
         with col1:
             st.markdown("<div style='text-align:center;'><strong>Gastos Mensais</strong></div>", unsafe_allow_html=True)
             st.bar_chart(pd.Series(monthly_p), use_container_width=True)
 
     if sheets_r:
-        # Soma de valores por mês para Contas a Receber
         monthly_r = {s: load_data(EXCEL_RECEBER, s)['valor'].sum() for s in sheets_r}
         with col2:
             st.markdown("<div style='text-align:center;'><strong>Receitas Mensais</strong></div>", unsafe_allow_html=True)
@@ -259,7 +271,7 @@ else:
         # ====================
         st.subheader("✏️ Editar Registro")
         idx = st.number_input(
-            "Índice da linha:", min_value=0, max_value=len(df)-1, step=1
+            "Índice da linha:", min_value=0, max_value=len(df) - 1, step=1
         )
         rec = df.loc[idx]
 
@@ -291,6 +303,8 @@ else:
             save_data(excel_path, aba, df)
             st.success("Registro atualizado no Excel.")
 
+        st.markdown("---")
+
         # ====================
         #    ANEXAR DOCUMENTOS
         # ====================
@@ -299,10 +313,10 @@ else:
             "Selecione o arquivo (pdf/jpg/png):", type=['pdf', 'jpg', 'png'], key=f"up_{page}_{aba}_{idx}"
         )
         if uploaded:
-            dest = os.path.join(ANEXOS_DIR, page, f"{page}_{aba}_{idx}_{uploaded.name}")
-            with open(dest, 'wb') as f:
+            destino = os.path.join(ANEXOS_DIR, page, f"{page}_{aba}_{idx}_{uploaded.name}")
+            with open(destino, 'wb') as f:
                 f.write(uploaded.getbuffer())
-            st.success(f"Documento salvo em: {dest}")
+            st.success(f"Documento salvo em: {destino}")
 
         st.markdown("---")
 
@@ -321,7 +335,6 @@ else:
                 venc_new = st.date_input("Data de Vencimento:", value=date.today())
                 valor_new = st.number_input("Valor (R$):", min_value=0.0, format="%.2f")
 
-            # Definição de opções de estado/situação conforme módulo
             if page == 'Contas a Pagar':
                 estado_opt = ['Em Aberto', 'Pago']
                 situ_opt = ['Em Atraso', 'Pago', 'Em Aberto']
@@ -336,7 +349,6 @@ else:
             submit_add = st.form_submit_button("➕ Adicionar Conta")
 
         if submit_add:
-            # Processa anexos (se houver)
             boleto_path = ''
             comprov_path = ''
             if boleto_file:
@@ -348,7 +360,6 @@ else:
                 with open(comprov_path, 'wb') as f:
                     f.write(comprov_file.getbuffer())
 
-            # Monta dicionário de registro
             record = {
                 'data_nf': data_nf,
                 'forma_pagamento': forma_pag,
@@ -361,9 +372,12 @@ else:
                 'boleto': boleto_path,
                 'comprovante': comprov_path
             }
-            # Adiciona ao Excel
             add_record(excel_path, aba, record)
             st.success("Nova conta adicionada com sucesso!")
-          
-st.markdown("<p style='text-align:center; font-size:12px; color:gray;'>Desenvolvido por Vinicius Magalhães</p>", unsafe_allow_html=True)
 
+# RODAPÉ
+st.markdown(
+    "<p style='text-align:center; font-size:12px; color:gray;'>"
+    "Desenvolvido por Vinicius Magalhães</p>",
+    unsafe_allow_html=True
+)
