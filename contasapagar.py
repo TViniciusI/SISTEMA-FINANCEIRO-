@@ -333,9 +333,10 @@ else:
         if df.empty:
             st.warning("Nenhum registro corresponde aos filtros selecionados.")
         else:
-            # === Lista de Lançamentos ===
+            # Ajuste para evitar KeyError: mostra apenas colunas existentes
+            cols_para_exibir = [c for c in ["data_nf", "fornecedor", "valor", "vencimento", "status_pagamento"] if c in df.columns]
             st.subheader("📋 Lista de Lançamentos")
-            st.table(df[["data_nf", "fornecedor", "valor", "vencimento", "status_pagamento"]])
+            st.table(df[cols_para_exibir])
             st.markdown("---")
 
             # === Editar Registro ===
