@@ -1,16 +1,42 @@
-# Desenvolvido por Vinicius Magalhaes
+# Desenvolvido por Vinicius Magalhães
 import streamlit as st
 import pandas as pd
 import os
 from datetime import datetime, date
 from openpyxl import load_workbook
 
+# ========================
+# 1) BLOCO DE UPLOAD DOS EXCELS
+# ========================
+st.sidebar.markdown("## 📤 Upload de Planilhas")
+uploaded_pagar = st.sidebar.file_uploader(
+    "Enviar seu Excel de Contas a Pagar", type=["xlsx"], key="uploader_pagar"
+)
+if uploaded_pagar:
+    # Salva temporariamente na raiz do app
+    with open("cliente_contas_a_pagar.xlsx", "wb") as f:
+        f.write(uploaded_pagar.read())
+    EXCEL_PAGAR = "cliente_contas_a_pagar.xlsx"
+else:
+    # Caso o cliente não envie, usa o padrão local
+    EXCEL_PAGAR = "Contas a pagar 2025 Sistema.xlsx"
+
+uploaded_receber = st.sidebar.file_uploader(
+    "Enviar seu Excel de Contas a Receber", type=["xlsx"], key="uploader_receber"
+)
+if uploaded_receber:
+    with open("cliente_contas_a_receber.xlsx", "wb") as f:
+        f.write(uploaded_receber.read())
+    EXCEL_RECEBER = "cliente_contas_a_receber.xlsx"
+else:
+    EXCEL_RECEBER = "Contas a receber 2025 Sistema.xlsx"
+
+# ********** FIM BLOCO DE UPLOAD **********
+
 # CONFIGURAÇÃO DE PÁGINA
 st.set_page_config(page_title="Sistema Financeiro", page_icon="💰", layout="wide")
 
-# CONSTANTES
-EXCEL_PAGAR = "Contas a pagar 2025 Sistema.xlsx"       # Arquivo Contas a Pagar
-EXCEL_RECEBER = "Contas a receber 2025 Sistema.xlsx"   # Arquivo Contas a Receber
+# CONSTANTES (já definidas pelo upload ou pelos arquivos padrões acima)
 ANEXOS_DIR = "anexos"
 
 # FUNÇÕES AUXILIARES
@@ -280,8 +306,7 @@ else:
             new_sit = st.selectbox(
                 "Situação:",
                 options=df['situacao'].unique().tolist(),
-                index=list(df['situacao'].unique()).index(rec['situacao']),
-                key="situacao"
+                index=list(df['situacao'].unique()).index(rec['situacao']),key="situacao"
             )
 
         if st.button("💾 Salvar Alterações"):
@@ -364,6 +389,34 @@ else:
             # Adiciona ao Excel
             add_record(excel_path, aba, record)
             st.success("Nova conta adicionada com sucesso!")
-          
-st.markdown("<p style='text-align:center; font-size:12px; color:gray;'>Desenvolvido por Vinicius Magalhães</p>", unsafe_allow_html=True)
 
+        # ==============================
+        # 4) BOTÃO PARA DOWNLOAD DO EXCEL
+        # ==============================
+        st.markdown("---")
+        st.subheader("📥 Baixar Planilha Atualizada")
+        if os.path.exists(EXCEL_PAGAR) and page == 'Contas a Pagar':
+            with open(EXCEL_PAGAR, "rb") as f:
+                st.download_button(
+                    label="Baixar Excel Contas a Pagar",
+                    data=f,
+                    file_name=f"Contas_a_Pagar_Atualizado_{date.today()}.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
+
+        if os.path.exists(EXCEL_RECEBER) and page == 'Contas a Receber':
+            with open(EXCEL_RECEBER, "rb") as f:
+                st.download_button(
+                    label="Baixar Excel Contas a Receber",
+                    data=f,
+                    file_name=f"Contas_a_Receber_Atualizado_{date.today()}.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
+
+# RODAPÉ
+st.markdown(
+    "<p style='text-align:center; font-size:12px; color:gray;'>"
+    "Desenvolvido por Vinicius Magalhães"
+    "</p>",
+    unsafe_allow_html=True
+)
