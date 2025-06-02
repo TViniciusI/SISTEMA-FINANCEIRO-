@@ -326,8 +326,11 @@ elif page == "Contas a Pagar":
         if df.empty:
             st.warning("Nenhum registro corresponde aos filtros selecionados.")
         else:
+            # EXIBIÇÃO DINÂMICA DE COLUNAS
+            cols_esperadas = ["data_nf", "fornecedor", "valor", "vencimento", "status_pagamento"]
+            cols_para_exibir = [c for c in cols_esperadas if c in df.columns]
             st.markdown("#### 📋 Lista de Lançamentos")
-            st.dataframe(df[["data_nf", "fornecedor", "valor", "vencimento", "status_pagamento"]], height=250)
+            st.dataframe(df[cols_para_exibir], height=250)
             st.markdown("---")
 
             # Seção de edição em expander
@@ -473,8 +476,10 @@ elif page == "Contas a Receber":
         if df.empty:
             st.warning("Nenhum registro corresponde aos filtros selecionados.")
         else:
+            cols_esperadas = ["data_nf", "fornecedor", "valor", "vencimento", "status_pagamento"]
+            cols_para_exibir = [c for c in cols_esperadas if c in df.columns]
             st.markdown("#### 📋 Lista de Lançamentos")
-            st.dataframe(df[["data_nf", "fornecedor", "valor", "vencimento", "status_pagamento"]], height=250)
+            st.dataframe(df[cols_para_exibir], height=250)
             st.markdown("---")
 
             with st.expander("✏️ Editar Registro"):
