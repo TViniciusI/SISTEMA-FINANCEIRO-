@@ -29,14 +29,9 @@ if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
     st.session_state.username = ""
 
-# Verifica botão de logout
-if st.sidebar.button("🚪 Sair"):
-    st.session_state.logged_in = False
-    st.session_state.username = ""
-
 # Se não estiver logado, exibe formulário centralizado
 if not st.session_state.logged_in:
-    # Espaço vertical
+    # Espaçamento vertical
     st.write("\n" * 5)
 
     # Três colunas para centralizar horizontalmente
@@ -49,15 +44,15 @@ if not st.session_state.logged_in:
             if check_login(username_input, password_input):
                 st.session_state.logged_in = True
                 st.session_state.username = username_input
-                # Após marcar logged_in, recarrega automaticamente
+                # Após marcar logged_in, o restante do app será exibido
             else:
                 st.error("Usuário ou senha inválidos.")
-    st.stop()  # interrompe aqui para não renderizar mais nada antes do login
+    st.stop()  # interrompe a execução para quem não estiver logado
 
 # Usuário já está autenticado
 logged_user = st.session_state.username
 
-# Mostra quem está logado na sidebar
+# Mostra quem está logado na sidebar (apenas informativo)
 st.sidebar.write(f"Logado como: **{logged_user}**")
 
 # ====================================================================================
@@ -285,7 +280,7 @@ if page == "Dashboard":
             c1, c2, c3, c4, c5 = st.columns([1.5, 1.5, 1.5, 1.5, 2])
             c1.metric("Total a Pagar", f"R$ {total_p:,.2f}")
             c2.metric("Nº Lançamentos", f"{num_lanc_p}")
-            c3.metric("Média Valores", f"R$ {media_p:,.2f}")
+            c3.metric("Média Valores", f="R$ {media_p:,.2f}")
             c4.metric("Em Atraso (%)", f"{perc_atras_p:.1f}% ({num_atras_p})")
             with c5:
                 st.markdown("##### Distribuição por Status")
@@ -358,7 +353,7 @@ if page == "Dashboard":
             d1, d2, d3, d4, d5 = st.columns([1.5, 1.5, 1.5, 1.5, 2])
             d1.metric("Total a Receber", f"R$ {total_r:,.2f}")
             d2.metric("Nº Lançamentos", f"{num_lanc_r}")
-            d3.metric("Média Valores", f"R$ {media_r:,.2f}")
+            d3.metric("Média Valores", f="R$ {media_r:,.2f}")
             d4.metric("Em Atraso (%)", f"{perc_atras_r:.1f}% ({num_atras_r})")
             with d5:
                 st.markdown("##### Distribuição por Status")
