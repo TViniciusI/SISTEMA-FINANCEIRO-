@@ -18,16 +18,12 @@ st.set_page_config(
 # ====================================================================
 
 # Dicionário de credenciais permitidas
-# Formato: "usuário": "senha"
 VALID_USERS = {
     "Vinicius": "vinicius4223",
     "Flavio": "1234",
 }
 
 def check_login(username: str, password: str) -> bool:
-    """
-    Verifica se as credenciais estão no dicionário VALID_USERS.
-    """
     return VALID_USERS.get(username) == password
 
 # Inicializa estado de sessão para login
@@ -35,43 +31,51 @@ if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
     st.session_state.username = ""
 
-# Se ainda não logado, exibe formulário de login
+# Se não estiver logado, exibe formulário de login centralizado
 if not st.session_state.logged_in:
-    st.markdown("""
-        <div style="max-width:400px; margin:auto; padding:20px; border:1px solid #ddd; border-radius:8px; background-color:#f9f9f9;">
-            <h3 style="text-align:center; color:#4B8BBE;">🔒 Faça Login</h3>
-        </div>
-    """, unsafe_allow_html=True)
+    # Cria três colunas para centralizar o formulário
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        st.markdown(
+            """
+            <div style="padding:20px; border:1px solid #ddd; border-radius:8px; background-color:#f0f2f6; max-width:400px; margin:auto;">
+                <h3 style="text-align:center; color:#4B8BBE; margin-bottom:20px;">🔒 Faça Login</h3>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+        # Formulário de login
+        with st.form("login_form", clear_on_submit=False):
+            username_input = st.text_input("Usuário:", key="user_input")
+            password_input = st.text_input("Senha:", type="password", key="pass_input")
+            login_button = st.form_submit_button("Entrar")
 
-    username_input = st.text_input("Usuário:", key="user_input")
-    password_input = st.text_input("Senha:", type="password", key="pass_input")
-    login_button = st.button("Entrar")
+            if login_button:
+                if check_login(username_input, password_input):
+                    st.session_state.logged_in = True
+                    st.session_state.username = username_input
+                    # Após setar logged_in, o próprio Streamlit rerun executará tudo de novo
+                else:
+                    st.error("❌ Usuário ou senha inválidos.")
 
-    if login_button:
-        if check_login(username_input, password_input):
-            st.session_state.logged_in = True
-            st.session_state.username = username_input
-            st.experimental_rerun()
-        else:
-            st.error("Usuário ou senha inválidos.")
-    # Interrompe a execução aqui se não estiver logado
+    # Interrompe a execução para quem não está logado
     st.stop()
 
-# Se chegou até aqui, está logado
+# Se chegou até aqui, o usuário está logado
 logged_user = st.session_state.username
+
+# Botão de logout no menu lateral
+def logout():
+    st.session_state.logged_in = False
+    st.session_state.username = ""
+    # Basta definir logged_in como False; a próxima execução mostrará o login novamente
+
+st.sidebar.button("🚪 Sair", on_click=logout)
+st.sidebar.write(f"Logado como: **{logged_user}**")
 
 # ====================================================================================
 #  A partir deste ponto, todo o código do app fica disponível somente após o login
 # ====================================================================================
-
-# Exibe botão de logout no menu lateral
-def logout():
-    st.session_state.logged_in = False
-    st.session_state.username = ""
-    st.experimental_rerun()
-
-st.sidebar.button("🚪 Sair", on_click=logout)
-st.sidebar.write(f"Logado como: **{logged_user}**")
 
 # CONSTANTES (os arquivos .xlsx devem estar na mesma pasta que este script)
 EXCEL_PAGAR = "Contas a pagar 2025 Sistema.xlsx"
@@ -485,16 +489,10 @@ elif page == "Contas a Pagar":
 
             with st.expander("📎 Anexar Documentos"):
                 idx2 = st.number_input(
-                    "Índice para anexar:",
-                    min_value=0,
-                    max_value=len(df) - 1,
-                    step=1,
-                    key="idx_anex"
+                    "Índice para anexar:", min_value=0, max_value=len(df) - 1, step=1, key="idx_anex"
                 )
                 uploaded = st.file_uploader(
-                    "Selecione (pdf/jpg/png):",
-                    type=["pdf", "jpg", "png"],
-                    key=f"up_pagar_{aba}_{idx2}"
+                    "Selecione (pdf/jpg/png):", type=["pdf", "jpg", "png"], key=f"up_pagar_{aba}_{idx2}"
                 )
                 if uploaded:
                     destino = os.path.join(
