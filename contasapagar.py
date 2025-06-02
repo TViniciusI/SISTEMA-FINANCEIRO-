@@ -29,9 +29,14 @@ if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
     st.session_state.username = ""
 
+# Verifica botão de logout
+if st.sidebar.button("🚪 Sair"):
+    st.session_state.logged_in = False
+    st.session_state.username = ""
+
 # Se não estiver logado, exibe formulário centralizado
 if not st.session_state.logged_in:
-    # Espaçamento vertical
+    # Espaço vertical
     st.write("\n" * 5)
 
     # Três colunas para centralizar horizontalmente
@@ -44,24 +49,15 @@ if not st.session_state.logged_in:
             if check_login(username_input, password_input):
                 st.session_state.logged_in = True
                 st.session_state.username = username_input
-                # Não usamos st.experimental_rerun(); a próxima linha garante que o restante execute
+                # Após marcar logged_in, recarrega automaticamente
             else:
                 st.error("Usuário ou senha inválidos.")
-    # Se ainda não logado após clicar, interrompe aqui
-    if not st.session_state.logged_in:
-        st.stop()
+    st.stop()  # interrompe aqui para não renderizar mais nada antes do login
 
 # Usuário já está autenticado
 logged_user = st.session_state.username
 
-# Botão de logout
-def logout():
-    st.session_state.logged_in = False
-    st.session_state.username = ""
-    # Força atualização para mostrar tela de login novamente
-    st.experimental_rerun()
-
-st.sidebar.button("🚪 Sair", on_click=logout)
+# Mostra quem está logado na sidebar
 st.sidebar.write(f"Logado como: **{logged_user}**")
 
 # ====================================================================================
