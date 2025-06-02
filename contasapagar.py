@@ -9,12 +9,11 @@ from openpyxl import load_workbook
 st.set_page_config(
     page_title="💼 Sistema Financeiro 2025",
     page_icon="💰",
-    layout="wide",
-    initial_sidebar_state="expanded"
+    layout="wide"
 )
 
 # ====================================================================
-#  Autenticação simples (sem bibliotecas externas) com layout personalizado
+#  Autenticação simples (sem bibliotecas externas), formulário centralizado
 # ====================================================================
 
 VALID_USERS = {
@@ -30,85 +29,25 @@ if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
     st.session_state.username = ""
 
-# Se não estiver logado, exibe formulário de login estilizado
+# Se não estiver logado, exibe formulário centralizado
 if not st.session_state.logged_in:
-    # Injetar CSS para estilizar o card de login
-    st.markdown(
-        """
-        <style>
-        .login-container {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 60vh;
-        }
-        .login-card {
-            background-color: #ffffff;
-            padding: 2rem;
-            border-radius: 12px;
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
-            max-width: 380px;
-            width: 100%;
-        }
-        .login-card h2 {
-            text-align: center;
-            color: #4B8BBE;
-            margin-bottom: 1.5rem;
-            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-        }
-        .login-card .stTextInput>div>div>input {
-            padding: 0.5rem 0.75rem;
-            border: 1px solid #ccc;
-            border-radius: 6px;
-            width: 100%;
-            margin-bottom: 1rem;
-            font-size: 1rem;
-        }
-        .login-card .stButton>button {
-            width: 100%;
-            padding: 0.6rem;
-            background-color: #4B8BBE;
-            color: #ffffff;
-            font-size: 1rem;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-        }
-        .login-card .stButton>button:hover {
-            background-color: #3A6F9E;
-        }
-        .login-error {
-            color: #D90429;
-            font-weight: bold;
-            text-align: center;
-            margin-top: 0.5rem;
-        }
-        </style>
-        """,
-        unsafe_allow_html=True
-    )
+    # Cria espaçamento vertical
+    st.write("\n" * 3)
 
-    # Container centralizado
-    st.markdown('<div class="login-container">', unsafe_allow_html=True)
-    st.markdown('<div class="login-card">', unsafe_allow_html=True)
-
-    st.markdown("<h2>🔒 Acesso Restrito</h2>", unsafe_allow_html=True)
-
-    # Formulário de login
-    with st.form("login_form", clear_on_submit=False):
+    # Três colunas para centralizar horizontalmente
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        st.title("🔒 Login")
         username_input = st.text_input("Usuário:")
         password_input = st.text_input("Senha:", type="password")
-        login_button = st.form_submit_button("Entrar")
-
-        if login_button:
+        if st.button("Entrar"):
             if check_login(username_input, password_input):
                 st.session_state.logged_in = True
                 st.session_state.username = username_input
-                # Após marcar logged_in, o Streamlit recarrega a página automaticamente
+                st.experimental_rerun()
             else:
-                st.markdown('<div class="login-error">Usuário ou senha inválidos.</div>', unsafe_allow_html=True)
+                st.error("Usuário ou senha inválidos.")
 
-    st.markdown('</div></div>', unsafe_allow_html=True)
     st.stop()
 
 # Usuário já está autenticado
