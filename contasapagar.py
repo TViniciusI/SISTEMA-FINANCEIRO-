@@ -31,8 +31,8 @@ if "logged_in" not in st.session_state:
 
 # Se não estiver logado, exibe formulário centralizado
 if not st.session_state.logged_in:
-    # Cria espaçamento vertical
-    st.write("\n" * 3)
+    # Espaçamento vertical
+    st.write("\n" * 5)
 
     # Três colunas para centralizar horizontalmente
     col1, col2, col3 = st.columns([1, 2, 1])
@@ -44,11 +44,12 @@ if not st.session_state.logged_in:
             if check_login(username_input, password_input):
                 st.session_state.logged_in = True
                 st.session_state.username = username_input
-                st.experimental_rerun()
+                # Não usamos st.experimental_rerun(); a próxima linha garante que o restante execute
             else:
                 st.error("Usuário ou senha inválidos.")
-
-    st.stop()
+    # Se ainda não logado após clicar, interrompe aqui
+    if not st.session_state.logged_in:
+        st.stop()
 
 # Usuário já está autenticado
 logged_user = st.session_state.username
@@ -57,6 +58,7 @@ logged_user = st.session_state.username
 def logout():
     st.session_state.logged_in = False
     st.session_state.username = ""
+    # Força atualização para mostrar tela de login novamente
     st.experimental_rerun()
 
 st.sidebar.button("🚪 Sair", on_click=logout)
