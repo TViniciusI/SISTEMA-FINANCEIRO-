@@ -12,12 +12,6 @@ st.set_page_config(
     layout="wide"
 )
 
-# --------------------------------------------------
-# DEBUG: mostrar working directory e arquivos disponíveis
-# --------------------------------------------------
-st.sidebar.write("📂 Working directory:", os.getcwd())
-st.sidebar.write("🗂️ Arquivos nesta pasta:", os.listdir())
-
 # ====================================================================
 #  Autenticação simples (sem bibliotecas externas), formulário centralizado
 # ====================================================================
@@ -61,7 +55,7 @@ st.sidebar.write(f"Logado como: **{logged_user}**")
 # ====================================================================================
 
 # CONSTANTES (o arquivo .xlsx deve estar na mesma pasta que este script)
-EXCEL_PAGAR   = "Contas a pagar 2025 Sistema.xlsx"   # com 'pagar' minúsculo
+EXCEL_PAGAR   = "Contas a pagar 2025 Sistema.xlsx"   # com 'pagar' minúsculo, exato
 EXCEL_RECEBER = "Contas a Receber 2025 Sistema.xlsx"
 ANEXOS_DIR    = "anexos"
 
@@ -247,7 +241,7 @@ st.markdown("---")
 if page == "Dashboard":
     st.subheader("📊 Painel de Controle Financeiro Avançado")
 
-    # 1) Verifica existência dos arquivos
+    # Verifica existência dos arquivos
     if not os.path.isfile(EXCEL_PAGAR):
         st.error(f"Arquivo '{EXCEL_PAGAR}' não encontrado. Verifique o caminho.")
         st.stop()
@@ -437,7 +431,7 @@ if page == "Dashboard":
 elif page == "Contas a Pagar":
     st.subheader("🗂️ Contas a Pagar")
 
-    # 1) Verifica existência do arquivo
+    # Verifica existência do arquivo
     if not os.path.isfile(EXCEL_PAGAR):
         st.error(f"Arquivo '{EXCEL_PAGAR}' não encontrado. Verifique o caminho.")
         st.stop()
@@ -445,10 +439,6 @@ elif page == "Contas a Pagar":
     sheets = get_sheet_list(EXCEL_PAGAR)
     if not sheets:
         st.warning(f"Arquivo '{EXCEL_PAGAR}' foi encontrado, mas não há abas válidas (espera-se '01'..'12').")
-        # continua, mas não interrompe
-    else:
-        # st.sidebar.write("Abas em 'Contas a Pagar':", sheets)
-        pass  # apenas para mostrar debug se necessário
 
     aba = st.selectbox("Selecione o mês:", sheets if sheets else [], index=0 if sheets else None)
     if aba is None:
@@ -460,6 +450,15 @@ elif page == "Contas a Pagar":
     if df.empty:
         st.info("Nenhum registro encontrado para este mês.")
     else:
+        # Seletor de visualização: Todos / Pagas / Pendentes
+        view_sel = st.radio("Visualizar:", ["Todos", "Pagas", "Pendentes"], horizontal=True)
+        if view_sel == "Pagas":
+            df_display = df[df["estado"].str.strip().str.lower() == "pago"]
+        elif view_sel == "Pendentes":
+            df_display = df[df["estado"].str.strip().str.lower() != "pago"]
+        else:
+            df_display = df.copy()
+
         with st.expander("🔍 Filtros"):
             colf1, colf2 = st.columns(2)
             with colf1:
@@ -469,25 +468,34 @@ elif page == "Contas a Pagar":
                 est_list = df["estado"].dropna().astype(str).unique().tolist()
                 status_sel = st.selectbox("Estado/Status", ["Todos"] + sorted(est_list))
 
-        if forn != "Todos":
-            df = df[df["fornecedor"] == forn]
-        if status_sel != "Todos":
-            df = df[df["estado"] == status_sel]
+        # Aplica filtros à exibição (mas não ao df original)
+        if "forn" in locals() and forn != "Todos":
+            df_display = df_display[df_display["fornecedor"] == forn]
+        if "status_sel" in locals() and status_sel != "Todos":
+            df_display = df_display[df_display["estado"] == status_sel]
 
         st.markdown("<hr style='border:1px solid #ddd;'>", unsafe_allow_html=True)
 
-        if df.empty:
-            st.warning("Nenhum registro corresponde aos filtros selecionados.")
+        if df_display.empty:
+            st.warning("Nenhum registro para os filtros/visualização selecionados.")
         else:
-            cols_esperadas = ["data_nf", "fornecedor", "valor", "vencimento", "status_pagamento"]
-            cols_para_exibir = [c for c in cols_esperadas if c in df.columns]
+            cols_esperadas = ["data_nf", "fornecedor", "valor", "vencimento", "estado", "status_pagamento"]
+            cols_para_exibir = [c for c in cols_esperadas if c in df_display.columns]
             st.markdown("#### 📋 Lista de Lançamentos")
-            st.dataframe(df[cols_para_exibir], height=250)
+            st.dataframe(df_display[cols_para_exibir], height=250)
             st.markdown("---")
 
             with st.expander("✏️ Editar Registro"):
-                idx = st.number_input("Índice da linha:", min_value=0, max_value=len(df) - 1, step=1)
-                rec = df.iloc[idx]
+                idx = st.number_input("Índice da linha (baseado na lista acima):", 
+                                      min_value=0, max_value=len(df_display) - 1, step=1)
+                rec = df_display.iloc[idx]
+
+                # Localiza índice no df original
+                orig_idx_candidates = df[(df["fornecedor"] == rec["fornecedor"]) &
+                                          (df["valor"] == rec["valor"]) &
+                                          (df["vencimento"] == rec["vencimento"])].index
+                # se múltiplos, pega o primeiro
+                orig_idx = orig_idx_candidates[0] if len(orig_idx_candidates) > 0 else rec.name
 
                 colv1, colv2 = st.columns(2)
                 with colv1:
@@ -510,56 +518,40 @@ elif page == "Contas a Pagar":
                     new_sit = st.selectbox("Situação:", options=situ_uni, index=sit_idx, key="situacao")
 
                 if st.button("💾 Salvar Alterações"):
-                    # 1) Verifica se o arquivo existe
-                    if not os.path.isfile(EXCEL_PAGAR):
-                        st.error(f"Arquivo '{EXCEL_PAGAR}' não encontrado. Verifique o caminho.")
-                        st.stop()
+                    # Atualiza df original
+                    df.at[orig_idx, "valor"] = new_val
+                    df.at[orig_idx, "vencimento"] = pd.to_datetime(new_venc)
+                    df.at[orig_idx, "estado"] = new_estado
+                    df.at[orig_idx, "situacao"] = new_sit
 
-                    # 2) Recarrega DataFrame completo
-                    df_completo = load_data(EXCEL_PAGAR, aba)
+                    # Salva no Excel
+                    save_data(EXCEL_PAGAR, aba, df)
 
-                    # 3) Localiza índice real no df_completo
-                    pos_candidates = df_completo.index[
-                        (df_completo["fornecedor"] == rec["fornecedor"]) &
-                        (df_completo["valor"] == rec["valor"]) &
-                        (df_completo["vencimento"] == rec["vencimento"])
-                    ]
-                    if len(pos_candidates) > 0:
-                        pos = pos_candidates[0]
-                    else:
-                        pos = idx  # fallback se não encontrar
-
-                    # 4) Atualiza campos no df_completo
-                    df_completo.at[pos, "valor"] = new_val
-                    df_completo.at[pos, "vencimento"] = pd.to_datetime(new_venc)
-                    df_completo.at[pos, "estado"] = new_estado
-                    df_completo.at[pos, "situacao"] = new_sit
-
-                    # 5) Salva no Excel
-                    save_data(EXCEL_PAGAR, aba, df_completo)
-
-                    # 6) Recarrega para recálculo de status_pagamento
+                    # Recarrega e recalcula status_pagamento
                     df = load_data(EXCEL_PAGAR, aba)
-                    if forn != "Todos":
-                        df = df[df["fornecedor"] == forn]
-                    if status_sel != "Todos":
-                        df = df[df["estado"] == status_sel]
 
                     st.success("Registro atualizado com sucesso!")
-                    st.dataframe(df[cols_para_exibir], height=250)
+                    st.experimental_rerun()
 
             st.markdown("---")
 
             with st.expander("📎 Anexar Documentos"):
                 idx2 = st.number_input(
-                    "Índice para anexar:", min_value=0, max_value=len(df) - 1, step=1, key="idx_anex"
+                    "Índice para anexar (baseado na lista acima):", 
+                    min_value=0, max_value=len(df_display) - 1, step=1, key="idx_anex"
                 )
+                rec_anex = df_display.iloc[idx2]
+                orig_idx_anex = df[(df["fornecedor"] == rec_anex["fornecedor"]) &
+                                   (df["valor"] == rec_anex["valor"]) &
+                                   (df["vencimento"] == rec_anex["vencimento"])].index
+                orig_idx_anex = orig_idx_anex[0] if len(orig_idx_anex) > 0 else rec_anex.name
+
                 uploaded = st.file_uploader(
                     "Selecione (pdf/jpg/png):", type=["pdf", "jpg", "png"], key=f"up_pagar_{aba}_{idx2}"
                 )
                 if uploaded:
                     destino = os.path.join(
-                        ANEXOS_DIR, "Contas a Pagar", f"Pagar_{aba}_{idx2}_{uploaded.name}"
+                        ANEXOS_DIR, "Contas a Pagar", f"Pagar_{aba}_{orig_idx_anex}_{uploaded.name}"
                     )
                     with open(destino, "wb") as f:
                         f.write(uploaded.getbuffer())
@@ -618,6 +610,7 @@ elif page == "Contas a Pagar":
                     }
                     add_record(EXCEL_PAGAR, aba, record)
                     st.success("Nova conta adicionada com sucesso!")
+                    st.experimental_rerun()
 
             st.markdown("---")
 
@@ -641,18 +634,14 @@ elif page == "Contas a Pagar":
 elif page == "Contas a Receber":
     st.subheader("🗂️ Contas a Receber")
 
-    # 1) Verifica existência do arquivo
+    # Verifica existência do arquivo
     if not os.path.isfile(EXCEL_RECEBER):
-        st.error(f"Arquivo '{EXEL_RECEBER}' não encontrado. Verifique o caminho.")
+        st.error(f"Arquivo '{EXCEL_RECEBER}' não encontrado. Verifique o caminho.")
         st.stop()
 
     sheets = get_sheet_list(EXCEL_RECEBER)
     if not sheets:
         st.warning(f"Arquivo '{EXCEL_RECEBER}' foi encontrado, mas não há abas válidas (espera-se '01'..'12').")
-        # continua, mas sem interrupção
-    else:
-        # st.sidebar.write("Abas em 'Contas a Receber':", sheets)
-        pass
 
     aba = st.selectbox("Selecione o mês:", sheets if sheets else [], index=0 if sheets else None)
     if aba is None:
@@ -664,6 +653,15 @@ elif page == "Contas a Receber":
     if df.empty:
         st.info("Nenhum registro encontrado para este mês.")
     else:
+        # Seletor de visualização: Todos / Recebidas / Pendentes
+        view_sel = st.radio("Visualizar:", ["Todos", "Recebidas", "Pendentes"], horizontal=True)
+        if view_sel == "Recebidas":
+            df_display = df[df["estado"].str.strip().str.lower() == "recebido"]
+        elif view_sel == "Pendentes":
+            df_display = df[df["estado"].str.strip().str.lower() != "recebido"]
+        else:
+            df_display = df.copy()
+
         with st.expander("🔍 Filtros"):
             colf1, colf2 = st.columns(2)
             with colf1:
@@ -673,27 +671,32 @@ elif page == "Contas a Receber":
                 est_list = df["estado"].dropna().astype(str).unique().tolist()
                 status_sel = st.selectbox("Estado/Status", ["Todos"] + sorted(est_list))
 
-        if forn != "Todos":
-            df = df[df["fornecedor"] == forn]
-        if status_sel != "Todos":
-            df = df[df["estado"] == status_sel]
+        # Aplica filtros à exibição (mas não ao df original)
+        if "forn" in locals() and forn != "Todos":
+            df_display = df_display[df_display["fornecedor"] == forn]
+        if "status_sel" in locals() and status_sel != "Todos":
+            df_display = df_display[df_display["estado"] == status_sel]
 
         st.markdown("<hr style='border:1px solid #ddd;'>", unsafe_allow_html=True)
 
-        if df.empty:
-            st.warning("Nenhum registro corresponde aos filtros selecionados.")
+        if df_display.empty:
+            st.warning("Nenhum registro para os filtros/visualização selecionados.")
         else:
-            cols_esperadas = ["data_nf", "fornecedor", "valor", "vencimento", "status_pagamento"]
-            cols_para_exibir = [c for c in cols_esperadas if c in df.columns]
+            cols_esperadas = ["data_nf", "fornecedor", "valor", "vencimento", "estado", "status_pagamento"]
+            cols_para_exibir = [c for c in cols_esperadas if c in df_display.columns]
             st.markdown("#### 📋 Lista de Lançamentos")
-            st.dataframe(df[cols_para_exibir], height=250)
+            st.dataframe(df_display[cols_para_exibir], height=250)
             st.markdown("---")
 
             with st.expander("✏️ Editar Registro"):
-                idx = st.number_input(
-                    "Índice da linha:", min_value=0, max_value=len(df) - 1, step=1, key="idx_rec_r"
-                )
-                rec = df.iloc[idx]
+                idx = st.number_input("Índice da linha (baseado na lista acima):", 
+                                      min_value=0, max_value=len(df_display) - 1, step=1, key="edit_r")
+                rec = df_display.iloc[idx]
+
+                orig_idx_candidates = df[(df["fornecedor"] == rec["fornecedor"]) &
+                                          (df["valor"] == rec["valor"]) &
+                                          (df["vencimento"] == rec["vencimento"])].index
+                orig_idx = orig_idx_candidates[0] if len(orig_idx_candidates) > 0 else rec.name
 
                 colv1, colv2 = st.columns(2)
                 with colv1:
@@ -716,56 +719,36 @@ elif page == "Contas a Receber":
                     new_sit = st.selectbox("Situação:", options=situ_uni, index=sit_idx, key="situacao_r")
 
                 if st.button("💾 Salvar Alterações", key="salvar_r"):
-                    # 1) Verifica se o arquivo existe
-                    if not os.path.isfile(EXCEL_RECEBER):
-                        st.error(f"Arquivo '{EXCEL_RECEBER}' não encontrado. Verifique o caminho.")
-                        st.stop()
+                    df.at[orig_idx, "valor"] = new_val
+                    df.at[orig_idx, "vencimento"] = pd.to_datetime(new_venc)
+                    df.at[orig_idx, "estado"] = new_estado
+                    df.at[orig_idx, "situacao"] = new_sit
 
-                    # 2) Recarrega DataFrame completo
-                    df_completo = load_data(EXCEL_RECEBER, aba)
+                    save_data(EXCEL_RECEBER, aba, df)
 
-                    # 3) Localiza índice real no df_completo
-                    pos_candidates = df_completo.index[
-                        (df_completo["fornecedor"] == rec["fornecedor"]) &
-                        (df_completo["valor"] == rec["valor"]) &
-                        (df_completo["vencimento"] == rec["vencimento"])
-                    ]
-                    if len(pos_candidates) > 0:
-                        pos = pos_candidates[0]
-                    else:
-                        pos = idx  # fallback se não encontrar
-
-                    # 4) Atualiza campos no df_completo
-                    df_completo.at[pos, "valor"] = new_val
-                    df_completo.at[pos, "vencimento"] = pd.to_datetime(new_venc)
-                    df_completo.at[pos, "estado"] = new_estado
-                    df_completo.at[pos, "situacao"] = new_sit
-
-                    # 5) Salva no Excel
-                    save_data(EXCEL_RECEBER, aba, df_completo)
-
-                    # 6) Recarrega para recálculo de status_pagamento
                     df = load_data(EXCEL_RECEBER, aba)
-                    if forn != "Todos":
-                        df = df[df["fornecedor"] == forn]
-                    if status_sel != "Todos":
-                        df = df[df["estado"] == status_sel]
-
                     st.success("Registro atualizado com sucesso!")
-                    st.dataframe(df[cols_para_exibir], height=250)
+                    st.experimental_rerun()
 
             st.markdown("---")
 
             with st.expander("📎 Anexar Documentos"):
                 idx2 = st.number_input(
-                    "Índice para anexar:", min_value=0, max_value=len(df) - 1, step=1, key="idx_anex_r"
+                    "Índice para anexar (baseado na lista acima):", 
+                    min_value=0, max_value=len(df_display) - 1, step=1, key="idx_anex_r"
                 )
+                rec_anex = df_display.iloc[idx2]
+                orig_idx_anex = df[(df["fornecedor"] == rec_anex["fornecedor"]) &
+                                   (df["valor"] == rec_anex["valor"]) &
+                                   (df["vencimento"] == rec_anex["vencimento"])].index
+                orig_idx_anex = orig_idx_anex[0] if len(orig_idx_anex) > 0 else rec_anex.name
+
                 uploaded = st.file_uploader(
                     "Selecione (pdf/jpg/png):", type=["pdf", "jpg", "png"], key=f"up_receber_{aba}_{idx2}"
                 )
                 if uploaded:
                     destino = os.path.join(
-                        ANEXOS_DIR, "Contas a Receber", f"Receber_{aba}_{idx2}_{uploaded.name}"
+                        ANEXOS_DIR, "Contas a Receber", f"Receber_{aba}_{orig_idx_anex}_{uploaded.name}"
                     )
                     with open(destino, "wb") as f:
                         f.write(uploaded.getbuffer())
@@ -820,6 +803,7 @@ elif page == "Contas a Receber":
                     }
                     add_record(EXCEL_RECEBER, aba, record)
                     st.success("Nova conta adicionada com sucesso!")
+                    st.experimental_rerun()
 
             st.markdown("---")
 
