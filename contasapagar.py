@@ -64,31 +64,47 @@ ANEXOS_DIR    = "anexos"
 # ===============================
 
 def get_sheet_list(excel_path: str):
-    """Retorna lista de abas, ignorando aba 'Tutorial' se existir."""
+    """
+    Retorna lista de abas numéricas (ex: '01', '02', ..., '12'),
+    ignorando a aba 'Tutorial' se existir.
+    Se der erro ao abrir, retorna lista vazia.
+    """
     try:
         wb = pd.ExcelFile(excel_path)
-        return [s for s in wb.sheet_names if s.lower() != "tutorial"]
+        valid_sheets = []
+        for s in wb.sheet_names:
+            if s.strip().lower() == "tutorial":
+                continue
+            if s.strip().isdigit():
+                valid_sheets.append(s)
+        return sorted(valid_sheets)
     except Exception:
         return []
 
 def find_header_row(excel_path: str, sheet_name: str) -> int:
     """
-    Retorna o índice da linha onde aparece 'Vencimento' no cabeçalho.
+    Retorna o índice da linha onde aparece 'Vencimento' (ou 'vencimento') no cabeçalho.
+    Se não encontrar, retorna 0 (para ler a partir do topo).
     """
-    df_raw = pd.read_excel(excel_path, sheet_name=sheet_name, header=None)
-    for i, row in df_raw.iterrows():
-        if any(str(cell).strip().lower() == "vencimento" for cell in row):
-            return i
-    return 0
+    try:
+        df_raw = pd.read_excel(excel_path, sheet_name=sheet_name, header=None)
+        for i, row in df_raw.iterrows():
+            for cell in row:
+                if isinstance(cell, str) and cell.strip().lower() == "vencimento":
+                    return i
+        return 0
+    except Exception:
+        return 0
 
 def load_data(excel_path: str, sheet_name: str) -> pd.DataFrame:
     """
-    Carrega a aba, detecta header, renomeia colunas e calcula status_pagamento.
+    Carrega a aba especificada, detecta header dinamicamente, renomeia colunas
+    para nomes internos e calcula o campo 'status_pagamento'.
     """
     header_row = find_header_row(excel_path, sheet_name)
     df = pd.read_excel(excel_path, sheet_name=sheet_name, skiprows=header_row, header=0)
 
-    # Mapear nomes originais para nomes internos
+    # Mapeia nomes originais de coluna para nomes internos
     rename_map = {}
     for col in df.columns:
         nome = str(col).strip().lower()
@@ -127,36 +143,34 @@ def load_data(excel_path: str, sheet_name: str) -> pd.DataFrame:
     df["vencimento"] = pd.to_datetime(df["vencimento"], errors="coerce")
     df["valor"] = pd.to_numeric(df["valor"], errors="coerce")
 
-    # Calcula status_pagamento
+    # --- Aqui assume-se, sempre, que se estado == "Pago", então status = "Pago" ---
     status_list = []
     hoje = datetime.now().date()
     for _, row in df.iterrows():
-        pago = False
-        if sheet_name.lower().startswith("contas a pagar"):
-            if str(row.get("estado", "")).strip().lower() == "pago":
-                pago = True
-        else:
-            if str(row.get("estado", "")).strip().lower() == "recebido":
-                pago = True
+        estado_atual = str(row.get("estado", "")).strip().lower()
 
-        data_venc = row["vencimento"].date() if not pd.isna(row["vencimento"]) else None
-        if pago:
+        # Se já estiver pago, marca “Pago” e pula o restante
+        if estado_atual == "pago":
             status_list.append("Pago")
-        else:
-            if data_venc:
-                if data_venc < hoje:
-                    status_list.append("Em Atraso")
-                else:
-                    status_list.append("A Vencer")
+            continue
+
+        # Caso contrário, calcula “Em Atraso” / “A Vencer” / “Sem Data”
+        data_venc = row["vencimento"].date() if not pd.isna(row["vencimento"]) else None
+        if data_venc:
+            if data_venc < hoje:
+                status_list.append("Em Atraso")
             else:
-                status_list.append("Sem Data")
+                status_list.append("A Vencer")
+        else:
+            status_list.append("Sem Data")
 
     df["status_pagamento"] = status_list
     return df
 
 def rename_col_index(ws, target_name: str) -> int:
     """
-    Retorna índice (1-based) da coluna cujo cabeçalho exato corresponde a target_name.
+    Retorna índice (1-based) da coluna cujo cabeçalho bate exatamente com target_name (case-insensitive).
+    Se não encontrar, retorna um valor padrão (5 para 'vencimento', 6 para 'valor', 7 para 'estado', 8 para 'situação').
     """
     for row in ws.iter_rows(min_row=1, max_row=100, min_col=1, max_col=ws.max_column):
         for cell in row:
@@ -167,7 +181,8 @@ def rename_col_index(ws, target_name: str) -> int:
 
 def save_data(excel_path: str, sheet_name: str, df: pd.DataFrame):
     """
-    Salva colunas 'valor', 'estado', 'situacao' e 'vencimento' de volta na planilha.
+    Salva de volta no Excel apenas as colunas 'valor', 'estado', 'situacao' e 'vencimento',
+    respeitando a posição original (a partir da linha header_row + 1).
     """
     header_row = find_header_row(excel_path, sheet_name)
     wb = load_workbook(excel_path)
@@ -186,7 +201,8 @@ def save_data(excel_path: str, sheet_name: str, df: pd.DataFrame):
 
 def add_record(excel_path: str, sheet_name: str, record: dict):
     """
-    Adiciona novo registro na próxima linha disponível da aba.
+    Adiciona um novo registro na próxima linha disponível da aba especificada.
+    Grava todos os campos (data_nf, forma_pagamento, fornecedor, os, vencimento, valor, estado, situacao, boleto, comprovante).
     """
     wb = load_workbook(excel_path)
     ws = wb[sheet_name]
@@ -209,7 +225,7 @@ def add_record(excel_path: str, sheet_name: str, record: dict):
 
     wb.save(excel_path)
 
-# Garante pasta de anexos
+# Garante estrutura de pastas de anexos
 for pasta in ["Contas a Pagar", "Contas a Receber"]:
     os.makedirs(os.path.join(ANEXOS_DIR, pasta), exist_ok=True)
 
@@ -259,7 +275,7 @@ if page == "Dashboard":
     # --------------------------------
     with tabs[0]:
         if not sheets_p:
-            st.warning("Nenhuma aba encontrada em 'Contas a Pagar'.")
+            st.warning("'Contas a Pagar' foi encontrado, mas não há abas numéricas válidas (espera-se '01'..'12').")
         else:
             df_all_p = pd.concat([load_data(EXCEL_PAGAR, s) for s in sheets_p], ignore_index=True)
 
@@ -345,7 +361,7 @@ if page == "Dashboard":
     # --------------------------------
     with tabs[1]:
         if not sheets_r:
-            st.warning("Nenhuma aba encontrada em 'Contas a Receber'.")
+            st.warning("'Contas a Receber' foi encontrado, mas não há abas numéricas válidas (espera-se '01'..'12').")
         else:
             df_all_r = pd.concat([load_data(EXCEL_RECEBER, s) for s in sheets_r], ignore_index=True)
 
@@ -438,7 +454,7 @@ elif page == "Contas a Pagar":
 
     sheets = get_sheet_list(EXCEL_PAGAR)
     if not sheets:
-        st.warning(f"Arquivo '{EXCEL_PAGAR}' foi encontrado, mas não há abas válidas (espera-se '01'..'12').")
+        st.warning(f"Arquivo '{EXCEL_PAGAR}' foi encontrado, mas não há abas numéricas válidas (espera-se '01'..'12').")
 
     aba = st.selectbox("Selecione o mês:", sheets if sheets else [], index=0 if sheets else None)
     if aba is None:
@@ -482,7 +498,7 @@ elif page == "Contas a Pagar":
             cols_esperadas = ["data_nf", "fornecedor", "valor", "vencimento", "estado", "status_pagamento"]
             cols_para_exibir = [c for c in cols_esperadas if c in df_display.columns]
 
-            # Cabeçalho "📋 Lista de Lançamentos"
+            # Cabeçalho “📋 Lista de Lançamentos”
             st.markdown("#### 📋 Lista de Lançamentos")
 
             # Placeholder para a tabela de lançamentos
@@ -493,7 +509,7 @@ elif page == "Contas a Pagar":
 
             with st.expander("✏️ Editar Registro"):
                 idx = st.number_input(
-                    "Índice da linha (baseado na lista acima):", 
+                    "Índice da linha (baseado na lista acima):",
                     min_value=0, max_value=len(df_display) - 1, step=1, key="edit_pagar"
                 )
                 rec = df_display.iloc[idx]
@@ -527,6 +543,7 @@ elif page == "Contas a Pagar":
                     new_sit = st.selectbox("Situação:", options=situ_uni, index=sit_idx, key="nova_situacao_pagar")
 
                 if st.button("💾 Salvar Alterações", key="salvar_pagar"):
+                    # Atualiza no DataFrame original
                     df.at[orig_idx, "valor"] = new_val
                     df.at[orig_idx, "vencimento"] = pd.to_datetime(new_venc)
                     df.at[orig_idx, "estado"] = new_estado
@@ -538,7 +555,7 @@ elif page == "Contas a Pagar":
 
                     st.success("Registro atualizado com sucesso!")
 
-                    # Reaplicar visualização e filtros no df_display
+                    # Reaplica visualização e filtros em df_display
                     if view_sel == "Pagas":
                         df_display = df[df["estado"].str.strip().str.lower() == "pago"].copy()
                     elif view_sel == "Pendentes":
@@ -558,7 +575,7 @@ elif page == "Contas a Pagar":
 
             with st.expander("📎 Anexar Documentos"):
                 idx2 = st.number_input(
-                    "Índice para anexar (baseado na lista acima):", 
+                    "Índice para anexar (baseado na lista acima):",
                     min_value=0, max_value=len(df_display) - 1, step=1, key="idx_anex_pagar"
                 )
                 rec_anex = df_display.iloc[idx2]
@@ -585,18 +602,18 @@ elif page == "Contas a Pagar":
             with st.expander("➕ Adicionar Nova Conta"):
                 coln1, coln2 = st.columns(2)
                 with coln1:
-                    data_nf = st.date_input("Data N/F:", value=date.today(), key="nova_data_nf_pagar")
+                    data_nf   = st.date_input("Data N/F:", value=date.today(), key="nova_data_nf_pagar")
                     forma_pag = st.text_input("Descrição:", key="nova_descricao_pagar")
-                    forn_new = st.text_input("Fornecedor:", key="novo_fornecedor_pagar")
+                    forn_new  = st.text_input("Fornecedor:", key="novo_fornecedor_pagar")
                 with coln2:
-                    os_new = st.text_input("Documento/OS:", key="novo_os_pagar")
-                    venc_new = st.date_input("Data de Vencimento:", value=date.today(), key="novo_venc_pagar")
+                    os_new    = st.text_input("Documento/OS:", key="novo_os_pagar")
+                    venc_new  = st.date_input("Data de Vencimento:", value=date.today(), key="novo_venc_pagar")
                     valor_new = st.number_input("Valor (R$):", min_value=0.0, format="%.2f", key="novo_valor_pagar2")
 
                 estado_opt = ["Em Aberto", "Pago"]
-                situ_opt = ["Em Atraso", "Pago", "Em Aberto"]
+                situ_opt   = ["Em Atraso", "Pago", "Em Aberto"]
                 estado_new = st.selectbox("Estado:", options=estado_opt, key="estado_novo_pagar")
-                situ_new = st.selectbox("Situação:", options=situ_opt, key="situacao_novo_pagar")
+                situ_new   = st.selectbox("Situação:", options=situ_opt, key="situacao_novo_pagar")
                 boleto_file = st.file_uploader(
                     "Boleto (opcional):", type=["pdf", "jpg", "png"], key="boleto_novo_pagar"
                 )
@@ -679,7 +696,7 @@ elif page == "Contas a Receber":
 
     sheets = get_sheet_list(EXCEL_RECEBER)
     if not sheets:
-        st.warning(f"Arquivo '{EXCEL_RECEBER}' foi encontrado, mas não há abas válidas (espera-se '01'..'12').")
+        st.warning(f"Arquivo '{EXCEL_RECEBER}' foi encontrado, mas não há abas numéricas válidas (espera-se '01'..'12').")
 
     aba = st.selectbox("Selecione o mês:", sheets if sheets else [], index=0 if sheets else None)
     if aba is None:
@@ -723,7 +740,7 @@ elif page == "Contas a Receber":
             cols_esperadas = ["data_nf", "fornecedor", "valor", "vencimento", "estado", "status_pagamento"]
             cols_para_exibir = [c for c in cols_esperadas if c in df_display.columns]
 
-            # Cabeçalho "📋 Lista de Lançamentos"
+            # Cabeçalho “📋 Lista de Lançamentos”
             st.markdown("#### 📋 Lista de Lançamentos")
 
             # Placeholder para a tabela de lançamentos
@@ -734,7 +751,7 @@ elif page == "Contas a Receber":
 
             with st.expander("✏️ Editar Registro"):
                 idx = st.number_input(
-                    "Índice da linha (baseado na lista acima):", 
+                    "Índice da linha (baseado na lista acima):",
                     min_value=0, max_value=len(df_display) - 1, step=1, key="edit_receber"
                 )
                 rec = df_display.iloc[idx]
@@ -778,7 +795,7 @@ elif page == "Contas a Receber":
 
                     st.success("Registro atualizado com sucesso!")
 
-                    # Reaplicar visualização e filtros no df_display
+                    # Reaplica visualização e filtros em df_display
                     if view_sel == "Recebidas":
                         df_display = df[df["estado"].str.strip().str.lower() == "recebido"].copy()
                     elif view_sel == "Pendentes":
@@ -797,7 +814,7 @@ elif page == "Contas a Receber":
 
             with st.expander("📎 Anexar Documentos"):
                 idx2 = st.number_input(
-                    "Índice para anexar (baseado na lista acima):", 
+                    "Índice para anexar (baseado na lista acima):",
                     min_value=0, max_value=len(df_display) - 1, step=1, key="idx_anex_receber"
                 )
                 rec_anex = df_display.iloc[idx2]
@@ -824,19 +841,19 @@ elif page == "Contas a Receber":
             with st.expander("➕ Adicionar Nova Conta"):
                 coln1, coln2 = st.columns(2)
                 with coln1:
-                    data_nf = st.date_input("Data N/F:", value=date.today(), key="nova_data_nf_receber")
+                    data_nf   = st.date_input("Data N/F:", value=date.today(), key="nova_data_nf_receber")
                     forma_pag = st.text_input("Descrição:", key="nova_descricao_receber")
-                    forn_new = st.text_input("Fornecedor:", key="novo_fornecedor_receber")
+                    forn_new  = st.text_input("Fornecedor:", key="novo_fornecedor_receber")
                 with coln2:
-                    os_new = st.text_input("Documento/OS:", key="novo_os_receber")
-                    venc_new = st.date_input("Data de Vencimento:", value=date.today(), key="novo_venc_receber")
+                    os_new    = st.text_input("Documento/OS:", key="novo_os_receber")
+                    venc_new  = st.date_input("Data de Vencimento:", value=date.today(), key="novo_venc_receber")
                     valor_new = st.number_input("Valor (R$):", min_value=0.0, format="%.2f", key="novo_valor_receber2")
 
-                estado_opt = ["A Receber", "Recebido"]
-                situ_opt = ["Em Atraso", "Recebido", "A Receber"]
-                estado_new = st.selectbox("Estado:", options=estado_opt, key="estado_novo_receber")
-                situ_new = st.selectbox("Situação:", options=situ_opt, key="situacao_novo_receber")
-                boleto_file = st.file_uploader("Boleto (opcional):", type=["pdf", "jpg", "png"], key="boleto_novo_receber")
+                estado_opt   = ["A Receber", "Recebido"]
+                situ_opt     = ["Em Atraso", "Recebido", "A Receber"]
+                estado_new   = st.selectbox("Estado:", options=estado_opt, key="estado_novo_receber")
+                situ_new     = st.selectbox("Situação:", options=situ_opt, key="situacao_novo_receber")
+                boleto_file  = st.file_uploader("Boleto (opcional):", type=["pdf", "jpg", "png"], key="boleto_novo_receber")
                 comprov_file = st.file_uploader("Comprovante (opcional):", type=["pdf", "jpg", "png"], key="comprov_novo_receber")
                 if st.button("➕ Adicionar Conta", key="adicionar_receber"):
                     boleto_path = ""
