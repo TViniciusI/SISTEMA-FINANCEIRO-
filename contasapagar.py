@@ -12,6 +12,12 @@ st.set_page_config(
     layout="wide"
 )
 
+# --------------------------------------------------
+# DEBUG: verificar diretório de trabalho e arquivos
+# --------------------------------------------------
+st.sidebar.write("📂 Working directory:", os.getcwd())
+st.sidebar.write("🗂️ Arquivos nesta pasta:", os.listdir())
+
 # ====================================================================
 #  Autenticação simples (sem bibliotecas externas), formulário centralizado
 # ====================================================================
@@ -55,8 +61,8 @@ st.sidebar.write(f"Logado como: **{logged_user}**")
 # ====================================================================================
 
 # CONSTANTES (o arquivo .xlsx deve estar na mesma pasta que este script)
-EXCEL_PAGAR   = "Contas a pagar 2025 Sistema.xlsx"
-EXCEL_RECEBER = "Contas a Receber 2025 Sistema.xlsx"
+EXCEL_PAGAR   = "Contas a pagar 2025 Sistema.xlsx"   # nome EXATO do arquivo
+EXCEL_RECEBER = "Contas a Receber 2025 Sistema.xlsx" # nome EXATO do arquivo
 ANEXOS_DIR    = "anexos"
 
 # ===============================
@@ -216,6 +222,7 @@ for pasta in ["Contas a Pagar", "Contas a Receber"]:
 # ===============================
 # LÓGICA DO STREAMLIT
 # ===============================
+
 st.sidebar.markdown(
     """
     ## 📂 Navegação  
@@ -240,7 +247,7 @@ st.markdown("---")
 if page == "Dashboard":
     st.subheader("📊 Painel de Controle Financeiro Avançado")
 
-    # Verifica existência dos arquivos antes de carregar
+    # 1) Verifica existência dos arquivos
     if not os.path.isfile(EXCEL_PAGAR):
         st.error(f"Arquivo '{EXCEL_PAGAR}' não encontrado. Verifique o caminho.")
         st.stop()
@@ -430,7 +437,7 @@ if page == "Dashboard":
 elif page == "Contas a Pagar":
     st.subheader("🗂️ Contas a Pagar")
 
-    # Verifica existência do arquivo
+    # 1) Verifica existência do arquivo
     if not os.path.isfile(EXCEL_PAGAR):
         st.error(f"Arquivo '{EXCEL_PAGAR}' não encontrado. Verifique o caminho.")
         st.stop()
@@ -537,7 +544,7 @@ elif page == "Contas a Pagar":
             st.markdown("---")
 
             with st.expander("📎 Anexar Documentos"):
-               	idx2 = st.number_input(
+                idx2 = st.number_input(
                     "Índice para anexar:", min_value=0, max_value=len(df) - 1, step=1, key="idx_anex"
                 )
                 uploaded = st.file_uploader(
@@ -627,7 +634,7 @@ elif page == "Contas a Pagar":
 elif page == "Contas a Receber":
     st.subheader("🗂️ Contas a Receber")
 
-    # Verifica existência do arquivo
+    # 1) Verifica existência do arquivo
     if not os.path.isfile(EXCEL_RECEBER):
         st.error(f"Arquivo '{EXCEL_RECEBER}' não encontrado. Verifique o caminho.")
         st.stop()
