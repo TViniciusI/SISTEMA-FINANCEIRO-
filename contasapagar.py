@@ -82,46 +82,38 @@ def get_existing_sheets(excel_path: str) -> list[str]:
         return []
 
 
-def find_header_row(excel_path: str, sheet_name: str) -> int:
-    """
-    Retorna o índice (0-based) da linha onde encontra o cabeçalho 'Vencimento' (ou 'vencimento').
-    Se não encontrar ou sheet não existir, retorna 0 para ler logo no início.
-    """
-    try:
-        df_raw = pd.read_excel(excel_path, sheet_name=sheet_name, header=None)
-        for i, row in df_raw.iterrows():
-            for cell in row:
-                if isinstance(cell, str) and cell.strip().lower() == "vencimento":
-                    return i
-        return 0
-    except Exception:
-        return 0
-
-
 def load_data(excel_path: str, sheet_name: str) -> pd.DataFrame:
     """
     Carrega dados da aba `sheet_name` (por exemplo, "06"). Se a aba não existir,
     retorna um DataFrame vazio com todas as colunas esperadas.
+
+    Usa skiprows=7 porque o cabeçalho real (com "Vencimento", "Valor" etc.) está na linha 8 do Excel.
     """
-    # Se o arquivo nem existir, devolve DF vazio com colunas
+    cols = [
+        "data_nf", "forma_pagamento", "fornecedor", "os",
+        "vencimento", "valor", "estado", "situacao", "boleto", "comprovante"
+    ]
+
+    # Se o arquivo não existe, devolve DF vazio com colunas
     if not os.path.isfile(excel_path):
-        return pd.DataFrame(columns=[
-            "data_nf", "forma_pagamento", "fornecedor", "os",
-            "vencimento", "valor", "estado", "situacao", "boleto", "comprovante", "status_pagamento"
-        ])
+        df_empty = pd.DataFrame(columns=cols + ["status_pagamento"])
+        return df_empty
 
     existing = get_existing_sheets(excel_path)
     if sheet_name not in existing:
-        # Aba ainda não existe → devolve DF vazio com as colunas que esperamos
-        return pd.DataFrame(columns=[
-            "data_nf", "forma_pagamento", "fornecedor", "os",
-            "vencimento", "valor", "estado", "situacao", "boleto", "comprovante", "status_pagamento"
-        ])
+        # Aba ainda não existe → DF vazio
+        df_empty = pd.DataFrame(columns=cols + ["status_pagamento"])
+        return df_empty
 
-    header_row = find_header_row(excel_path, sheet_name)
-    df = pd.read_excel(excel_path, sheet_name=sheet_name, skiprows=header_row, header=0)
+    # Lê sempre pulando as primeiras 7 linhas, pois o cabeçalho real inicia na 8ª linha
+    try:
+        df = pd.read_excel(excel_path, sheet_name=sheet_name, skiprows=7, header=0)
+    except Exception:
+        # Se der erro lendo (formato inesperado), retorna DF vazio
+        df_empty = pd.DataFrame(columns=cols + ["status_pagamento"])
+        return df_empty
 
-    # Mapeia nomes de coluna do Excel para nomes internos consistentes
+    # Mapeia colunas do Excel para nossos nomes internos
     rename_map = {}
     for col in df.columns:
         nome = str(col).strip().lower()
@@ -148,11 +140,8 @@ def load_data(excel_path: str, sheet_name: str) -> pd.DataFrame:
 
     df = df.rename(columns=rename_map)
 
-    # Descarta quaisquer colunas extras que não façam parte da nossa lista esperada
-    expected_cols = {
-        "data_nf", "forma_pagamento", "fornecedor", "os",
-        "vencimento", "valor", "estado", "situacao", "boleto", "comprovante"
-    }
+    # Mantém apenas as colunas esperadas (descarta extras)
+    expected_cols = set(cols)
     extras = [c for c in df.columns if c not in expected_cols]
     if extras:
         df = df.drop(extras, axis=1)
@@ -164,8 +153,8 @@ def load_data(excel_path: str, sheet_name: str) -> pd.DataFrame:
     df["vencimento"] = pd.to_datetime(df["vencimento"], errors="coerce")
     df["valor"] = pd.to_numeric(df["valor"], errors="coerce")
 
-    # Calcula coluna de status_pagamento: se estado == "Pago", então status="Pago"; senão,
-    # se a data de vencimento já passou → "Em Atraso", senão → "A Vencer", ou “Sem Data”.
+    # Calcula coluna de status_pagamento: se estado == "Pago", status="Pago";
+    # senão, se vencimento < hoje → "Em Atraso"; senão → "A Vencer"; ou "Sem Data".
     status_list = []
     hoje = datetime.now().date()
     for _, row in df.iterrows():
@@ -173,7 +162,6 @@ def load_data(excel_path: str, sheet_name: str) -> pd.DataFrame:
         if estado_atual == "pago":
             status_list.append("Pago")
             continue
-
         data_venc = row["vencimento"].date() if pd.notna(row["vencimento"]) else None
         if data_venc:
             if data_venc < hoje:
@@ -190,8 +178,8 @@ def load_data(excel_path: str, sheet_name: str) -> pd.DataFrame:
 def rename_col_index(ws, target_name: str) -> int:
     """
     Dado um worksheet (`ws`), retorna o índice (1-based) da coluna cujo cabeçalho
-    bate exatamente (case-insensitive) com `target_name`. Se não achar, devolve
-    um valor padrão (usado para gravar Valor=col 6, Estado=7, Situação=8, Vencimento=5).
+    bate exatamente (case-insensitive) com `target_name`. Se não achar,
+    retorna valor padrão: Vencimento=5, Valor=6, Estado=7, Situação=8.
     """
     for row in ws.iter_rows(min_row=1, max_row=100, min_col=1, max_col=ws.max_column):
         for cell in row:
@@ -204,14 +192,14 @@ def rename_col_index(ws, target_name: str) -> int:
 def save_data(excel_path: str, sheet_name: str, df: pd.DataFrame):
     """
     Salva de volta no Excel apenas as colunas 'valor', 'estado', 'situacao' e 'vencimento'
-    na aba `sheet_name`, mantendo as fórmulas e cabeçalhos originais.
+    na aba `sheet_name`, mantendo cabeçalhos e fórmulas originais.
     """
-    header_row = find_header_row(excel_path, sheet_name)
     wb = load_workbook(excel_path)
     ws = wb[sheet_name]
-
+    # Cabeçalho está na linha 8, então a primeira linha de dados é 9 (índice 8 0-based).
+    # Porém, como pulamos 7 linhas no load_data, basta usar i+8.
     for i, row in df.iterrows():
-        excel_row = header_row + 1 + i
+        excel_row = i + 8  # 0-based i → linha real = i+8+1 1-based
         ws.cell(row=excel_row + 1, column=rename_col_index(ws, "Valor"), value=row["valor"])
         ws.cell(row=excel_row + 1, column=rename_col_index(ws, "Estado"), value=row["estado"])
         ws.cell(row=excel_row + 1, column=rename_col_index(ws, "Situação"), value=row["situacao"])
@@ -225,21 +213,18 @@ def save_data(excel_path: str, sheet_name: str, df: pd.DataFrame):
 def add_record(excel_path: str, sheet_name: str, record: dict):
     """
     Adiciona um novo registro na próxima linha disponível da aba `sheet_name`.
-    Se a aba não existir, ele a cria automaticamente (duplicando a primeira aba numérica válida).
-    Grava todos os campos: data_nf, forma_pagamento, fornecedor, os, vencimento,
-    valor, estado, situacao, boleto, comprovante.
+    Se a aba não existir, cria-a automaticamente duplicando a primeira aba numérica válida.
+    Grava: data_nf, forma_pagamento, fornecedor, os, vencimento, valor, estado, situacao, boleto, comprovante.
     """
     wb = load_workbook(excel_path)
     existing = [s.strip() for s in wb.sheetnames]
 
-    # Se não existir a aba desejada, criamos uma nova
     if sheet_name not in existing:
-        # Procura a primeira aba numérica existente como template
-        existing_numeric = [s for s in existing if s.isdigit()]
-        if existing_numeric:
-            template_ws = wb[existing_numeric[0]]
+        # Cria nova aba a partir da primeira aba numérica existente
+        numeric = [s for s in existing if s.isdigit()]
+        if numeric:
+            template_ws = wb[numeric[0]]
         else:
-            # Se não houver nenhuma aba numérica, pega a primeira da lista
             template_ws = wb[wb.sheetnames[0]]
         new_ws = wb.copy_worksheet(template_ws)
         new_ws.title = sheet_name
@@ -248,7 +233,7 @@ def add_record(excel_path: str, sheet_name: str, record: dict):
         ws = wb[sheet_name]
 
     next_row = ws.max_row + 1
-    valores = [
+    vals = [
         record.get("data_nf", ""),
         record.get("forma_pagamento", ""),
         record.get("fornecedor", ""),
@@ -260,19 +245,19 @@ def add_record(excel_path: str, sheet_name: str, record: dict):
         record.get("boleto", ""),
         record.get("comprovante", "")
     ]
-    for col_idx, val in enumerate(valores, start=1):
+    for col_idx, val in enumerate(vals, start=1):
         ws.cell(row=next_row, column=col_idx, value=val)
 
     wb.save(excel_path)
 
 
-# Garante que a pasta de anexos exista
+# Garante pasta de anexos
 for pasta in ["Contas a Pagar", "Contas a Receber"]:
     os.makedirs(os.path.join(ANEXOS_DIR, pasta), exist_ok=True)
 
 
 # ===============================
-# LÓGICA PRINCIPAL DO STREAMLIT
+# LÓGICA DO STREAMLIT
 # ===============================
 st.sidebar.markdown(
     """
@@ -283,7 +268,6 @@ st.sidebar.markdown(
 )
 page = st.sidebar.radio("", ["Dashboard", "Contas a Pagar", "Contas a Receber"], index=0)
 
-# Cabeçalho principal
 st.markdown("""
 <div style="text-align: center; color: #4B8BBE; margin-bottom: 10px;">
     <h1>💼 Sistema Financeiro 2025</h1>
@@ -299,7 +283,7 @@ st.markdown("---")
 if page == "Dashboard":
     st.subheader("📊 Painel de Controle Financeiro Avançado")
 
-    # Verifica se os arquivos existem
+    # Verifica existência dos arquivos
     if not os.path.isfile(EXCEL_PAGAR):
         st.error(f"Arquivo '{EXCEL_PAGAR}' não encontrado. Verifique o caminho.")
         st.stop()
@@ -313,13 +297,12 @@ if page == "Dashboard":
     tabs = st.tabs(["📥 Contas a Pagar", "📤 Contas a Receber"])
 
     # ------------------------
-    # Contas a Pagar (aba 1)
+    # CONTAS A PAGAR (Aba 1)
     # ------------------------
     with tabs[0]:
         if not sheets_p:
             st.warning("'Contas a Pagar' encontrado, mas não há abas numéricas válidas (espera-se '01'..'12').")
         else:
-            # Concatena todas as abas numéricas em um único DF
             df_all_p = pd.concat([load_data(EXCEL_PAGAR, s) for s in sheets_p], ignore_index=True)
             total_p      = df_all_p["valor"].sum()
             num_lanc_p   = len(df_all_p)
@@ -335,7 +318,6 @@ if page == "Dashboard":
                 .reset_index(name="contagem")
             )
 
-            # Estatísticas principais
             st.markdown(
                 "<div style='padding:10px; background-color:#E8F8F5; border-radius:8px;'>"
                 "<strong>Contas a Pagar - Estatísticas Gerais</strong></div>",
@@ -352,7 +334,6 @@ if page == "Dashboard":
 
             st.markdown("---")
 
-            # Gráfico de evolução mensal de gastos
             st.markdown("#### 📈 Evolução Mensal de Gastos")
             df_all_p["mes_ano"] = df_all_p["vencimento"].dt.to_period("M")
             monthly_group_p = (
@@ -371,7 +352,6 @@ if page == "Dashboard":
 
             st.markdown("---")
 
-            # Gráfico de percentual por status
             st.markdown("#### 📊 Percentual por Status de Pagamento")
             status_counts_p["percentual"] = status_counts_p["contagem"] / num_lanc_p * 100
             df_status_pct = status_counts_p.set_index("status")[["percentual"]]
@@ -380,7 +360,6 @@ if page == "Dashboard":
 
             st.markdown("---")
 
-            # Botões de exportação das planilhas originais
             st.subheader("💾 Exportar Planilhas Originais (Contas a Pagar)")
             ep1, ep2 = st.columns(2)
             with ep1:
@@ -399,7 +378,7 @@ if page == "Dashboard":
                 st.info("Para detalhes, acesse 'Contas a Pagar' no menu lateral.")
 
     # ------------------------
-    # Contas a Receber (aba 2)
+    # CONTAS A RECEBER (Aba 2)
     # ------------------------
     with tabs[1]:
         if not sheets_r:
@@ -498,9 +477,7 @@ elif page == "Contas a Pagar":
 
     if df.empty:
         st.info("Nenhum registro encontrado para este mês (ou a aba não existia).")
-    # Se não estiver vazio, mostramos a lista normalmente
 
-    # Selector para visualizar apenas "Todos" / "Pagas" / "Pendentes"
     view_sel = st.radio("Visualizar:", ["Todos", "Pagas", "Pendentes"], horizontal=True)
     if view_sel == "Pagas":
         df_display = df[df["estado"].str.strip().str.lower() == "pago"].copy()
@@ -509,7 +486,6 @@ elif page == "Contas a Pagar":
     else:
         df_display = df.copy()
 
-    # Filtros (Fornecedor / Estado)
     with st.expander("🔍 Filtros"):
         colf1, colf2 = st.columns(2)
         with colf1:
@@ -546,7 +522,7 @@ elif page == "Contas a Pagar":
         )
         if not df_display.empty:
             rec = df_display.iloc[idx]
-            # Encontrar o índice original no `df` completo
+            # Localiza índice original no DF completo
             orig_idx_candidates = df[
                 (df["fornecedor"] == rec["fornecedor"]) &
                 (df["valor"] == rec["valor"]) &
@@ -575,17 +551,15 @@ elif page == "Contas a Pagar":
                 new_sit = st.selectbox("Situação:", options=situ_uni, index=sit_idx, key="nova_situacao_pagar")
 
             if st.button("💾 Salvar Alterações", key="salvar_pagar"):
-                # Atualiza no DataFrame original
                 df.at[orig_idx, "valor"] = new_val
                 df.at[orig_idx, "vencimento"] = pd.to_datetime(new_venc)
                 df.at[orig_idx, "estado"] = new_estado
                 df.at[orig_idx, "situacao"] = new_sit
 
                 save_data(EXCEL_PAGAR, aba, df)
-                df = load_data(EXCEL_PAGAR, aba)  # Recarrega para atualizar `status_pagamento`
+                df = load_data(EXCEL_PAGAR, aba)
                 st.success("Registro atualizado com sucesso!")
 
-                # Reaplica a visualização e filtros
                 if view_sel == "Pagas":
                     df_display = df[df["estado"].str.strip().str.lower() == "pago"].copy()
                 elif view_sel == "Pendentes":
@@ -681,7 +655,6 @@ elif page == "Contas a Pagar":
             add_record(EXCEL_PAGAR, aba, record)
             st.success("Nova conta adicionada com sucesso!")
 
-            # Recarrega tudo para atualizar a lista
             df = load_data(EXCEL_PAGAR, aba)
             if view_sel == "Pagas":
                 df_display = df[df["estado"].str.strip().str.lower() == "pago"].copy()
@@ -727,7 +700,6 @@ elif page == "Contas a Receber":
         st.error(f"Arquivo '{EXCEL_RECEBER}' não encontrado. Verifique o caminho.")
         st.stop()
 
-    # Seleção de mês: “01”..“12” fixed
     aba = st.selectbox("Selecione o mês:", FULL_MONTHS, index=0)
     df = load_data(EXCEL_RECEBER, aba)  # se a aba não existir, retorna DF vazio
 
