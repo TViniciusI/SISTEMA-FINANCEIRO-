@@ -31,10 +31,8 @@ if "logged_in" not in st.session_state:
 
 # Se não estiver logado, exibe formulário centralizado
 if not st.session_state.logged_in:
-    # Espaçamento vertical para centralizar
-    st.write("\n" * 5)
+    st.write("\n" * 5)  # centraliza verticalmente
 
-    # Três colunas para centralização horizontal
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         st.title("🔒 Login")
@@ -50,18 +48,16 @@ if not st.session_state.logged_in:
 
 # Usuário já está autenticado
 logged_user = st.session_state.username
-
-# Exibe nome na sidebar
 st.sidebar.write(f"Logado como: **{logged_user}**")
 
 # ====================================================================================
 #  A partir deste ponto, todo o código do app fica disponível somente após o login
 # ====================================================================================
 
-# CONSTANTES (os arquivos .xlsx devem estar na mesma pasta que este script)
-EXCEL_PAGAR = "Contas a pagar 2025 Sistema.xlsx"
+# CONSTANTES (o arquivo .xlsx deve estar na mesma pasta que este script)
+EXCEL_PAGAR   = "Contas a pagar 2025 Sistema.xlsx"
 EXCEL_RECEBER = "Contas a Receber 2025 Sistema.xlsx"
-ANEXOS_DIR = "anexos"
+ANEXOS_DIR    = "anexos"
 
 # ===============================
 # FUNÇÕES AUXILIARES
@@ -244,6 +240,14 @@ st.markdown("---")
 if page == "Dashboard":
     st.subheader("📊 Painel de Controle Financeiro Avançado")
 
+    # Verifica existência dos arquivos antes de carregar
+    if not os.path.isfile(EXCEL_PAGAR):
+        st.error(f"Arquivo '{EXCEL_PAGAR}' não encontrado. Verifique o caminho.")
+        st.stop()
+    if not os.path.isfile(EXCEL_RECEBER):
+        st.error(f"Arquivo '{EXCEL_RECEBER}' não encontrado. Verifique o caminho.")
+        st.stop()
+
     sheets_p = get_sheet_list(EXCEL_PAGAR)
     sheets_r = get_sheet_list(EXCEL_RECEBER)
 
@@ -310,7 +314,6 @@ if page == "Dashboard":
 
             # ====== Gráfico 2: Barras Percentuais por Status ======
             st.markdown("#### 📊 Percentual por Status de Pagamento")
-            # Calcula porcentagens
             status_counts_p["percentual"] = status_counts_p["contagem"] / num_lanc_p * 100
             df_status_pct = status_counts_p.set_index("status")[["percentual"]]
             df_status_pct.columns = ["% (%)"]
@@ -426,13 +429,18 @@ if page == "Dashboard":
 # ------------------------
 elif page == "Contas a Pagar":
     st.subheader("🗂️ Contas a Pagar")
+
+    # Verifica existência do arquivo
+    if not os.path.isfile(EXCEL_PAGAR):
+        st.error(f"Arquivo '{EXCEL_PAGAR}' não encontrado. Verifique o caminho.")
+        st.stop()
+
     sheets = get_sheet_list(EXCEL_PAGAR)
     if not sheets:
         st.error(f"'{EXCEL_PAGAR}' não encontrado ou sem abas válidas.")
         st.stop()
 
     aba = st.selectbox("Selecione o mês:", sheets, index=0)
-    # Carrega pela primeira vez
     df = load_data(EXCEL_PAGAR, aba)
 
     if df.empty:
@@ -464,7 +472,6 @@ elif page == "Contas a Pagar":
             st.markdown("---")
 
             with st.expander("✏️ Editar Registro"):
-                # índice baseado no df filtrado
                 idx = st.number_input("Índice da linha:", min_value=0, max_value=len(df) - 1, step=1)
                 rec = df.iloc[idx]
 
@@ -489,36 +496,35 @@ elif page == "Contas a Pagar":
                     new_sit = st.selectbox("Situação:", options=situ_uni, index=sit_idx, key="situacao")
 
                 if st.button("💾 Salvar Alterações"):
-                    # 1) Atualiza no DataFrame completo (antes de filtrar)
-                    # Precisamos do índice real no DataFrame original carregado (não filtrado)
-                    # Para simplificar, vamos recarregar o df completo e buscar a mesma linha pelo índice “idx”
+                    # 1) Verifica se o arquivo existe
+                    if not os.path.isfile(EXCEL_PAGAR):
+                        st.error(f"Arquivo '{EXCEL_PAGAR}' não encontrado. Verifique o caminho.")
+                        st.stop()
+
+                    # 2) Recarrega DataFrame completo
                     df_completo = load_data(EXCEL_PAGAR, aba)
-                    # Encontrar o índice no df original:
-                    # rec_identificador poderia ser, por exemplo, a concatenação de data_nf + fornecedor + valor original
-                    # Mas se existir duplicatas, a forma mais garantida é usar "position" no df original:
-                    pos_orig = df_completo.index[
+
+                    # 3) Localiza índice real no df_completo
+                    pos_candidates = df_completo.index[
                         (df_completo["fornecedor"] == rec["fornecedor"]) &
                         (df_completo["valor"] == rec["valor"]) &
                         (df_completo["vencimento"] == rec["vencimento"])
                     ]
-                    # Caso hajam múltiplas linhas iguais, pegamos a primeira ocorrência + deslocamos por “idx” dentro das iguais
-                    # Para simplificar, usamos o primeiro match:
-                    if len(pos_orig) > 1:
-                        pos = pos_orig[0]
-                    elif len(pos_orig) == 1:
-                        pos = pos_orig[0]
+                    if len(pos_candidates) > 0:
+                        pos = pos_candidates[0]
                     else:
-                        pos = idx  # fallback simples se não achar
-                    # Atualiza no df_completo
+                        pos = idx  # fallback se não encontrar
+
+                    # 4) Atualiza campos no df_completo
                     df_completo.at[pos, "valor"] = new_val
                     df_completo.at[pos, "vencimento"] = pd.to_datetime(new_venc)
                     df_completo.at[pos, "estado"] = new_estado
                     df_completo.at[pos, "situacao"] = new_sit
 
-                    # 2) Salva no Excel
+                    # 5) Salva no Excel
                     save_data(EXCEL_PAGAR, aba, df_completo)
 
-                    # 3) Recarrega tudo para exibir o status_pagamento atualizado
+                    # 6) Recarrega para recálculo de status_pagamento
                     df = load_data(EXCEL_PAGAR, aba)
                     if forn != "Todos":
                         df = df[df["fornecedor"] == forn]
@@ -526,13 +532,12 @@ elif page == "Contas a Pagar":
                         df = df[df["estado"] == status_sel]
 
                     st.success("Registro atualizado com sucesso!")
-                    # Atualiza a tabela exibida após a edição
                     st.dataframe(df[cols_para_exibir], height=250)
 
             st.markdown("---")
 
             with st.expander("📎 Anexar Documentos"):
-                idx2 = st.number_input(
+               	idx2 = st.number_input(
                     "Índice para anexar:", min_value=0, max_value=len(df) - 1, step=1, key="idx_anex"
                 )
                 uploaded = st.file_uploader(
@@ -621,13 +626,18 @@ elif page == "Contas a Pagar":
 # ------------------------------------
 elif page == "Contas a Receber":
     st.subheader("🗂️ Contas a Receber")
+
+    # Verifica existência do arquivo
+    if not os.path.isfile(EXCEL_RECEBER):
+        st.error(f"Arquivo '{EXCEL_RECEBER}' não encontrado. Verifique o caminho.")
+        st.stop()
+
     sheets = get_sheet_list(EXCEL_RECEBER)
     if not sheets:
         st.error(f"'{EXCEL_RECEBER}' não encontrado ou sem abas válidas.")
         st.stop()
 
     aba = st.selectbox("Selecione o mês:", sheets, index=0)
-    # Carrega pela primeira vez
     df = load_data(EXCEL_RECEBER, aba)
 
     if df.empty:
@@ -659,7 +669,6 @@ elif page == "Contas a Receber":
             st.markdown("---")
 
             with st.expander("✏️ Editar Registro"):
-                # índice baseado no df filtrado
                 idx = st.number_input(
                     "Índice da linha:", min_value=0, max_value=len(df) - 1, step=1, key="idx_rec_r"
                 )
@@ -686,26 +695,35 @@ elif page == "Contas a Receber":
                     new_sit = st.selectbox("Situação:", options=situ_uni, index=sit_idx, key="situacao_r")
 
                 if st.button("💾 Salvar Alterações", key="salvar_r"):
-                    # Recarrega o DataFrame completo para encontrar o índice real
+                    # 1) Verifica se o arquivo existe
+                    if not os.path.isfile(EXCEL_RECEBER):
+                        st.error(f"Arquivo '{EXCEL_RECEBER}' não encontrado. Verifique o caminho.")
+                        st.stop()
+
+                    # 2) Recarrega DataFrame completo
                     df_completo = load_data(EXCEL_RECEBER, aba)
-                    pos_orig = df_completo.index[
+
+                    # 3) Localiza índice real no df_completo
+                    pos_candidates = df_completo.index[
                         (df_completo["fornecedor"] == rec["fornecedor"]) &
                         (df_completo["valor"] == rec["valor"]) &
                         (df_completo["vencimento"] == rec["vencimento"])
                     ]
-                    if len(pos_orig) > 0:
-                        pos = pos_orig[0]
+                    if len(pos_candidates) > 0:
+                        pos = pos_candidates[0]
                     else:
-                        pos = idx
+                        pos = idx  # fallback se não encontrar
 
+                    # 4) Atualiza campos no df_completo
                     df_completo.at[pos, "valor"] = new_val
                     df_completo.at[pos, "vencimento"] = pd.to_datetime(new_venc)
                     df_completo.at[pos, "estado"] = new_estado
                     df_completo.at[pos, "situacao"] = new_sit
 
+                    # 5) Salva no Excel
                     save_data(EXCEL_RECEBER, aba, df_completo)
 
-                    # Recarrega para mostrar status_pagamento atualizado
+                    # 6) Recarrega para recálculo de status_pagamento
                     df = load_data(EXCEL_RECEBER, aba)
                     if forn != "Todos":
                         df = df[df["fornecedor"] == forn]
