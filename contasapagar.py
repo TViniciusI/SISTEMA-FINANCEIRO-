@@ -13,7 +13,7 @@ st.set_page_config(
 )
 
 # --------------------------------------------------
-# DEBUG: verificar diretório de trabalho e arquivos
+# DEBUG: mostrar working directory e arquivos disponíveis
 # --------------------------------------------------
 st.sidebar.write("📂 Working directory:", os.getcwd())
 st.sidebar.write("🗂️ Arquivos nesta pasta:", os.listdir())
@@ -37,7 +37,7 @@ if "logged_in" not in st.session_state:
 
 # Se não estiver logado, exibe formulário centralizado
 if not st.session_state.logged_in:
-    st.write("\n" * 5)  # centraliza verticalmente
+    st.write("\n" * 5)  # apenas para centralizar verticalmente
 
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
@@ -61,8 +61,8 @@ st.sidebar.write(f"Logado como: **{logged_user}**")
 # ====================================================================================
 
 # CONSTANTES (o arquivo .xlsx deve estar na mesma pasta que este script)
-EXCEL_PAGAR   = "Contas a pagar 2025 Sistema.xlsx"   # nome EXATO do arquivo
-EXCEL_RECEBER = "Contas a Receber 2025 Sistema.xlsx" # nome EXATO do arquivo
+EXCEL_PAGAR   = "Contas a pagar 2025 Sistema.xlsx"   # com 'pagar' minúsculo
+EXCEL_RECEBER = "Contas a Receber 2025 Sistema.xlsx"
 ANEXOS_DIR    = "anexos"
 
 # ===============================
@@ -444,10 +444,17 @@ elif page == "Contas a Pagar":
 
     sheets = get_sheet_list(EXCEL_PAGAR)
     if not sheets:
-        st.error(f"'{EXCEL_PAGAR}' não encontrado ou sem abas válidas.")
+        st.warning(f"Arquivo '{EXCEL_PAGAR}' foi encontrado, mas não há abas válidas (espera-se '01'..'12').")
+        # continua, mas não interrompe
+    else:
+        # st.sidebar.write("Abas em 'Contas a Pagar':", sheets)
+        pass  # apenas para mostrar debug se necessário
+
+    aba = st.selectbox("Selecione o mês:", sheets if sheets else [], index=0 if sheets else None)
+    if aba is None:
+        st.info("Nenhuma aba para exibir.")
         st.stop()
 
-    aba = st.selectbox("Selecione o mês:", sheets, index=0)
     df = load_data(EXCEL_PAGAR, aba)
 
     if df.empty:
@@ -636,15 +643,22 @@ elif page == "Contas a Receber":
 
     # 1) Verifica existência do arquivo
     if not os.path.isfile(EXCEL_RECEBER):
-        st.error(f"Arquivo '{EXCEL_RECEBER}' não encontrado. Verifique o caminho.")
+        st.error(f"Arquivo '{EXEL_RECEBER}' não encontrado. Verifique o caminho.")
         st.stop()
 
     sheets = get_sheet_list(EXCEL_RECEBER)
     if not sheets:
-        st.error(f"'{EXCEL_RECEBER}' não encontrado ou sem abas válidas.")
+        st.warning(f"Arquivo '{EXCEL_RECEBER}' foi encontrado, mas não há abas válidas (espera-se '01'..'12').")
+        # continua, mas sem interrupção
+    else:
+        # st.sidebar.write("Abas em 'Contas a Receber':", sheets)
+        pass
+
+    aba = st.selectbox("Selecione o mês:", sheets if sheets else [], index=0 if sheets else None)
+    if aba is None:
+        st.info("Nenhuma aba para exibir.")
         st.stop()
 
-    aba = st.selectbox("Selecione o mês:", sheets, index=0)
     df = load_data(EXCEL_RECEBER, aba)
 
     if df.empty:
