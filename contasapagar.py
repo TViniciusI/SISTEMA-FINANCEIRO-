@@ -432,6 +432,7 @@ elif page == "Contas a Pagar":
         st.stop()
 
     aba = st.selectbox("Selecione o mês:", sheets, index=0)
+    # Carrega pela primeira vez
     df = load_data(EXCEL_PAGAR, aba)
 
     if df.empty:
@@ -463,6 +464,7 @@ elif page == "Contas a Pagar":
             st.markdown("---")
 
             with st.expander("✏️ Editar Registro"):
+                # índice baseado no df filtrado
                 idx = st.number_input("Índice da linha:", min_value=0, max_value=len(df) - 1, step=1)
                 rec = df.iloc[idx]
 
@@ -487,11 +489,45 @@ elif page == "Contas a Pagar":
                     new_sit = st.selectbox("Situação:", options=situ_uni, index=sit_idx, key="situacao")
 
                 if st.button("💾 Salvar Alterações"):
-                    df.loc[df.index[idx], ["valor", "vencimento", "estado", "situacao"]] = [
-                        new_val, pd.to_datetime(new_venc), new_estado, new_sit
+                    # 1) Atualiza no DataFrame completo (antes de filtrar)
+                    # Precisamos do índice real no DataFrame original carregado (não filtrado)
+                    # Para simplificar, vamos recarregar o df completo e buscar a mesma linha pelo índice “idx”
+                    df_completo = load_data(EXCEL_PAGAR, aba)
+                    # Encontrar o índice no df original:
+                    # rec_identificador poderia ser, por exemplo, a concatenação de data_nf + fornecedor + valor original
+                    # Mas se existir duplicatas, a forma mais garantida é usar "position" no df original:
+                    pos_orig = df_completo.index[
+                        (df_completo["fornecedor"] == rec["fornecedor"]) &
+                        (df_completo["valor"] == rec["valor"]) &
+                        (df_completo["vencimento"] == rec["vencimento"])
                     ]
-                    save_data(EXCEL_PAGAR, aba, df)
+                    # Caso hajam múltiplas linhas iguais, pegamos a primeira ocorrência + deslocamos por “idx” dentro das iguais
+                    # Para simplificar, usamos o primeiro match:
+                    if len(pos_orig) > 1:
+                        pos = pos_orig[0]
+                    elif len(pos_orig) == 1:
+                        pos = pos_orig[0]
+                    else:
+                        pos = idx  # fallback simples se não achar
+                    # Atualiza no df_completo
+                    df_completo.at[pos, "valor"] = new_val
+                    df_completo.at[pos, "vencimento"] = pd.to_datetime(new_venc)
+                    df_completo.at[pos, "estado"] = new_estado
+                    df_completo.at[pos, "situacao"] = new_sit
+
+                    # 2) Salva no Excel
+                    save_data(EXCEL_PAGAR, aba, df_completo)
+
+                    # 3) Recarrega tudo para exibir o status_pagamento atualizado
+                    df = load_data(EXCEL_PAGAR, aba)
+                    if forn != "Todos":
+                        df = df[df["fornecedor"] == forn]
+                    if status_sel != "Todos":
+                        df = df[df["estado"] == status_sel]
+
                     st.success("Registro atualizado com sucesso!")
+                    # Atualiza a tabela exibida após a edição
+                    st.dataframe(df[cols_para_exibir], height=250)
 
             st.markdown("---")
 
@@ -591,6 +627,7 @@ elif page == "Contas a Receber":
         st.stop()
 
     aba = st.selectbox("Selecione o mês:", sheets, index=0)
+    # Carrega pela primeira vez
     df = load_data(EXCEL_RECEBER, aba)
 
     if df.empty:
@@ -622,6 +659,7 @@ elif page == "Contas a Receber":
             st.markdown("---")
 
             with st.expander("✏️ Editar Registro"):
+                # índice baseado no df filtrado
                 idx = st.number_input(
                     "Índice da linha:", min_value=0, max_value=len(df) - 1, step=1, key="idx_rec_r"
                 )
@@ -648,14 +686,34 @@ elif page == "Contas a Receber":
                     new_sit = st.selectbox("Situação:", options=situ_uni, index=sit_idx, key="situacao_r")
 
                 if st.button("💾 Salvar Alterações", key="salvar_r"):
-                    df.loc[df.index[idx], ["valor", "vencimento", "estado", "situacao"]] = [
-                        new_val,
-                        pd.to_datetime(new_venc),
-                        new_estado,
-                        new_sit,
+                    # Recarrega o DataFrame completo para encontrar o índice real
+                    df_completo = load_data(EXCEL_RECEBER, aba)
+                    pos_orig = df_completo.index[
+                        (df_completo["fornecedor"] == rec["fornecedor"]) &
+                        (df_completo["valor"] == rec["valor"]) &
+                        (df_completo["vencimento"] == rec["vencimento"])
                     ]
-                    save_data(EXCEL_RECEBER, aba, df)
+                    if len(pos_orig) > 0:
+                        pos = pos_orig[0]
+                    else:
+                        pos = idx
+
+                    df_completo.at[pos, "valor"] = new_val
+                    df_completo.at[pos, "vencimento"] = pd.to_datetime(new_venc)
+                    df_completo.at[pos, "estado"] = new_estado
+                    df_completo.at[pos, "situacao"] = new_sit
+
+                    save_data(EXCEL_RECEBER, aba, df_completo)
+
+                    # Recarrega para mostrar status_pagamento atualizado
+                    df = load_data(EXCEL_RECEBER, aba)
+                    if forn != "Todos":
+                        df = df[df["fornecedor"] == forn]
+                    if status_sel != "Todos":
+                        df = df[df["estado"] == status_sel]
+
                     st.success("Registro atualizado com sucesso!")
+                    st.dataframe(df[cols_para_exibir], height=250)
 
             st.markdown("---")
 
