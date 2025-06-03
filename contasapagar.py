@@ -31,7 +31,7 @@ if "logged_in" not in st.session_state:
 
 # Se não estiver logado, exibe formulário centralizado
 if not st.session_state.logged_in:
-    st.write("\n" * 5)  # apenas para centralizar verticalmente
+    st.write("\n" * 5)
 
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
@@ -44,7 +44,7 @@ if not st.session_state.logged_in:
                 st.session_state.username = username_input
             else:
                 st.error("Usuário ou senha inválidos.")
-    st.stop()  # interrompe execução para quem não estiver logado
+    st.stop()
 
 # Usuário já está autenticado
 logged_user = st.session_state.username
@@ -55,7 +55,7 @@ st.sidebar.write(f"Logado como: **{logged_user}**")
 # ====================================================================================
 
 # CONSTANTES (o arquivo .xlsx deve estar na mesma pasta que este script)
-EXCEL_PAGAR   = "Contas a pagar 2025 Sistema.xlsx"   # com 'pagar' minúsculo, exato
+EXCEL_PAGAR   = "Contas a pagar 2025 Sistema.xlsx"
 EXCEL_RECEBER = "Contas a Receber 2025 Sistema.xlsx"
 ANEXOS_DIR    = "anexos"
 
@@ -141,7 +141,7 @@ def load_data(excel_path: str, sheet_name: str) -> pd.DataFrame:
 
         data_venc = row["vencimento"].date() if not pd.isna(row["vencimento"]) else None
         if pago:
-            status_list.append("Em Dia")
+            status_list.append("Pago")
         else:
             if data_venc:
                 if data_venc < hoje:
@@ -302,8 +302,8 @@ if page == "Dashboard":
                 .groupby("mes_ano")
                 .agg(
                     total_mes=("valor", "sum"),
-                    pagos_mes=("valor", lambda x: x[df_all_p.loc[x.index, "status_pagamento"] == "Em Dia"].sum()),
-                    pendentes_mes=("valor", lambda x: x[df_all_p.loc[x.index, "status_pagamento"] != "Em Dia"].sum())
+                    pagos_mes=("valor", lambda x: x[df_all_p.loc[x.index, "status_pagamento"] == "Pago"].sum()),
+                    pendentes_mes=("valor", lambda x: x[df_all_p.loc[x.index, "status_pagamento"] != "Pago"].sum())
                 )
                 .reset_index()
             )
@@ -387,8 +387,8 @@ if page == "Dashboard":
                 .groupby("mes_ano")
                 .agg(
                     total_mes=("valor", "sum"),
-                    recebidos_mes=("valor", lambda x: x[df_all_r.loc[x.index, "status_pagamento"] == "Em Dia"].sum()),
-                    pendentes_mes=("valor", lambda x: x[df_all_r.loc[x.index, "status_pagamento"] != "Em Dia"].sum())
+                    recebidos_mes=("valor", lambda x: x[df_all_r.loc[x.index, "status_pagamento"] == "Pago"].sum()),
+                    pendentes_mes=("valor", lambda x: x[df_all_r.loc[x.index, "status_pagamento"] != "Pago"].sum())
                 )
                 .reset_index()
             )
@@ -468,7 +468,6 @@ elif page == "Contas a Pagar":
                 est_list = df["estado"].dropna().astype(str).unique().tolist()
                 status_sel = st.selectbox("Estado/Status", ["Todos"] + sorted(est_list))
 
-        # Aplica filtros à exibição (mas não ao df original)
         if "forn" in locals() and forn != "Todos":
             df_display = df_display[df_display["fornecedor"] == forn]
         if "status_sel" in locals() and status_sel != "Todos":
@@ -490,11 +489,9 @@ elif page == "Contas a Pagar":
                                       min_value=0, max_value=len(df_display) - 1, step=1)
                 rec = df_display.iloc[idx]
 
-                # Localiza índice no df original
                 orig_idx_candidates = df[(df["fornecedor"] == rec["fornecedor"]) &
                                           (df["valor"] == rec["valor"]) &
                                           (df["vencimento"] == rec["vencimento"])].index
-                # se múltiplos, pega o primeiro
                 orig_idx = orig_idx_candidates[0] if len(orig_idx_candidates) > 0 else rec.name
 
                 colv1, colv2 = st.columns(2)
@@ -518,18 +515,14 @@ elif page == "Contas a Pagar":
                     new_sit = st.selectbox("Situação:", options=situ_uni, index=sit_idx, key="situacao")
 
                 if st.button("💾 Salvar Alterações"):
-                    # Atualiza df original
                     df.at[orig_idx, "valor"] = new_val
                     df.at[orig_idx, "vencimento"] = pd.to_datetime(new_venc)
                     df.at[orig_idx, "estado"] = new_estado
                     df.at[orig_idx, "situacao"] = new_sit
 
-                    # Salva no Excel
                     save_data(EXCEL_PAGAR, aba, df)
 
-                    # Recarrega e recalcula status_pagamento
                     df = load_data(EXCEL_PAGAR, aba)
-
                     st.success("Registro atualizado com sucesso!")
                     st.experimental_rerun()
 
@@ -671,7 +664,6 @@ elif page == "Contas a Receber":
                 est_list = df["estado"].dropna().astype(str).unique().tolist()
                 status_sel = st.selectbox("Estado/Status", ["Todos"] + sorted(est_list))
 
-        # Aplica filtros à exibição (mas não ao df original)
         if "forn" in locals() and forn != "Todos":
             df_display = df_display[df_display["fornecedor"] == forn]
         if "status_sel" in locals() and status_sel != "Todos":
