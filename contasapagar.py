@@ -59,7 +59,7 @@ st.sidebar.write(f"Logado como: **{logged_user}**")
 # ====================================================================================
 
 # CONSTANTES (os arquivos .xlsx devem estar na mesma pasta que este script)
-EXCEL_PAGAR = "Contas a pagar 2025 Sistema.xlsx"
+EXCEL_PAGAR = "Contas a Pagar 2025 Sistema.xlsx"
 EXCEL_RECEBER = "Contas a Receber 2025 Sistema.xlsx"
 ANEXOS_DIR = "anexos"
 
