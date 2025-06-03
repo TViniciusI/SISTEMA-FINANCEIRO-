@@ -482,6 +482,9 @@ elif page == "Contas a Pagar":
             cols_esperadas = ["data_nf", "fornecedor", "valor", "vencimento", "estado", "status_pagamento"]
             cols_para_exibir = [c for c in cols_esperadas if c in df_display.columns]
 
+            # Cabeçalho "📋 Lista de Lançamentos"
+            st.markdown("#### 📋 Lista de Lançamentos")
+
             # Placeholder para a tabela de lançamentos
             table_placeholder = st.empty()
             table_placeholder.dataframe(df_display[cols_para_exibir], height=250)
@@ -719,6 +722,9 @@ elif page == "Contas a Receber":
         else:
             cols_esperadas = ["data_nf", "fornecedor", "valor", "vencimento", "estado", "status_pagamento"]
             cols_para_exibir = [c for c in cols_esperadas if c in df_display.columns]
+
+            # Cabeçalho "📋 Lista de Lançamentos"
+            st.markdown("#### 📋 Lista de Lançamentos")
 
             # Placeholder para a tabela de lançamentos
             table_placeholder_r = st.empty()
