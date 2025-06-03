@@ -481,8 +481,11 @@ elif page == "Contas a Pagar":
         else:
             cols_esperadas = ["data_nf", "fornecedor", "valor", "vencimento", "estado", "status_pagamento"]
             cols_para_exibir = [c for c in cols_esperadas if c in df_display.columns]
-            st.markdown("#### 📋 Lista de Lançamentos")
-            st.dataframe(df_display[cols_para_exibir], height=250)
+
+            # Placeholder para a tabela de lançamentos
+            table_placeholder = st.empty()
+            table_placeholder.dataframe(df_display[cols_para_exibir], height=250)
+
             st.markdown("---")
 
             with st.expander("✏️ Editar Registro"):
@@ -532,7 +535,7 @@ elif page == "Contas a Pagar":
 
                     st.success("Registro atualizado com sucesso!")
 
-                    # Reaplicar visualização e filtros sem precisar rerun
+                    # Reaplicar visualização e filtros no df_display
                     if view_sel == "Pagas":
                         df_display = df[df["estado"].str.strip().str.lower() == "pago"].copy()
                     elif view_sel == "Pendentes":
@@ -545,7 +548,8 @@ elif page == "Contas a Pagar":
                     if "status_sel" in locals() and status_sel != "Todos":
                         df_display = df_display[df_display["estado"] == status_sel]
 
-                    st.dataframe(df_display[cols_para_exibir], height=250)
+                    # Atualiza apenas o placeholder, sem criar nova tabela
+                    table_placeholder.dataframe(df_display[cols_para_exibir], height=250)
 
             st.markdown("---")
 
@@ -641,7 +645,7 @@ elif page == "Contas a Pagar":
                     if "status_sel" in locals() and status_sel != "Todos":
                         df_display = df_display[df_display["estado"] == status_sel]
 
-                    st.dataframe(df_display[cols_para_exibir], height=250)
+                    table_placeholder.dataframe(df_display[cols_para_exibir], height=250)
 
             st.markdown("---")
 
@@ -715,8 +719,11 @@ elif page == "Contas a Receber":
         else:
             cols_esperadas = ["data_nf", "fornecedor", "valor", "vencimento", "estado", "status_pagamento"]
             cols_para_exibir = [c for c in cols_esperadas if c in df_display.columns]
-            st.markdown("#### 📋 Lista de Lançamentos")
-            st.dataframe(df_display[cols_para_exibir], height=250)
+
+            # Placeholder para a tabela de lançamentos
+            table_placeholder_r = st.empty()
+            table_placeholder_r.dataframe(df_display[cols_para_exibir], height=250)
+
             st.markdown("---")
 
             with st.expander("✏️ Editar Registro"):
@@ -765,7 +772,7 @@ elif page == "Contas a Receber":
 
                     st.success("Registro atualizado com sucesso!")
 
-                    # Reaplicar visualização e filtros sem rerun
+                    # Reaplicar visualização e filtros no df_display
                     if view_sel == "Recebidas":
                         df_display = df[df["estado"].str.strip().str.lower() == "recebido"].copy()
                     elif view_sel == "Pendentes":
@@ -778,7 +785,7 @@ elif page == "Contas a Receber":
                     if "status_sel" in locals() and status_sel != "Todos":
                         df_display = df_display[df_display["estado"] == status_sel]
 
-                    st.dataframe(df_display[cols_para_exibir], height=250)
+                    table_placeholder_r.dataframe(df_display[cols_para_exibir], height=250)
 
             st.markdown("---")
 
@@ -870,7 +877,7 @@ elif page == "Contas a Receber":
                     if "status_sel" in locals() and status_sel != "Todos":
                         df_display = df_display[df_display["estado"] == status_sel]
 
-                    st.dataframe(df_display[cols_para_exibir], height=250)
+                    table_placeholder_r.dataframe(df_display[cols_para_exibir], height=250)
 
             st.markdown("---")
 
