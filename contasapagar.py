@@ -416,7 +416,6 @@ elif page == "Contas a Pagar":
         st.markdown("#### 📋 Lista de Lançamentos")
         table_placeholder = st.empty()
         table_placeholder.dataframe(df_display[cols_para_exibir], height=250)
-
     st.markdown("---")
     with st.expander("✏️ Editar Registro"):
         idx = st.number_input(
@@ -493,35 +492,25 @@ elif page == "Contas a Pagar":
                     f.write(uploaded.getbuffer())
                 st.success(f"Documento salvo em: {destino}")
     st.markdown("---")
-   with st.expander("➕ Adicionar Nova Conta"):
-    coln1, coln2 = st.columns(2)
-    with coln1:
-        data_nf   = st.date_input("Data N/Fornecedor:", value=date.today(), key="nova_data_nf_pagar")
-        forma_pag = st.text_input("Descrição:", key="nova_descricao_pagar")
-        forn_new  = st.text_input("Fornecedor:", key="novo_fornecedor_pagar")
-    with coln2:
-        os_new    = st.text_input("Documento/OS:", key="novo_os_pagar")
-        venc_new  = st.date_input("Data de Vencimento:", value=date.today(), key="novo_venc_pagar")
-        valor_new = st.number_input("Valor (R$):", min_value=0.0, format="%.2f", key="novo_valor_pagar2")
-    estado_opt   = ["Em Aberto", "Pago"]
-    situ_opt     = ["Em Atraso", "Pago", "Em Aberto"]
-    estado_new   = st.selectbox("Estado:", options=estado_opt, key="estado_novo_pagar")
-    situ_new     = st.selectbox("Situação:", options=situ_opt, key="situacao_novo_pagar")
-    boleto_file   = st.file_uploader("Boleto (opcional):", type=["pdf", "jpg", "png"], key="boleto_novo_pagar")
-    comprov_file = st.file_uploader("Comprovante (opcional):", type=["pdf", "jpg", "png"], key="comprov_novo_pagar")
-
-    if st.button("➕ Adicionar Conta", key="adicionar_pagar"):
-        # Validação obrigatória da data_nf
-        if not data_nf:
-            st.error("⚠️ O campo 'Data N/Fornecedor' é obrigatório!")
-        else:
-            # Garantir tipo correto de data para o Excel
-            data_nf_excel = data_nf
-            if isinstance(data_nf_excel, date) and not isinstance(data_nf_excel, datetime):
-                data_nf_excel = datetime(data_nf_excel.year, data_nf_excel.month, data_nf_excel.day)
-
+    with st.expander("➕ Adicionar Nova Conta"):
+        coln1, coln2 = st.columns(2)
+        with coln1:
+            data_nf   = st.date_input("Data N/F:", value=date.today(), key="nova_data_nf_pagar")
+            forma_pag = st.text_input("Descrição:", key="nova_descricao_pagar")
+            forn_new  = st.text_input("Fornecedor:", key="novo_fornecedor_pagar")
+        with coln2:
+            os_new    = st.text_input("Documento/OS:", key="novo_os_pagar")
+            venc_new  = st.date_input("Data de Vencimento:", value=date.today(), key="novo_venc_pagar")
+            valor_new = st.number_input("Valor (R$):", min_value=0.0, format="%.2f", key="novo_valor_pagar2")
+        estado_opt   = ["Em Aberto", "Pago"]
+        situ_opt     = ["Em Atraso", "Pago", "Em Aberto"]
+        estado_new   = st.selectbox("Estado:", options=estado_opt, key="estado_novo_pagar")
+        situ_new     = st.selectbox("Situação:", options=situ_opt,   key="situacao_novo_pagar")
+        boleto_file   = st.file_uploader("Boleto (opcional):",   type=["pdf", "jpg", "png"], key="boleto_novo_pagar")
+        comprov_file = st.file_uploader("Comprovante (opcional):", type=["pdf", "jpg", "png"], key="comprov_novo_pagar")
+        if st.button("➕ Adicionar Conta", key="adicionar_pagar"):
             record = {
-                "data_nf": data_nf_excel,
+                "data_nf": data_nf,
                 "forma_pagamento": forma_pag,
                 "fornecedor": forn_new,
                 "os": os_new,
@@ -561,7 +550,6 @@ elif page == "Contas a Pagar":
                 df_display = df_display[df_display["estado"] == status_sel]
             table_placeholder.dataframe(df_display[cols_para_exibir], height=250)
     st.markdown("---")
-
     st.subheader("💾 Exportar Aba Atual")
     try:
         df_to_save = load_data(EXCEL_PAGAR, aba)
@@ -770,4 +758,3 @@ st.markdown("""
     <p>© 2025 Desenvolvido por Vinicius Magalhães</p>
 </div>
 """, unsafe_allow_html=True)
-
