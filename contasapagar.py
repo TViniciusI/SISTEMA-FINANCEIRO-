@@ -176,11 +176,13 @@ def add_record(excel_path: str, sheet_name: str, record: dict):
         "comprovante": ["comprovante"]
     }
 
+    # Localiza colunas pelo cabeçalho
     col_pos = {}
     for key, names in field_map.items():
         idx = next((i for i, h in enumerate(headers) if h in names), None)
         col_pos[key] = idx + 1 if idx is not None else None
 
+    # Encontra próxima linha vazia
     next_row = ws.max_row + 1
     for r in range(header_row + 1, ws.max_row + 2):
         c = col_pos["fornecedor"]
@@ -188,11 +190,13 @@ def add_record(excel_path: str, sheet_name: str, record: dict):
             next_row = r
             break
 
+    # Escreve cada campo, convertendo datas
     for key, col in col_pos.items():
         if not col:
             continue
         val = record.get(key, "")
-        if key == "vencimento" and val:
+        # agora tratamos data_nf e vencimento exatamente igual
+        if key in ("data_nf", "vencimento") and val:
             if isinstance(val, pd.Timestamp):
                 val = val.to_pydatetime()
             elif isinstance(val, date) and not isinstance(val, datetime):
@@ -200,6 +204,7 @@ def add_record(excel_path: str, sheet_name: str, record: dict):
         ws.cell(row=next_row, column=col, value=val)
 
     wb.save(excel_path)
+
 
 # garante pastas de anexos
 for pasta in ["Contas a Pagar", "Contas a Receber"]:
