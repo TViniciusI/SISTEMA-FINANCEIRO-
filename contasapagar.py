@@ -77,29 +77,35 @@ def load_data(excel_path: str, sheet_name: str) -> pd.DataFrame:
     rename_map = {}
     for col in df.columns:
         nome = str(col).strip().lower()
-        if nome == "data documento":
+        # detecta Vários cabeçalhos
+        if "data" in nome and "nf" in nome:
             rename_map[col] = "data_nf"
+        elif "forma" in nome and "pagamento" in nome:
+            rename_map[col] = "forma_pagamento"
         elif nome == "descrição":
             rename_map[col] = "forma_pagamento"
         elif nome == "fornecedor":
             rename_map[col] = "fornecedor"
+        elif "os" in nome:
+            rename_map[col] = "os"
         elif nome == "documento":
             rename_map[col] = "os"
-        elif nome == "vencimento":
+        elif "vencimento" in nome:
             rename_map[col] = "vencimento"
-        elif nome == "valor":
+        elif "valor" in nome:
             rename_map[col] = "valor"
         elif nome == "estado":
             rename_map[col] = "estado"
-        elif nome == "situação":
+        elif "situa" in nome:
             rename_map[col] = "situacao"
-        elif nome == "comprovante":
+        elif "comprov" in nome:
             rename_map[col] = "comprovante"
-        elif nome == "boleto":
+        elif "boleto" in nome:
             rename_map[col] = "boleto"
 
     df = df.rename(columns=rename_map)
-    df = df[[c for c in df.columns if c in cols]].dropna(subset=["fornecedor", "valor"]).reset_index(drop=True)
+    df = df[[c for c in df.columns if c in cols]].dropna(subset=["fornecedor", "valor"], how="all").reset_index(drop=True)
+
     df["vencimento"] = pd.to_datetime(df["vencimento"], errors="coerce")
     df["valor"] = pd.to_numeric(df["valor"], errors="coerce")
 
@@ -130,16 +136,15 @@ def save_data(excel_path: str, sheet_name: str, df: pd.DataFrame):
     wb = load_workbook(excel_path)
     ws = wb[sheet_name]
     for i, row in df.iterrows():
-        excel_row = i + 9  # linha 9 em diante
+        excel_row = i + 9  # linha 9 em diante (skipped 8 linhas)
         ws.cell(row=excel_row, column=rename_col_index(ws, "Valor"), value=row["valor"])
         ws.cell(row=excel_row, column=rename_col_index(ws, "Estado"), value=row["estado"])
         ws.cell(row=excel_row, column=rename_col_index(ws, "Situação"), value=row["situacao"])
         venc = row["vencimento"]
-        ws.cell(
-            row=excel_row,
-            column=rename_col_index(ws, "Vencimento"),
-            value=venc.to_pydatetime() if pd.notna(venc) else None
-        )
+        if pd.notna(venc):
+            ws.cell(row=excel_row, column=rename_col_index(ws, "Vencimento"), value=venc.to_pydatetime())
+        else:
+            ws.cell(row=excel_row, column=rename_col_index(ws, "Vencimento"), value=None)
     wb.save(excel_path)
 
 def add_record(excel_path: str, sheet_name: str, record: dict):
@@ -152,19 +157,17 @@ def add_record(excel_path: str, sheet_name: str, record: dict):
     else:
         ws = wb[sheet_name]
 
-    # cabeçalho na linha 8
     header_row = 8
     headers = [
         str(ws.cell(row=header_row, column=col).value).strip().lower()
         for col in range(1, ws.max_column + 1)
     ]
 
-    # mapeamento de campo -> possíveis rótulos
     field_map = {
-        "data_nf": ["data documento", "data_nf"],
-        "forma_pagamento": ["descrição", "forma_pagamento"],
+        "data_nf": ["data documento", "data_nf", "data n/f", "data n/fornecedor"],
+        "forma_pagamento": ["descrição", "forma_pagamento", "forma de pagamento"],
         "fornecedor": ["fornecedor"],
-        "os": ["documento", "os"],
+        "os": ["documento", "os", "os interna", "os_interna"],
         "vencimento": ["vencimento"],
         "valor": ["valor"],
         "estado": ["estado"],
@@ -173,23 +176,20 @@ def add_record(excel_path: str, sheet_name: str, record: dict):
         "comprovante": ["comprovante"]
     }
 
-    # determina posição exata de cada coluna
     col_pos = {}
     for key, names in field_map.items():
         idx = next((i for i, h in enumerate(headers) if h in names), None)
         col_pos[key] = idx + 1 if idx is not None else None
 
-    # encontra próxima linha vazia (campo fornecedor)
     next_row = ws.max_row + 1
-    for row in range(header_row + 1, ws.max_row + 2):
-        col_for = col_pos["fornecedor"]
-        if not ws.cell(row=row, column=col_for).value:
-            next_row = row
+    for r in range(header_row + 1, ws.max_row + 2):
+        c = col_pos["fornecedor"]
+        if not c or not ws.cell(row=r, column=c).value:
+            next_row = r
             break
 
-    # escreve valores convertendo data corretamente
     for key, col in col_pos.items():
-        if col is None:
+        if not col:
             continue
         val = record.get(key, "")
         if key == "vencimento" and val:
@@ -201,10 +201,9 @@ def add_record(excel_path: str, sheet_name: str, record: dict):
 
     wb.save(excel_path)
 
-# garante diretórios de anexos
+# garante pastas de anexos
 for pasta in ["Contas a Pagar", "Contas a Receber"]:
     os.makedirs(os.path.join(ANEXOS_DIR, pasta), exist_ok=True)
-
 st.sidebar.markdown(
     """
     ## 📂 Navegação  
