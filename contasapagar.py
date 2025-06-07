@@ -46,10 +46,6 @@ ANEXOS_DIR    = "anexos"
 FULL_MONTHS   = [f"{i:02d}" for i in range(1, 13)]
 
 def get_existing_sheets(excel_path: str) -> list[str]:
-    """
-    Retorna as abas numéricas existentes no arquivo (ex: '01','02', ... '12'),
-    ignorando 'Tutorial'. Se der erro ao abrir, retorna lista vazia.
-    """
     try:
         wb = pd.ExcelFile(excel_path)
         numeric_sheets = []
@@ -64,27 +60,20 @@ def get_existing_sheets(excel_path: str) -> list[str]:
         return []
 
 def load_data(excel_path: str, sheet_name: str) -> pd.DataFrame:
-    """
-    Carrega dados da aba sheet_name (por exemplo, "06"). Se a aba não existir,
-    retorna um DataFrame vazio com todas as colunas esperadas.
-    Usa skiprows=7 porque o cabeçalho real (com "Vencimento", "Valor" etc.) está na linha 8 do Excel.
-    """
     cols = [
         "data_nf", "forma_pagamento", "fornecedor", "os",
         "vencimento", "valor", "estado", "situacao", "boleto", "comprovante"
     ]
     if not os.path.isfile(excel_path):
-        df_empty = pd.DataFrame(columns=cols + ["status_pagamento"])
-        return df_empty
+        return pd.DataFrame(columns=cols + ["status_pagamento"])
     existing = get_existing_sheets(excel_path)
     if sheet_name not in existing:
-        df_empty = pd.DataFrame(columns=cols + ["status_pagamento"])
-        return df_empty
+        return pd.DataFrame(columns=cols + ["status_pagamento"])
     try:
         df = pd.read_excel(excel_path, sheet_name=sheet_name, skiprows=7, header=0)
     except Exception:
-        df_empty = pd.DataFrame(columns=cols + ["status_pagamento"])
-        return df_empty
+        return pd.DataFrame(columns=cols + ["status_pagamento"])
+
     rename_map = {}
     for col in df.columns:
         nome = str(col).strip().lower()
@@ -108,38 +97,28 @@ def load_data(excel_path: str, sheet_name: str) -> pd.DataFrame:
             rename_map[col] = "comprovante"
         elif nome == "boleto":
             rename_map[col] = "boleto"
+
     df = df.rename(columns=rename_map)
-    expected_cols = set(cols)
-    extras = [c for c in df.columns if c not in expected_cols]
-    if extras:
-        df = df.drop(extras, axis=1)
-    df = df.dropna(subset=["fornecedor", "valor"]).reset_index(drop=True)
+    df = df[[c for c in df.columns if c in cols]].dropna(subset=["fornecedor", "valor"]).reset_index(drop=True)
     df["vencimento"] = pd.to_datetime(df["vencimento"], errors="coerce")
     df["valor"] = pd.to_numeric(df["valor"], errors="coerce")
+
     status_list = []
     hoje = datetime.now().date()
     for _, row in df.iterrows():
         estado_atual = str(row.get("estado", "")).strip().lower()
         if estado_atual == "pago":
             status_list.append("Pago")
-            continue
-        data_venc = row["vencimento"].date() if pd.notna(row["vencimento"]) else None
-        if data_venc:
-            if data_venc < hoje:
-                status_list.append("Em Atraso")
-            else:
-                status_list.append("A Vencer")
         else:
-            status_list.append("Sem Data")
+            data_venc = row["vencimento"].date() if pd.notna(row["vencimento"]) else None
+            if data_venc:
+                status_list.append("Em Atraso" if data_venc < hoje else "A Vencer")
+            else:
+                status_list.append("Sem Data")
     df["status_pagamento"] = status_list
     return df
 
 def rename_col_index(ws, target_name: str) -> int:
-    """
-    Dado um worksheet (ws), retorna o índice (1-based) da coluna cujo cabeçalho
-    bate exatamente (case-insensitive) com target_name. Se não achar,
-    retorna valor padrão: Vencimento=5, Valor=6, Estado=7, Situação=8.
-    """
     for row in ws.iter_rows(min_row=1, max_row=100, min_col=1, max_col=ws.max_column):
         for cell in row:
             if cell.value and str(cell.value).strip().lower() == target_name.lower():
@@ -148,59 +127,81 @@ def rename_col_index(ws, target_name: str) -> int:
     return defaults.get(target_name.lower(), 1)
 
 def save_data(excel_path: str, sheet_name: str, df: pd.DataFrame):
-    """
-    Salva de volta no Excel apenas as colunas 'valor', 'estado', 'situacao' e 'vencimento'
-    na aba sheet_name, mantendo cabeçalhos e fórmulas originais.
-    """
     wb = load_workbook(excel_path)
     ws = wb[sheet_name]
     for i, row in df.iterrows():
-        excel_row = i + 8
-        ws.cell(row=excel_row + 1, column=rename_col_index(ws, "Valor"), value=row["valor"])
-        ws.cell(row=excel_row + 1, column=rename_col_index(ws, "Estado"), value=row["estado"])
-        ws.cell(row=excel_row + 1, column=rename_col_index(ws, "Situação"), value=row["situacao"])
-        if pd.isna(row["vencimento"]):
-            ws.cell(row=excel_row + 1, column=rename_col_index(ws, "Vencimento"), value=None)
-        else:
-            ws.cell(row=excel_row + 1, column=rename_col_index(ws, "Vencimento"), value=row["vencimento"])
+        excel_row = i + 9  # linha 9 em diante
+        ws.cell(row=excel_row, column=rename_col_index(ws, "Valor"), value=row["valor"])
+        ws.cell(row=excel_row, column=rename_col_index(ws, "Estado"), value=row["estado"])
+        ws.cell(row=excel_row, column=rename_col_index(ws, "Situação"), value=row["situacao"])
+        venc = row["vencimento"]
+        ws.cell(
+            row=excel_row,
+            column=rename_col_index(ws, "Vencimento"),
+            value=venc.to_pydatetime() if pd.notna(venc) else None
+        )
     wb.save(excel_path)
 
 def add_record(excel_path: str, sheet_name: str, record: dict):
-    """
-    Adiciona um novo registro na próxima linha disponível da aba sheet_name.
-    Se a aba não existir, cria-a automaticamente duplicando a primeira aba numérica válida.
-    Grava: data_nf, forma_pagamento, fornecedor, os, vencimento, valor, estado, situacao, boleto, comprovante.
-    """
     wb = load_workbook(excel_path)
-    existing = [s.strip() for s in wb.sheetnames]
-    if sheet_name not in existing:
-        numeric = [s for s in existing if s.isdigit()]
-        if numeric:
-            template_ws = wb[numeric[0]]
-        else:
-            template_ws = wb[wb.sheetnames[0]]
-        new_ws = wb.copy_worksheet(template_ws)
-        new_ws.title = sheet_name
-        ws = new_ws
+    if sheet_name not in wb.sheetnames:
+        numeric = [s for s in wb.sheetnames if s.isdigit()]
+        template_ws = wb[numeric[0]] if numeric else wb[wb.sheetnames[0]]
+        ws = wb.copy_worksheet(template_ws)
+        ws.title = sheet_name
     else:
         ws = wb[sheet_name]
-    next_row = ws.max_row + 1
-    vals = [
-        record.get("data_nf", ""),
-        record.get("forma_pagamento", ""),
-        record.get("fornecedor", ""),
-        record.get("os", ""),
-        record.get("vencimento", ""),
-        record.get("valor", ""),
-        record.get("estado", ""),
-        record.get("situacao", ""),
-        record.get("boleto", ""),
-        record.get("comprovante", "")
+
+    # cabeçalho na linha 8
+    header_row = 8
+    headers = [
+        str(ws.cell(row=header_row, column=col).value).strip().lower()
+        for col in range(1, ws.max_column + 1)
     ]
-    for col_idx, val in enumerate(vals, start=1):
-        ws.cell(row=next_row, column=col_idx, value=val)
+
+    # mapeamento de campo -> possíveis rótulos
+    field_map = {
+        "data_nf": ["data documento", "data_nf"],
+        "forma_pagamento": ["descrição", "forma_pagamento"],
+        "fornecedor": ["fornecedor"],
+        "os": ["documento", "os"],
+        "vencimento": ["vencimento"],
+        "valor": ["valor"],
+        "estado": ["estado"],
+        "situacao": ["situação", "situacao"],
+        "boleto": ["boleto"],
+        "comprovante": ["comprovante"]
+    }
+
+    # determina posição exata de cada coluna
+    col_pos = {}
+    for key, names in field_map.items():
+        idx = next((i for i, h in enumerate(headers) if h in names), None)
+        col_pos[key] = idx + 1 if idx is not None else None
+
+    # encontra próxima linha vazia (campo fornecedor)
+    next_row = ws.max_row + 1
+    for row in range(header_row + 1, ws.max_row + 2):
+        col_for = col_pos["fornecedor"]
+        if not ws.cell(row=row, column=col_for).value:
+            next_row = row
+            break
+
+    # escreve valores convertendo data corretamente
+    for key, col in col_pos.items():
+        if col is None:
+            continue
+        val = record.get(key, "")
+        if key == "vencimento" and val:
+            if isinstance(val, pd.Timestamp):
+                val = val.to_pydatetime()
+            elif isinstance(val, date) and not isinstance(val, datetime):
+                val = datetime(val.year, val.month, val.day)
+        ws.cell(row=next_row, column=col, value=val)
+
     wb.save(excel_path)
 
+# garante diretórios de anexos
 for pasta in ["Contas a Pagar", "Contas a Receber"]:
     os.makedirs(os.path.join(ANEXOS_DIR, pasta), exist_ok=True)
 
@@ -209,8 +210,10 @@ st.sidebar.markdown(
     ## 📂 Navegação  
     Selecione a seção desejada para visualizar e gerenciar  
     suas contas a pagar e receber.  
-    """
+    """,
+    unsafe_allow_html=True
 )
+
 page = st.sidebar.radio("", ["Dashboard", "Contas a Pagar", "Contas a Receber"], index=0)
 
 st.markdown("""
