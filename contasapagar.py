@@ -493,23 +493,28 @@ elif page == "Contas a Pagar":
                     f.write(uploaded.getbuffer())
                 st.success(f"Documento salvo em: {destino}")
     st.markdown("---")
-    with st.expander("➕ Adicionar Nova Conta"):
-        coln1, coln2 = st.columns(2)
-        with coln1:
-            data_nf   = st.date_input("Data N/F:", value=date.today(), key="nova_data_nf_pagar")
-            forma_pag = st.text_input("Descrição:", key="nova_descricao_pagar")
-            forn_new  = st.text_input("Fornecedor:", key="novo_fornecedor_pagar")
-        with coln2:
-            os_new    = st.text_input("Documento/OS:", key="novo_os_pagar")
-            venc_new  = st.date_input("Data de Vencimento:", value=date.today(), key="novo_venc_pagar")
-            valor_new = st.number_input("Valor (R$):", min_value=0.0, format="%.2f", key="novo_valor_pagar2")
-        estado_opt   = ["Em Aberto", "Pago"]
-        situ_opt     = ["Em Atraso", "Pago", "Em Aberto"]
-        estado_new   = st.selectbox("Estado:", options=estado_opt, key="estado_novo_pagar")
-        situ_new     = st.selectbox("Situação:", options=situ_opt,   key="situacao_novo_pagar")
-        boleto_file   = st.file_uploader("Boleto (opcional):",   type=["pdf", "jpg", "png"], key="boleto_novo_pagar")
-        comprov_file = st.file_uploader("Comprovante (opcional):", type=["pdf", "jpg", "png"], key="comprov_novo_pagar")
-        if st.button("➕ Adicionar Conta", key="adicionar_pagar"):
+   with st.expander("➕ Adicionar Nova Conta"):
+    coln1, coln2 = st.columns(2)
+    with coln1:
+        data_nf   = st.date_input("Data N/F:", value=date.today(), key="nova_data_nf_pagar")
+        forma_pag = st.text_input("Descrição:", key="nova_descricao_pagar")
+        forn_new  = st.text_input("Fornecedor:", key="novo_fornecedor_pagar")
+    with coln2:
+        os_new    = st.text_input("Documento/OS:", key="novo_os_pagar")
+        venc_new  = st.date_input("Data de Vencimento:", value=date.today(), key="novo_venc_pagar")
+        valor_new = st.number_input("Valor (R$):", min_value=0.0, format="%.2f", key="novo_valor_pagar2")
+    estado_opt   = ["Em Aberto", "Pago"]
+    situ_opt     = ["Em Atraso", "Pago", "Em Aberto"]
+    estado_new   = st.selectbox("Estado:", options=estado_opt, key="estado_novo_pagar")
+    situ_new     = st.selectbox("Situação:", options=situ_opt,   key="situacao_novo_pagar")
+    boleto_file   = st.file_uploader("Boleto (opcional):",   type=["pdf", "jpg", "png"], key="boleto_novo_pagar")
+    comprov_file = st.file_uploader("Comprovante (opcional):", type=["pdf", "jpg", "png"], key="comprov_novo_pagar")
+    
+    if st.button("➕ Adicionar Conta", key="adicionar_pagar"):
+        # Validação obrigatória da data_nf
+        if not data_nf:
+            st.error("⚠️ O campo 'Data N/F' é obrigatório!")
+        else:
             record = {
                 "data_nf": data_nf,
                 "forma_pagamento": forma_pag,
