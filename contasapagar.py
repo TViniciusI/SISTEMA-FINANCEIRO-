@@ -416,6 +416,7 @@ elif page == "Contas a Pagar":
         st.markdown("#### 📋 Lista de Lançamentos")
         table_placeholder = st.empty()
         table_placeholder.dataframe(df_display[cols_para_exibir], height=250)
+
     st.markdown("---")
     with st.expander("✏️ Editar Registro"):
         idx = st.number_input(
