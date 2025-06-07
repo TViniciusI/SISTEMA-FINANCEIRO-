@@ -78,7 +78,11 @@ def load_data(excel_path: str, sheet_name: str) -> pd.DataFrame:
     for col in df.columns:
         nome = str(col).strip().lower()
         # detecta Vários cabeçalhos
-        if "data" in nome and "nf" in nome:
+        if (
+            ("data" in nome and "nf" in nome)
+            or ("data da nota fiscal" in nome)
+            or ("data nota fiscal" in nome)
+        ):
             rename_map[col] = "data_nf"
         elif "forma" in nome and "pagamento" in nome:
             rename_map[col] = "forma_pagamento"
@@ -133,18 +137,58 @@ def rename_col_index(ws, target_name: str) -> int:
     return defaults.get(target_name.lower(), 1)
 
 def save_data(excel_path: str, sheet_name: str, df: pd.DataFrame):
+    """Sobrescreve todos os registros da aba especificada com os dados do DataFrame."""
     wb = load_workbook(excel_path)
     ws = wb[sheet_name]
+
+    header_row = 8
+    headers = [
+        str(ws.cell(row=header_row, column=col).value).strip().lower()
+        for col in range(1, ws.max_column + 1)
+    ]
+
+    field_map = {
+        "data_nf": [
+            "data documento",
+            "data_nf",
+            "data n/f",
+            "data n/fornecedor",
+            "data da nota fiscal",
+        ],
+        "forma_pagamento": ["descrição", "forma_pagamento", "forma de pagamento"],
+        "fornecedor": ["fornecedor"],
+        "os": ["documento", "os", "os interna", "os_interna"],
+        "vencimento": ["vencimento"],
+        "valor": ["valor"],
+        "estado": ["estado"],
+        "situacao": ["situação", "situacao"],
+        "boleto": ["boleto"],
+        "comprovante": ["comprovante"],
+    }
+
+    col_pos = {}
+    for key, names in field_map.items():
+        idx = next((i for i, h in enumerate(headers) if h in names), None)
+        col_pos[key] = idx + 1 if idx is not None else None
+
+    # remove linhas existentes (a partir da linha 9)
+    if ws.max_row > header_row:
+        ws.delete_rows(header_row + 1, ws.max_row - header_row)
+
+    # escreve novamente todas as linhas do DataFrame
     for i, row in df.iterrows():
-        excel_row = i + 9  # linha 9 em diante (skipped 8 linhas)
-        ws.cell(row=excel_row, column=rename_col_index(ws, "Valor"), value=row["valor"])
-        ws.cell(row=excel_row, column=rename_col_index(ws, "Estado"), value=row["estado"])
-        ws.cell(row=excel_row, column=rename_col_index(ws, "Situação"), value=row["situacao"])
-        venc = row["vencimento"]
-        if pd.notna(venc):
-            ws.cell(row=excel_row, column=rename_col_index(ws, "Vencimento"), value=venc.to_pydatetime())
-        else:
-            ws.cell(row=excel_row, column=rename_col_index(ws, "Vencimento"), value=None)
+        excel_row = header_row + 1 + i
+        for key, col in col_pos.items():
+            if not col:
+                continue
+            val = row.get(key, "")
+            if key in ("data_nf", "vencimento") and pd.notna(val):
+                if isinstance(val, pd.Timestamp):
+                    val = val.to_pydatetime()
+                elif isinstance(val, date) and not isinstance(val, datetime):
+                    val = datetime(val.year, val.month, val.day)
+            ws.cell(row=excel_row, column=col, value=val)
+
     wb.save(excel_path)
 
 def add_record(excel_path: str, sheet_name: str, record: dict):
@@ -164,7 +208,13 @@ def add_record(excel_path: str, sheet_name: str, record: dict):
     ]
 
     field_map = {
-        "data_nf": ["data documento", "data_nf", "data n/f", "data n/fornecedor"],
+        "data_nf": [
+            "data documento",
+            "data_nf",
+            "data n/f",
+            "data n/fornecedor",
+            "data da nota fiscal",
+        ],
         "forma_pagamento": ["descrição", "forma_pagamento", "forma de pagamento"],
         "fornecedor": ["fornecedor"],
         "os": ["documento", "os", "os interna", "os_interna"],
@@ -467,6 +517,38 @@ elif page == "Contas a Pagar":
                 if "status_sel" in locals() and status_sel != "Todos":
                     df_display = df_display[df_display["estado"] == status_sel]
                 table_placeholder.dataframe(df_display[cols_para_exibir], height=250)
+    with st.expander("🗑️ Remover Registro"):
+        if not df_display.empty:
+            idx_rem = st.number_input(
+                "Índice da linha para remover:",
+                min_value=0,
+                max_value=len(df_display) - 1,
+                step=1,
+                key="remover_pagar",
+            )
+            if st.button("Remover", key="btn_remover_pagar"):
+                rec_rem = df_display.iloc[idx_rem]
+                orig_idx_candidates = df[
+                    (df["fornecedor"] == rec_rem["fornecedor"]) &
+                    (df["valor"] == rec_rem["valor"]) &
+                    (df["vencimento"] == rec_rem["vencimento"])
+                ].index
+                orig_idx = orig_idx_candidates[0] if len(orig_idx_candidates) > 0 else rec_rem.name
+                df = df.drop(orig_idx).reset_index(drop=True)
+                save_data(EXCEL_PAGAR, aba, df)
+                df = load_data(EXCEL_PAGAR, aba)
+                st.success("Registro removido com sucesso!")
+                if view_sel == "Pagas":
+                    df_display = df[df["estado"].str.strip().str.lower() == "pago"].copy()
+                elif view_sel == "Pendentes":
+                    df_display = df[df["estado"].str.strip().str.lower() != "pago"].copy()
+                else:
+                    df_display = df.copy()
+                if "forn" in locals() and forn != "Todos":
+                    df_display = df_display[df_display["fornecedor"] == forn]
+                if "status_sel" in locals() and status_sel != "Todos":
+                    df_display = df_display[df_display["estado"] == status_sel]
+                table_placeholder.dataframe(df_display[cols_para_exibir], height=250)
     st.markdown("---")
     with st.expander("📎 Anexar Documentos"):
         if not df_display.empty:
@@ -643,6 +725,38 @@ elif page == "Contas a Receber":
                 save_data(EXCEL_RECEBER, aba, df)
                 df = load_data(EXCEL_RECEBER, aba)
                 st.success("Registro atualizado com sucesso!")
+                if view_sel == "Recebidas":
+                    df_display = df[df["estado"].str.strip().str.lower() == "recebido"].copy()
+                elif view_sel == "Pendentes":
+                    df_display = df[df["estado"].str.strip().str.lower() != "recebido"].copy()
+                else:
+                    df_display = df.copy()
+                if "forn" in locals() and forn != "Todos":
+                    df_display = df_display[df_display["fornecedor"] == forn]
+                if "status_sel" in locals() and status_sel != "Todos":
+                    df_display = df_display[df_display["estado"] == status_sel]
+                table_placeholder_r.dataframe(df_display[cols_para_exibir], height=250)
+    with st.expander("🗑️ Remover Registro"):
+        if not df_display.empty:
+            idx_rem_r = st.number_input(
+                "Índice da linha para remover:",
+                min_value=0,
+                max_value=len(df_display) - 1,
+                step=1,
+                key="remover_receber",
+            )
+            if st.button("Remover", key="btn_remover_receber"):
+                rec_rem = df_display.iloc[idx_rem_r]
+                orig_idx_candidates = df[
+                    (df["fornecedor"] == rec_rem["fornecedor"]) &
+                    (df["valor"] == rec_rem["valor"]) &
+                    (df["vencimento"] == rec_rem["vencimento"])
+                ].index
+                orig_idx = orig_idx_candidates[0] if len(orig_idx_candidates) > 0 else rec_rem.name
+                df = df.drop(orig_idx).reset_index(drop=True)
+                save_data(EXCEL_RECEBER, aba, df)
+                df = load_data(EXCEL_RECEBER, aba)
+                st.success("Registro removido com sucesso!")
                 if view_sel == "Recebidas":
                     df_display = df[df["estado"].str.strip().str.lower() == "recebido"].copy()
                 elif view_sel == "Pendentes":
