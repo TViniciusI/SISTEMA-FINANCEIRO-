@@ -78,7 +78,11 @@ def load_data(excel_path: str, sheet_name: str) -> pd.DataFrame:
     for col in df.columns:
         nome = str(col).strip().lower()
         # detecta Vários cabeçalhos
-        if "data" in nome and "nf" in nome:
+        if (
+            ("data" in nome and "nf" in nome)
+            or ("data da nota fiscal" in nome)
+            or ("data nota fiscal" in nome)
+        ):
             rename_map[col] = "data_nf"
         elif "forma" in nome and "pagamento" in nome:
             rename_map[col] = "forma_pagamento"
@@ -144,7 +148,13 @@ def save_data(excel_path: str, sheet_name: str, df: pd.DataFrame):
     ]
 
     field_map = {
-        "data_nf": ["data documento", "data_nf", "data n/f", "data n/fornecedor"],
+        "data_nf": [
+            "data documento",
+            "data_nf",
+            "data n/f",
+            "data n/fornecedor",
+            "data da nota fiscal",
+        ],
         "forma_pagamento": ["descrição", "forma_pagamento", "forma de pagamento"],
         "fornecedor": ["fornecedor"],
         "os": ["documento", "os", "os interna", "os_interna"],
@@ -198,7 +208,13 @@ def add_record(excel_path: str, sheet_name: str, record: dict):
     ]
 
     field_map = {
-        "data_nf": ["data documento", "data_nf", "data n/f", "data n/fornecedor"],
+        "data_nf": [
+            "data documento",
+            "data_nf",
+            "data n/f",
+            "data n/fornecedor",
+            "data da nota fiscal",
+        ],
         "forma_pagamento": ["descrição", "forma_pagamento", "forma de pagamento"],
         "fornecedor": ["fornecedor"],
         "os": ["documento", "os", "os interna", "os_interna"],
