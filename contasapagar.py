@@ -137,7 +137,7 @@ def rename_col_index(ws, target_name: str) -> int:
     return defaults.get(target_name.lower(), 1)
 
 def save_data(excel_path: str, sheet_name: str, df: pd.DataFrame):
-    """Sobrescreve todos os registros da aba especificada com os dados do DataFrame."""
+    """Atualiza os registros existentes sem apagar fórmulas ou layout."""
     wb = load_workbook(excel_path)
     ws = wb[sheet_name]
 
@@ -149,11 +149,8 @@ def save_data(excel_path: str, sheet_name: str, df: pd.DataFrame):
 
     field_map = {
         "data_nf": [
-            "data documento",
-            "data_nf",
-            "data n/f",
-            "data n/fornecedor",
-            "data da nota fiscal",
+            "data documento", "data_nf", "data n/f", "data n/fornecedor",
+            "data da nota fiscal", "data n/ffornecedor"
         ],
         "forma_pagamento": ["descrição", "forma_pagamento", "forma de pagamento"],
         "fornecedor": ["fornecedor"],
@@ -161,26 +158,22 @@ def save_data(excel_path: str, sheet_name: str, df: pd.DataFrame):
         "vencimento": ["vencimento"],
         "valor": ["valor"],
         "estado": ["estado"],
-        "situacao": ["situação", "situacao"],
-        "boleto": ["boleto"],
-        "comprovante": ["comprovante"],
+        # ⚠️ Situação tem fórmula, então não será escrita
+        "boleto": ["boleto", "boleto anexo"],
+        "comprovante": ["comprovante", "comprovante de pagto"],
     }
 
+    # Corrigir deslocamento se a primeira coluna for estética (None)
     col_pos = {}
     for key, names in field_map.items():
         idx = next((i for i, h in enumerate(headers) if h in names), None)
-        col_pos[key] = idx + 1 if idx is not None else None
+        col_pos[key] = idx + 1 + 1 if idx is not None else None  # +1 por índice, +1 pela coluna vazia
 
-    # remove linhas existentes (a partir da linha 9)
-    if ws.max_row > header_row:
-        ws.delete_rows(header_row + 1, ws.max_row - header_row)
-
-    # escreve novamente todas as linhas do DataFrame
     for i, row in df.iterrows():
         excel_row = header_row + 1 + i
         for key, col in col_pos.items():
-            if not col:
-                continue
+            if not col or key == "situacao":
+                continue  # preserva fórmulas existentes
             val = row.get(key, "")
             if key in ("data_nf", "vencimento") and pd.notna(val):
                 if isinstance(val, pd.Timestamp):
@@ -209,11 +202,8 @@ def add_record(excel_path: str, sheet_name: str, record: dict):
 
     field_map = {
         "data_nf": [
-            "data documento",
-            "data_nf",
-            "data n/f",
-            "data n/fornecedor",
-            "data da nota fiscal",
+            "data documento", "data_nf", "data n/f", "data n/fornecedor",
+            "data da nota fiscal", "data n/ffornecedor"
         ],
         "forma_pagamento": ["descrição", "forma_pagamento", "forma de pagamento"],
         "fornecedor": ["fornecedor"],
@@ -221,31 +211,30 @@ def add_record(excel_path: str, sheet_name: str, record: dict):
         "vencimento": ["vencimento"],
         "valor": ["valor"],
         "estado": ["estado"],
-        "situacao": ["situação", "situacao"],
-        "boleto": ["boleto"],
-        "comprovante": ["comprovante"]
+        # ⚠️ "situacao" tem fórmula e não deve ser preenchida
+        "boleto": ["boleto", "boleto anexo"],
+        "comprovante": ["comprovante", "comprovante de pagto"]
     }
 
-    # Localiza colunas pelo cabeçalho
+    # Corrigir deslocamento por causa da coluna 1 estética
     col_pos = {}
     for key, names in field_map.items():
         idx = next((i for i, h in enumerate(headers) if h in names), None)
-        col_pos[key] = idx + 1 if idx is not None else None
+        col_pos[key] = idx + 1 + 1 if idx is not None else None  # +1 índice +1 coluna vazia
 
-    # Encontra próxima linha vazia
+    # Encontra próxima linha vazia com base no campo "fornecedor"
+    col_forn = col_pos.get("fornecedor", 3)
     next_row = ws.max_row + 1
     for r in range(header_row + 1, ws.max_row + 2):
-        c = col_pos["fornecedor"]
-        if not c or not ws.cell(row=r, column=c).value:
+        if not ws.cell(row=r, column=col_forn).value:
             next_row = r
             break
 
-    # Escreve cada campo, convertendo datas
+    # Escreve cada campo (exceto "situacao")
     for key, col in col_pos.items():
-        if not col:
+        if not col or key == "situacao":
             continue
         val = record.get(key, "")
-        # agora tratamos data_nf e vencimento exatamente igual
         if key in ("data_nf", "vencimento") and val:
             if isinstance(val, pd.Timestamp):
                 val = val.to_pydatetime()
