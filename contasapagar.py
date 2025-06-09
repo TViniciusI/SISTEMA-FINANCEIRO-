@@ -135,16 +135,18 @@ def rename_col_index(ws, target_name: str) -> int:
                 return cell.column
     defaults = {"vencimento": 5, "valor": 6, "estado": 7, "situação": 8}
     return defaults.get(target_name.lower(), 1)
-
 def save_data(excel_path: str, sheet_name: str, df: pd.DataFrame):
     """Atualiza os registros existentes sem apagar fórmulas ou layout."""
+    from openpyxl import load_workbook
+    from datetime import datetime, date
+
     wb = load_workbook(excel_path)
     ws = wb[sheet_name]
 
     header_row = 8
     headers = [
         str(ws.cell(row=header_row, column=col).value).strip().lower()
-        for col in range(1, ws.max_column + 1)
+        for col in range(2, ws.max_column + 1)  # pula coluna 1
     ]
 
     field_map = {
@@ -158,33 +160,46 @@ def save_data(excel_path: str, sheet_name: str, df: pd.DataFrame):
         "vencimento": ["vencimento"],
         "valor": ["valor"],
         "estado": ["estado"],
-        # ⚠️ Situação tem fórmula, então não será escrita
         "boleto": ["boleto", "boleto anexo"],
-        "comprovante": ["comprovante", "comprovante de pagto"],
+        "comprovante": ["comprovante", "comprovante de pagto"]
     }
 
-    # Corrigir deslocamento se a primeira coluna for estética (None)
     col_pos = {}
     for key, names in field_map.items():
         idx = next((i for i, h in enumerate(headers) if h in names), None)
-        col_pos[key] = idx + 1 + 1 if idx is not None else None  # +1 por índice, +1 pela coluna vazia
+        col_pos[key] = idx + 2 if idx is not None else None  # +2 porque headers pula col 1
 
     for i, row in df.iterrows():
         excel_row = header_row + 1 + i
         for key, col in col_pos.items():
             if not col or key == "situacao":
-                continue  # preserva fórmulas existentes
+                continue
             val = row.get(key, "")
-            if key in ("data_nf", "vencimento") and pd.notna(val):
-                if isinstance(val, pd.Timestamp):
-                    val = val.to_pydatetime()
-                elif isinstance(val, date) and not isinstance(val, datetime):
-                    val = datetime(val.year, val.month, val.day)
+
+            if key in ("data_nf", "vencimento"):
+                try:
+                    val = pd.to_datetime(val, errors="coerce")
+                    if pd.notna(val):
+                        val = val.to_pydatetime()
+                    else:
+                        continue
+                except:
+                    continue
+
+            if key == "valor":
+                try:
+                    val = float(val)
+                except:
+                    val = None
+
             ws.cell(row=excel_row, column=col, value=val)
 
     wb.save(excel_path)
 
 def add_record(excel_path: str, sheet_name: str, record: dict):
+    from openpyxl import load_workbook
+    from datetime import datetime, date
+
     wb = load_workbook(excel_path)
     if sheet_name not in wb.sheetnames:
         numeric = [s for s in wb.sheetnames if s.isdigit()]
@@ -197,7 +212,7 @@ def add_record(excel_path: str, sheet_name: str, record: dict):
     header_row = 8
     headers = [
         str(ws.cell(row=header_row, column=col).value).strip().lower()
-        for col in range(1, ws.max_column + 1)
+        for col in range(2, ws.max_column + 1)  # pula coluna 1
     ]
 
     field_map = {
@@ -211,18 +226,15 @@ def add_record(excel_path: str, sheet_name: str, record: dict):
         "vencimento": ["vencimento"],
         "valor": ["valor"],
         "estado": ["estado"],
-        # ⚠️ "situacao" tem fórmula e não deve ser preenchida
         "boleto": ["boleto", "boleto anexo"],
         "comprovante": ["comprovante", "comprovante de pagto"]
     }
 
-    # Corrigir deslocamento por causa da coluna 1 estética
     col_pos = {}
     for key, names in field_map.items():
         idx = next((i for i, h in enumerate(headers) if h in names), None)
-        col_pos[key] = idx + 1 + 1 if idx is not None else None  # +1 índice +1 coluna vazia
+        col_pos[key] = idx + 2 if idx is not None else None  # +2 por conta da coluna vazia
 
-    # Encontra próxima linha vazia com base no campo "fornecedor"
     col_forn = col_pos.get("fornecedor", 3)
     next_row = ws.max_row + 1
     for r in range(header_row + 1, ws.max_row + 2):
@@ -230,16 +242,27 @@ def add_record(excel_path: str, sheet_name: str, record: dict):
             next_row = r
             break
 
-    # Escreve cada campo (exceto "situacao")
     for key, col in col_pos.items():
         if not col or key == "situacao":
             continue
         val = record.get(key, "")
-        if key in ("data_nf", "vencimento") and val:
-            if isinstance(val, pd.Timestamp):
-                val = val.to_pydatetime()
-            elif isinstance(val, date) and not isinstance(val, datetime):
-                val = datetime(val.year, val.month, val.day)
+
+        if key in ("data_nf", "vencimento"):
+            try:
+                val = pd.to_datetime(val, errors="coerce")
+                if pd.notna(val):
+                    val = val.to_pydatetime()
+                else:
+                    continue
+            except:
+                continue
+
+        if key == "valor":
+            try:
+                val = float(val)
+            except:
+                val = None
+
         ws.cell(row=next_row, column=col, value=val)
 
     wb.save(excel_path)
