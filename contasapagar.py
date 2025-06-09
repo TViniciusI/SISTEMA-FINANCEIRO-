@@ -148,11 +148,12 @@ def save_data(excel_path: str, sheet_name: str, df: pd.DataFrame):
     ]
 
     field_map = {
-        "data_nf": [
+     "data_nf": [
             "data documento",
             "data_nf",
             "data n/f",
             "data n/ffornecedor",
+            "data n/fornecedor",
             "data da nota fiscal",
         ],
         "forma_pagamento": ["descrição", "forma_pagamento", "forma de pagamento"],
@@ -208,10 +209,11 @@ def add_record(excel_path: str, sheet_name: str, record: dict):
     ]
 
     field_map = {
-        "data_nf": [
+         "data_nf": [
             "data documento",
             "data_nf",
             "data n/f",
+            "data n/ffornecedor",
             "data n/fornecedor",
             "data da nota fiscal",
         ],
@@ -241,17 +243,18 @@ def add_record(excel_path: str, sheet_name: str, record: dict):
             break
 
     # Escreve cada campo, convertendo datas
-    for key, col in col_pos.items():
-        if not col:
+   for key, col in col_pos.items():␊
+        if not col or key == "situacao":
+            # evita sobrescrever formulas da coluna de situação
             continue
         val = record.get(key, "")
-        # agora tratamos data_nf e vencimento exatamente igual
-        if key in ("data_nf", "vencimento") and val:
-            if isinstance(val, pd.Timestamp):
-                val = val.to_pydatetime()
-            elif isinstance(val, date) and not isinstance(val, datetime):
-                val = datetime(val.year, val.month, val.day)
-        ws.cell(row=next_row, column=col, value=val)
+        if key in ("data_nf", "vencimento") and val:␊
+            if isinstance(val, pd.Timestamp):␊
+                val = val.to_pydatetime()␊
+            elif isinstance(val, date) and not isinstance(val, datetime):␊
+                val = datetime(val.year, val.month, val.day)␊
+        ws.cell(row=next_row, column=col, value=val)␊
+
 
     wb.save(excel_path)
 
@@ -633,10 +636,7 @@ elif page == "Contas a Pagar":
             table_placeholder.dataframe(df_display[cols_para_exibir], height=250)
     st.markdown("---")
     st.subheader("💾 Exportar Aba Atual")
-    try:
-        df_to_save = load_data(EXCEL_PAGAR, aba)
-        if not df_to_save.empty:
-            save_data(EXCEL_PAGAR, aba, df_to_save)
+ try:
         with open(EXCEL_PAGAR, "rb") as fx:
             bytes_data = fx.read()
         st.download_button(
@@ -853,9 +853,6 @@ elif page == "Contas a Receber":
     st.markdown("---")
     st.subheader("💾 Exportar Aba Atual")
     try:
-        df_to_save = load_data(EXCEL_RECEBER, aba)
-        if not df_to_save.empty:
-            save_data(EXCEL_RECEBER, aba, df_to_save)
         with open(EXCEL_RECEBER, "rb") as fx:
             bytes_data = fx.read()
         st.download_button(
