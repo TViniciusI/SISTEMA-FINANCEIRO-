@@ -152,7 +152,7 @@ def save_data(excel_path: str, sheet_name: str, df: pd.DataFrame):
             "data documento",
             "data_nf",
             "data n/f",
-            "data n/fornecedor",
+            "data n/ffornecedor",
             "data da nota fiscal",
         ],
         "forma_pagamento": ["descrição", "forma_pagamento", "forma de pagamento"],
