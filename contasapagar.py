@@ -141,19 +141,17 @@ def save_data(excel_path: str, sheet_name: str, df: pd.DataFrame):
     wb = load_workbook(excel_path)
     ws = wb[sheet_name]
 
-     header_row = 8␊
-    headers = [␊
-        str(ws.cell(row=header_row, column=col).value).strip().lower()␊
-        for col in range(1, ws.max_column + 1)␊
-    ]␊
-
+    header_row = 8
+    headers = [
+        str(ws.cell(row=header_row, column=col).value).strip().lower()
+        for col in range(1, ws.max_column + 1)
+    ]
 
     field_map = {
-       "data_nf": [
+        "data_nf": [
             "data documento",
             "data_nf",
             "data n/f",
-            "data n/ffornecedor",
             "data n/fornecedor",
             "data da nota fiscal",
         ],
@@ -193,9 +191,7 @@ def save_data(excel_path: str, sheet_name: str, df: pd.DataFrame):
 
     wb.save(excel_path)
 
-def add_record(excel_path: str, sheet_name: str, record: dict) -> None:
-    """Adiciona um novo registro na aba especificada sem alterar formulas."""
-
+def add_record(excel_path: str, sheet_name: str, record: dict):
     wb = load_workbook(excel_path)
     if sheet_name not in wb.sheetnames:
         numeric = [s for s in wb.sheetnames if s.isdigit()]
@@ -211,12 +207,11 @@ def add_record(excel_path: str, sheet_name: str, record: dict) -> None:
         for col in range(1, ws.max_column + 1)
     ]
 
-   field_map = {
+    field_map = {
         "data_nf": [
             "data documento",
             "data_nf",
             "data n/f",
-            "data n/ffornecedor",
             "data n/fornecedor",
             "data da nota fiscal",
         ],
@@ -228,7 +223,7 @@ def add_record(excel_path: str, sheet_name: str, record: dict) -> None:
         "estado": ["estado"],
         "situacao": ["situação", "situacao"],
         "boleto": ["boleto"],
-        "comprovante": ["comprovante"],
+        "comprovante": ["comprovante"]
     }
 
     # Localiza colunas pelo cabeçalho
@@ -247,17 +242,16 @@ def add_record(excel_path: str, sheet_name: str, record: dict) -> None:
 
     # Escreve cada campo, convertendo datas
     for key, col in col_pos.items():
-        if not col or key == "situacao":
-            # evita sobrescrever formulas da coluna de situação
+        if not col:
             continue
         val = record.get(key, "")
+        # agora tratamos data_nf e vencimento exatamente igual
         if key in ("data_nf", "vencimento") and val:
             if isinstance(val, pd.Timestamp):
                 val = val.to_pydatetime()
             elif isinstance(val, date) and not isinstance(val, datetime):
                 val = datetime(val.year, val.month, val.day)
         ws.cell(row=next_row, column=col, value=val)
-
 
     wb.save(excel_path)
 
@@ -639,7 +633,10 @@ elif page == "Contas a Pagar":
             table_placeholder.dataframe(df_display[cols_para_exibir], height=250)
     st.markdown("---")
     st.subheader("💾 Exportar Aba Atual")
-try:
+    try:
+        df_to_save = load_data(EXCEL_PAGAR, aba)
+        if not df_to_save.empty:
+            save_data(EXCEL_PAGAR, aba, df_to_save)
         with open(EXCEL_PAGAR, "rb") as fx:
             bytes_data = fx.read()
         st.download_button(
@@ -855,7 +852,10 @@ elif page == "Contas a Receber":
             table_placeholder_r.dataframe(df_display[cols_para_exibir], height=250)
     st.markdown("---")
     st.subheader("💾 Exportar Aba Atual")
-     try:
+    try:
+        df_to_save = load_data(EXCEL_RECEBER, aba)
+        if not df_to_save.empty:
+            save_data(EXCEL_RECEBER, aba, df_to_save)
         with open(EXCEL_RECEBER, "rb") as fx:
             bytes_data = fx.read()
         st.download_button(
