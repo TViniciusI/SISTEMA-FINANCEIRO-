@@ -45,6 +45,36 @@ EXCEL_RECEBER = "Contas a Receber 2025 Sistema.xlsx"
 ANEXOS_DIR    = "anexos"
 FULL_MONTHS   = [f"{i:02d}" for i in range(1, 13)]
 
+def detect_field(header: str) -> str | None:
+    """Mapea o texto do cabeçalho para o nome de coluna utilizado no código."""
+    if not header:
+        return None
+    nome = str(header).strip().lower()
+    nome_limpo = nome.replace(" ", "").replace("_", "")
+    if ("data" in nome and ("nf" in nome_limpo or "n/f" in nome_limpo)) or "data da nota fiscal" in nome or "data nota fiscal" in nome:
+        return "data_nf"
+    if "forma" in nome and "pagamento" in nome:
+        return "forma_pagamento"
+    if nome == "descrição":
+        return "forma_pagamento"
+    if "fornecedor" in nome:
+        return "fornecedor"
+    if nome == "documento" or "os interna" in nome or "os_interna" in nome or nome.startswith("os"):
+        return "os"
+    if "vencimento" in nome:
+        return "vencimento"
+    if "valor" in nome:
+        return "valor"
+    if nome == "estado":
+        return "estado"
+    if "situa" in nome:
+        return "situacao"
+    if "comprov" in nome:
+        return "comprovante"
+    if "boleto" in nome:
+        return "boleto"
+    return None
+
 def get_existing_sheets(excel_path: str) -> list[str]:
     try:
         wb = pd.ExcelFile(excel_path)
@@ -76,36 +106,9 @@ def load_data(excel_path: str, sheet_name: str) -> pd.DataFrame:
 
     rename_map = {}
     for col in df.columns:
-        nome = str(col).strip().lower()
-        # detecta Vários cabeçalhos
-        if (
-            ("data" in nome and "nf" in nome)
-            or ("data da nota fiscal" in nome)
-            or ("data nota fiscal" in nome)
-        ):
-            rename_map[col] = "data_nf"
-        elif "forma" in nome and "pagamento" in nome:
-            rename_map[col] = "forma_pagamento"
-        elif nome == "descrição":
-            rename_map[col] = "forma_pagamento"
-        elif nome == "fornecedor":
-            rename_map[col] = "fornecedor"
-        elif "os" in nome:
-            rename_map[col] = "os"
-        elif nome == "documento":
-            rename_map[col] = "os"
-        elif "vencimento" in nome:
-            rename_map[col] = "vencimento"
-        elif "valor" in nome:
-            rename_map[col] = "valor"
-        elif nome == "estado":
-            rename_map[col] = "estado"
-        elif "situa" in nome:
-            rename_map[col] = "situacao"
-        elif "comprov" in nome:
-            rename_map[col] = "comprovante"
-        elif "boleto" in nome:
-            rename_map[col] = "boleto"
+        key = detect_field(col)
+        if key:
+            rename_map[col] = key
 
     df = df.rename(columns=rename_map)
     df = df[[c for c in df.columns if c in cols]].dropna(subset=["fornecedor", "valor"], how="all").reset_index(drop=True)
@@ -127,49 +130,18 @@ def load_data(excel_path: str, sheet_name: str) -> pd.DataFrame:
                 status_list.append("Sem Data")
     df["status_pagamento"] = status_list
     return df
-
-def rename_col_index(ws, target_name: str) -> int:
-    for row in ws.iter_rows(min_row=1, max_row=100, min_col=1, max_col=ws.max_column):
-        for cell in row:
-            if cell.value and str(cell.value).strip().lower() == target_name.lower():
-                return cell.column
-    defaults = {"vencimento": 5, "valor": 6, "estado": 7, "situação": 8}
-    return defaults.get(target_name.lower(), 1)
-
 def save_data(excel_path: str, sheet_name: str, df: pd.DataFrame):
     """Sobrescreve todos os registros da aba especificada com os dados do DataFrame."""
     wb = load_workbook(excel_path)
     ws = wb[sheet_name]
 
     header_row = 8
-    headers = [
-        str(ws.cell(row=header_row, column=col).value).strip().lower()
-        for col in range(1, ws.max_column + 1)
-    ]
-
-    field_map = {
-        "data_nf": [
-            "data documento",
-            "data_nf",
-            "data n/f",
-            "data n/fornecedor",
-            "data da nota fiscal",
-        ],
-        "forma_pagamento": ["descrição", "forma_pagamento", "forma de pagamento"],
-        "fornecedor": ["fornecedor"],
-        "os": ["documento", "os", "os interna", "os_interna"],
-        "vencimento": ["vencimento"],
-        "valor": ["valor"],
-        "estado": ["estado"],
-        "situacao": ["situação", "situacao"],
-        "boleto": ["boleto"],
-        "comprovante": ["comprovante"],
-    }
-
-    col_pos = {}
-    for key, names in field_map.items():
-        idx = next((i for i, h in enumerate(headers) if h in names), None)
-        col_pos[key] = idx + 1 if idx is not None else None
+    headers = {}
+    for col in range(1, ws.max_column + 1):
+        campo = detect_field(ws.cell(row=header_row, column=col).value)
+        if campo:
+            headers[campo] = col
+    col_pos = headers
 
     # remove linhas existentes (a partir da linha 9)
     if ws.max_row > header_row:
@@ -202,35 +174,12 @@ def add_record(excel_path: str, sheet_name: str, record: dict):
         ws = wb[sheet_name]
 
     header_row = 8
-    headers = [
-        str(ws.cell(row=header_row, column=col).value).strip().lower()
-        for col in range(1, ws.max_column + 1)
-    ]
-
-    field_map = {
-        "data_nf": [
-            "data documento",
-            "data_nf",
-            "data n/f",
-            "data n/fornecedor",
-            "data da nota fiscal",
-        ],
-        "forma_pagamento": ["descrição", "forma_pagamento", "forma de pagamento"],
-        "fornecedor": ["fornecedor"],
-        "os": ["documento", "os", "os interna", "os_interna"],
-        "vencimento": ["vencimento"],
-        "valor": ["valor"],
-        "estado": ["estado"],
-        "situacao": ["situação", "situacao"],
-        "boleto": ["boleto"],
-        "comprovante": ["comprovante"]
-    }
-
-    # Localiza colunas pelo cabeçalho
-    col_pos = {}
-    for key, names in field_map.items():
-        idx = next((i for i, h in enumerate(headers) if h in names), None)
-        col_pos[key] = idx + 1 if idx is not None else None
+    headers = {}
+    for col in range(1, ws.max_column + 1):
+        campo = detect_field(ws.cell(row=header_row, column=col).value)
+        if campo:
+            headers[campo] = col
+    col_pos = headers
 
     # Encontra próxima linha vazia
     next_row = ws.max_row + 1
