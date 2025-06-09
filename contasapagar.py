@@ -54,10 +54,12 @@ def get_existing_sheets(excel_path: str) -> list[str]:
             if nome.lower() == "tutorial":
                 continue
             if nome.isdigit():
-                numeric_sheets.append(nome)
-        return sorted(numeric_sheets)
+                nome_formatado = f"{int(nome):02d}"  # transforma "4" → "04"
+                numeric_sheets.append(nome_formatado)
+        return sorted(set(numeric_sheets))
     except Exception:
         return []
+
 
 def load_data(excel_path: str, sheet_name: str) -> pd.DataFrame:
     cols = [
@@ -66,23 +68,31 @@ def load_data(excel_path: str, sheet_name: str) -> pd.DataFrame:
     ]
     if not os.path.isfile(excel_path):
         return pd.DataFrame(columns=cols + ["status_pagamento"])
-    existing = get_existing_sheets(excel_path)
-    if sheet_name not in existing:
-        return pd.DataFrame(columns=cols + ["status_pagamento"])
+    
+    # nova lógica: encontra aba real (ex: "04" → "4")
+    sheet_lookup = {}
     try:
-        df = pd.read_excel(excel_path, sheet_name=sheet_name, skiprows=7, header=0)
+        with pd.ExcelFile(excel_path) as wb:
+            for s in wb.sheet_names:
+                nome = s.strip()
+                if nome.lower() != "tutorial" and nome.isdigit():
+                    sheet_lookup[f"{int(nome):02d}"] = nome
+    except:
+        return pd.DataFrame(columns=cols + ["status_pagamento"])
+
+    if sheet_name not in sheet_lookup:
+        return pd.DataFrame(columns=cols + ["status_pagamento"])
+    real_sheet = sheet_lookup[sheet_name]
+
+    try:
+        df = pd.read_excel(excel_path, sheet_name=real_sheet, skiprows=7, header=0)
     except Exception:
         return pd.DataFrame(columns=cols + ["status_pagamento"])
 
     rename_map = {}
     for col in df.columns:
         nome = str(col).strip().lower()
-        # detecta Vários cabeçalhos
-        if (
-            ("data" in nome and "nf" in nome)
-            or ("data da nota fiscal" in nome)
-            or ("data nota fiscal" in nome)
-        ):
+        if ("data" in nome and "nf" in nome) or "data da nota fiscal" in nome:
             rename_map[col] = "data_nf"
         elif "forma" in nome and "pagamento" in nome:
             rename_map[col] = "forma_pagamento"
@@ -90,9 +100,7 @@ def load_data(excel_path: str, sheet_name: str) -> pd.DataFrame:
             rename_map[col] = "forma_pagamento"
         elif nome == "fornecedor":
             rename_map[col] = "fornecedor"
-        elif "os" in nome:
-            rename_map[col] = "os"
-        elif nome == "documento":
+        elif "os" in nome or nome == "documento":
             rename_map[col] = "os"
         elif "vencimento" in nome:
             rename_map[col] = "vencimento"
@@ -127,6 +135,7 @@ def load_data(excel_path: str, sheet_name: str) -> pd.DataFrame:
                 status_list.append("Sem Data")
     df["status_pagamento"] = status_list
     return df
+
 
 def rename_col_index(ws, target_name: str) -> int:
     for row in ws.iter_rows(min_row=1, max_row=100, min_col=1, max_col=ws.max_column):
@@ -452,7 +461,7 @@ elif page == "Contas a Pagar":
         st.info("Nenhum registro encontrado para este mês (ou a aba não existia).")
     view_sel = st.radio("Visualizar:", ["Todos", "Pagas", "Pendentes"], horizontal=True)
     if view_sel == "Pagas":
-        df_display = df[df["estado"].str.strip().str.lower() == "pago"].copy()
+        df_display = df[df["estado"].astype(str).str.strip().str.lower() == "pago"].copy()
     elif view_sel == "Pendentes":
         df_display = df[df["estado"].str.strip().str.lower() != "pago"].copy()
     else:
@@ -519,7 +528,7 @@ elif page == "Contas a Pagar":
                 df = load_data(EXCEL_PAGAR, aba)
                 st.success("Registro atualizado com sucesso!")
                 if view_sel == "Pagas":
-                    df_display = df[df["estado"].str.strip().str.lower() == "pago"].copy()
+                    df_display = df[df["estado"].astype(str).str.strip().str.lower() == "pago"].copy()
                 elif view_sel == "Pendentes":
                     df_display = df[df["estado"].str.strip().str.lower() != "pago"].copy()
                 else:
@@ -551,7 +560,7 @@ elif page == "Contas a Pagar":
                 df = load_data(EXCEL_PAGAR, aba)
                 st.success("Registro removido com sucesso!")
                 if view_sel == "Pagas":
-                    df_display = df[df["estado"].str.strip().str.lower() == "pago"].copy()
+                    df_display = df[df["estado"].astype(str).str.strip().str.lower() == "pago"].copy()
                 elif view_sel == "Pendentes":
                     df_display = df[df["estado"].str.strip().str.lower() != "pago"].copy()
                 else:
