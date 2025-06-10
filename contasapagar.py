@@ -674,64 +674,26 @@ elif page == "Contas a Pagar":
                 st.success(f"Documento salvo em: {destino}")
     st.markdown("---")
 
-
-
-    
-     with st.expander("➕ Adicionar Nova Conta"):
+    # ➕ Adicionar Nova Conta
+    with st.expander("➕ Adicionar Nova Conta"):
         coln1, coln2 = st.columns(2)
         with coln1:
-            data_nf   = st.date_input(
-                "Data N/F:",
-                value=date.today(),
-                key="nova_data_nf_receber"
-            )
-            forma_pag = st.text_input(
-                "Descrição:",
-                key="nova_descricao_receber"
-            )
-            forn_new  = st.text_input(
-                "Fornecedor:",
-                key="novo_fornecedor_receber"
-            )
+            data_nf   = st.date_input("Data N/F:", value=date.today(), key="nova_data_nf_receber")
+            forma_pag = st.text_input("Descrição:", key="nova_descricao_receber")
+            forn_new  = st.text_input("Fornecedor:", key="novo_fornecedor_receber")
         with coln2:
-            os_new    = st.text_input(
-                "Documento/OS:",
-                key="novo_os_receber"
-            )
-            venc_new  = st.date_input(
-                "Data de Vencimento:",
-                value=date.today(),
-                key="novo_venc_receber"
-            )
-            valor_new = st.number_input(
-                "Valor (R$):",
-                min_value=0.0,
-                format="%.2f",
-                key="novo_valor_receber2"
-            )
+            os_new    = st.text_input("Documento/OS:", key="novo_os_receber")
+            venc_new  = st.date_input("Data de Vencimento:", value=date.today(), key="novo_venc_receber")
+            valor_new = st.number_input("Valor (R$):", min_value=0.0, format="%.2f", key="novo_valor_receber2")
 
-        estado_opt   = ["A Receber", "Recebido"]
-        situ_opt     = ["Em Atraso", "Recebido", "A Receber"]
-        estado_new   = st.selectbox(
-            "Estado:",
-            options=estado_opt,
-            key="estado_novo_receber"
-        )
-        situ_new     = st.selectbox(
-            "Situação:",
-            options=situ_opt,
-            key="situacao_novo_receber"
-        )
-        boleto_file   = st.file_uploader(
-            "Boleto (opcional):",
-            type=["pdf", "jpg", "png"],
-            key="boleto_novo_receber"
-        )
-        comprov_file = st.file_uploader(
-            "Comprovante (opcional):",
-            type=["pdf", "jpg", "png"],
-            key="comprov_novo_receber"
-        )
+        estado_opt = ["A Receber", "Recebido"]
+        situ_opt   = ["Em Atraso", "Recebido", "A Receber"]
+        estado_new = st.selectbox("Estado:", options=estado_opt, key="estado_novo_receber")
+        situ_new   = st.selectbox("Situação:", options=situ_opt,   key="situacao_novo_receber")
+        boleto_file   = st.file_uploader("Boleto (opcional):",   type=["pdf","jpg","png"], key="boleto_novo_receber")
+        comprov_file = st.file_uploader("Comprovante (opcional):", type=["pdf","jpg","png"], key="comprov_novo_receber")
+
+        if st.button("➕ Adicionar Conta", key="adicionar_receber"):
 
         if st.button("➕ Adicionar Conta", key="adicionar_receber"):
             record = {
