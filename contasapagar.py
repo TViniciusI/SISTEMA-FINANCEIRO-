@@ -674,6 +674,9 @@ elif page == "Contas a Pagar":
                 st.success(f"Documento salvo em: {destino}")
     st.markdown("---")
 
+
+
+    
      with st.expander("➕ Adicionar Nova Conta"):
         coln1, coln2 = st.columns(2)
         with coln1:
@@ -788,6 +791,9 @@ elif page == "Contas a Pagar":
             # Recarrega a tabela com o novo registro
             df = load_data(EXCEL_RECEBER, aba)
             table_placeholder_r.dataframe(df[cols_para_exibir], height=250)
+
+
+
 
     st.markdown("---")
     st.subheader("💾 Exportar Aba Atual")
@@ -1032,6 +1038,9 @@ elif page == "Contas a Pagar":
             df = load_data(EXCEL_RECEBER, aba)
             table_placeholder_r.dataframe(df[cols_para_exibir], height=250)
 
+
+
+
     st.markdown("---")
     st.subheader("💾 Exportar Aba Atual")
     try:
@@ -1048,6 +1057,9 @@ elif page == "Contas a Pagar":
         )
     except Exception as e:
         st.error(f"Erro ao preparar download: {e}")
+
+
+
 
 st.markdown("""
 <div style="text-align: center; font-size:12px; color:gray; margin-top: 20px;">
