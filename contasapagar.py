@@ -605,28 +605,45 @@ elif page == "Contas a Pagar":
     # 🗑️ Remover Registro (Contas a Pagar)
     with st.expander("🗑️ Remover Registro"):
         if not df_display.empty:
-            idx_rem = st.number_input( …, key="remover_pagar")
+            idx_rem = st.number_input(
+                "Índice da linha para remover:",
+                min_value=0,
+                max_value=len(df_display) - 1,
+                step=1,
+                key="remover_pagar"
+            )
             if st.button("Remover", key="btn_remover_pagar"):
+                # 1) Remove do DataFrame em memória
                 rec_rem = df_display.iloc[idx_rem]
                 orig_idx = rec_rem.name
-
-                # 1) Remove do DataFrame
                 df_display = df_display.drop(orig_idx).reset_index(drop=True)
 
                 # 2) Reescreve a aba no Excel usando pandas
                 import pandas as pd
                 with pd.ExcelWriter(EXCEL_PAGAR, engine="openpyxl", mode="a", if_sheet_exists="replace") as writer:
-                    # começa na linha 8 (header_row + 1)
-                    df_display.to_excel(writer, sheet_name=aba, index=False, startrow=7)
+                    df_display.to_excel(
+                        writer,
+                        sheet_name=aba,
+                        index=False,
+                        startrow=7  # mantém cabeçalho das 8 primeiras linhas
+                    )
 
                 st.success("Registro removido com sucesso!")
 
-                # 3) Recarrega e exibe
+                # 3) Recarrega e exibe a tabela
                 df = load_data(EXCEL_PAGAR, aba)
-                # reaplica view_sel e filtros...
+                if view_sel == "Pagas":
+                    df_display = df[df["status_pagamento"] == "Pago"].copy()
+                elif view_sel == "Pendentes":
+                    df_display = df[df["status_pagamento"] != "Pago"].copy()
+                else:
+                    df_display = df.copy()
+                if forn != "Todos":
+                    df_display = df_display[df_display["fornecedor"] == forn]
+
                 cols_show       = ["data_nf","fornecedor","valor","vencimento","estado","status_pagamento"]
-                cols_to_display = [c for c in cols_show if c in df.columns]
-                table_placeholder.dataframe(df[cols_to_display], height=250)
+                cols_to_display = [c for c in cols_show if c in df_display.columns]
+                table_placeholder.dataframe(df_display[cols_to_display], height=250)
 
 
     st.markdown("---")
