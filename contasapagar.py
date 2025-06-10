@@ -694,8 +694,6 @@ elif page == "Contas a Pagar":
         comprov_file = st.file_uploader("Comprovante (opcional):", type=["pdf","jpg","png"], key="comprov_novo_receber")
 
         if st.button("➕ Adicionar Conta", key="adicionar_receber"):
-
-        if st.button("➕ Adicionar Conta", key="adicionar_receber"):
             record = {
                 "data_nf":        data_nf,
                 "forma_pagamento": forma_pag,
