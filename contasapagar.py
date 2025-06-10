@@ -811,7 +811,6 @@ elif page == "Contas a Pagar":
         )
     except Exception as e:
         st.error(f"Erro ao preparar download: {e}")
-
     st.markdown("---")
 
     # ✏️ Editar Registro
@@ -1037,9 +1036,6 @@ elif page == "Contas a Pagar":
 
             df = load_data(EXCEL_RECEBER, aba)
             table_placeholder_r.dataframe(df[cols_para_exibir], height=250)
-
-
-
 
     st.markdown("---")
     st.subheader("💾 Exportar Aba Atual")
