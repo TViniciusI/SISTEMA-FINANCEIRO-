@@ -931,7 +931,7 @@ elif page == "Contas a Receber":
                 if status_sel != "Todos":
                     df_display = df_display[df_display["status_pagamento"] == status_sel]
                 table_placeholder_r.dataframe(df_display[cols_show], height=250)
-    # 📎 Anexar Documentos
+       # 📎 Anexar Documentos
     with st.expander("📎 Anexar Documentos"):
         if not df_display.empty:
             idx2 = st.number_input(
@@ -942,18 +942,22 @@ elif page == "Contas a Receber":
                 key=f"idx_anex_receber_{aba}"
             )
             rec2 = df_display.iloc[idx2]
-            orig2 = df.index[
-                (df["fornecedor"]==rec2["fornecedor"]) &
-                (df["valor"]==rec2["valor"]) &
-                (df["vencimento"]==rec2["vencimento"])
-            ][0]
+            orig2 = rec2.name  # usa o índice da linha filtrada
+
             up = st.file_uploader(
-                "Selecione (pdf/jpg/png):", type=["pdf","jpg","png"], key=f"up_rec_{aba}_{idx2}"
+                "Selecione (pdf/jpg/png):",
+                type=["pdf", "jpg", "png"],
+                key=f"up_receber_{aba}_{idx2}"
             )
             if up:
-                dest = os.path.join(ANEXOS_DIR, "Contas a Receber", f"Receber_{aba}_{orig2}_{up.name}")
-                with open(dest, "wb") as f: f.write(up.getbuffer())
-                st.success(f"Documento salvo em: {dest}")
+                destino = os.path.join(
+                    ANEXOS_DIR,
+                    "Contas a Receber",
+                    f"Receber_{aba}_{orig2}_{up.name}"
+                )
+                with open(destino, "wb") as f:
+                    f.write(up.getbuffer())
+                st.success(f"Documento salvo em: {destino}")
 
     # ➕ Adicionar Nova Conta
     with st.expander("➕ Adicionar Nova Conta"):
