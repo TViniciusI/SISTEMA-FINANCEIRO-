@@ -606,7 +606,6 @@ elif page == "Contas a Pagar":
      # 🗑️ Remover Registro (Contas a Pagar)
     with st.expander("🗑️ Remover Registro"):
         if not df_display.empty:
-            # seleciona o índice na tabela filtrada
             idx_rem = st.number_input(
                 "Índice da linha para remover:",
                 min_value=0,
@@ -614,24 +613,50 @@ elif page == "Contas a Pagar":
                 step=1,
                 key="remover_pagar"
             )
-            # botão de remoção
             if st.button("Remover", key="btn_remover_pagar"):
-                # pega o registro e seu índice original
+                # pega o índice original no DataFrame
                 rec_rem = df_display.iloc[idx_rem]
                 orig_idx = rec_rem.name
 
-                # deleta a linha no Excel
+                # abre o Excel e limpa a linha
                 from openpyxl import load_workbook
                 wb = load_workbook(EXCEL_PAGAR)
                 ws = wb[aba]
                 header_row = 8
                 excel_row = header_row + 1 + orig_idx
-                ws.delete_rows(excel_row)
+
+                # mapeia onde estão as colunas importantes
+                headers = [
+                    str(ws.cell(row=header_row, column=col).value).strip().lower()
+                    for col in range(2, ws.max_column + 1)
+                ]
+                field_map = {
+                    "data_nf": ["data_nf", "data documento", "data da nota fiscal"],
+                    "forma_pagamento": ["forma_pagamento", "descrição"],
+                    "fornecedor": ["fornecedor"],
+                    "os": ["os", "documento"],
+                    "vencimento": ["vencimento"],
+                    "valor": ["valor"],
+                    "estado": ["estado"],
+                    "boleto": ["boleto"],
+                    "comprovante": ["comprovante"]
+                }
+                # identifica as colunas no Excel
+                cols_to_clear = []
+                for key, names in field_map.items():
+                    for i, h in enumerate(headers):
+                        if h in names:
+                            cols_to_clear.append(i + 2)  # +2 porque headers começa em col 2
+                            break
+
+                # limpa cada célula dessa linha
+                for col in cols_to_clear:
+                    ws.cell(row=excel_row, column=col, value=None)
+
                 wb.save(EXCEL_PAGAR)
+                st.success("Registro removido (conteúdo limpo) com sucesso!")
 
-                st.success("Registro removido com sucesso!")
-
-                # recarrega e reaplica filtros
+                # recarrega e atualiza a tabela
                 df = load_data(EXCEL_PAGAR, aba)
                 if view_sel == "Pagas":
                     df_display = df[df["status_pagamento"] == "Pago"].copy()
@@ -642,11 +667,9 @@ elif page == "Contas a Pagar":
                 if forn != "Todos":
                     df_display = df_display[df_display["fornecedor"] == forn]
 
-                # atualiza a tabela
                 cols_show       = ["data_nf","fornecedor","valor","vencimento","estado","status_pagamento"]
                 cols_to_display = [c for c in cols_show if c in df_display.columns]
                 table_placeholder.dataframe(df_display[cols_to_display], height=250)
-
 
 
     st.markdown("---")
