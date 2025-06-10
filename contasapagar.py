@@ -821,38 +821,64 @@ elif page == "Contas a Receber":
     st.markdown("---")
 
     
+    # ✏️ Editar Registro
     with st.expander("✏️ Editar Registro"):
-        idx = st.number_input(
-            "Índice da linha:",
-            min_value=0,
-            max_value=len(df_display) - 1,
-            step=1,
-            key="edit_receber"
-        )
-        if not df_display.empty:
-           rec = df_display.iloc[idx]
-           orig_idx = rec.name
+        if df_display.empty:
+            st.info("Nenhum registro para editar.")
+        else:
+            # Seleção de índice na tabela filtrada
+            idx = st.number_input(
+                "Índice da linha (baseado na lista acima):",
+                min_value=0,
+                max_value=len(df_display) - 1,
+                step=1,
+                key="edit_receber"
+            )
 
+            # Recupera a linha e seu índice original
+            rec = df_display.iloc[idx]
+            orig_idx = rec.name
 
-            c1, c2 = st.columns(2)
-            with c1:
-                new_val = st.number_input("Valor:", value=float(rec["valor"]), key="novo_valor_receber")
-                new_venc = st.date_input("Vencimento:", rec["vencimento"].date(), key="novo_vencimento_receber")
-            with c2:
+            # Campos para editar valor e vencimento
+            col1, col2 = st.columns(2)
+            with col1:
+                new_val = st.number_input(
+                    "Valor:",
+                    value=float(rec["valor"]),
+                    key="novo_valor_receber"
+                )
+                new_venc = st.date_input(
+                    "Vencimento:",
+                    rec["vencimento"].date() if pd.notna(rec["vencimento"]) else date.today(),
+                    key="novo_vencimento_receber"
+                )
+            with col2:
                 estado_opt = ["A Receber", "Recebido"]
-                sit_opt = ["Em Atraso", "Recebido", "A Receber"]
-                new_estado = st.selectbox("Estado:", options=estado_opt, index=estado_opt.index(rec["estado"]), key="novo_estado_receber")
-                new_sit = st.selectbox("Situação:", options=sit_opt, index=sit_opt.index(rec["situacao"]), key="nova_situacao_receber")
+                situ_opt   = ["Em Atraso", "Recebido", "A Receber"]
+                new_estado = st.selectbox(
+                    "Estado:",
+                    options=estado_opt,
+                    index=estado_opt.index(rec["estado"]) if rec["estado"] in estado_opt else 0,
+                    key="novo_estado_receber"
+                )
+                new_sit = st.selectbox(
+                    "Situação:",
+                    options=situ_opt,
+                    index=situ_opt.index(rec["situacao"]) if rec["situacao"] in situ_opt else 0,
+                    key="nova_situacao_receber"
+                )
 
+            # Botão de salvar
             if st.button("💾 Salvar Alterações", key="salvar_receber"):
-                df.at[orig_idx, "valor"] = new_val
+                # Atualiza o DataFrame original
+                df.at[orig_idx, "valor"]      = new_val
                 df.at[orig_idx, "vencimento"] = pd.to_datetime(new_venc)
-                df.at[orig_idx, "estado"] = new_estado
-                df.at[orig_idx, "situacao"] = new_sit
+                df.at[orig_idx, "estado"]     = new_estado
+                df.at[orig_idx, "situacao"]   = new_sit
                 save_data(EXCEL_RECEBER, aba, df)
                 st.success("Registro atualizado com sucesso!")
 
-                # recarrega e reaplica filtros
+                # Recarrega e reaplica filtros
                 df = load_data(EXCEL_RECEBER, aba)
                 if view_sel == "Recebidas":
                     df_display = df[df["status_pagamento"] == "Recebido"].copy()
@@ -864,7 +890,10 @@ elif page == "Contas a Receber":
                     df_display = df_display[df_display["fornecedor"] == forn]
                 if status_sel != "Todos":
                     df_display = df_display[df_display["status_pagamento"] == status_sel]
-                table_placeholder_r.dataframe(df_display[cols_show], height=250)
+
+                cols_show = ["data_nf", "fornecedor", "valor", "vencimento", "estado", "status_pagamento"]
+                cols_to_display = [c for c in cols_show if c in df_display.columns]
+                table_placeholder_r.dataframe(df_display[cols_to_display], height=250)
 
  # 🗑️ Remover Registro
     with st.expander("🗑️ Remover Registro"):
