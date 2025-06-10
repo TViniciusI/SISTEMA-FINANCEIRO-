@@ -226,10 +226,12 @@ def save_data(excel_path: str, sheet_name: str, df: pd.DataFrame):
 
 def add_record(excel_path: str, sheet_name: str, record: dict):
     from openpyxl import load_workbook
-    from datetime import datetime, date
+    import pandas as pd
+    from datetime import datetime
 
     wb = load_workbook(excel_path)
     if sheet_name not in wb.sheetnames:
+        # copia primeira aba numérica como template
         numeric = [s for s in wb.sheetnames if s.isdigit()]
         template_ws = wb[numeric[0]] if numeric else wb[wb.sheetnames[0]]
         ws = wb.copy_worksheet(template_ws)
@@ -238,59 +240,61 @@ def add_record(excel_path: str, sheet_name: str, record: dict):
         ws = wb[sheet_name]
 
     header_row = 8
+    # lê títulos para encontrar colunas
     headers = [
         str(ws.cell(row=header_row, column=col).value).strip().lower()
-        for col in range(2, ws.max_column + 1)  # pula coluna 1
+        for col in range(2, ws.max_column + 1)
     ]
 
     field_map = {
-        "data_nf": [
-            "data documento", "data_nf", "data n/f", "data n/fornecedor",
-            "data da nota fiscal", "data n/ffornecedor"
-        ],
+        "data_nf":       ["data documento", "data_nf", "data n/f", "data da nota fiscal"],
         "forma_pagamento": ["descrição", "forma_pagamento", "forma de pagamento"],
-        "fornecedor": ["fornecedor"],
-        "os": ["documento", "os", "os interna", "os_interna"],
-        "vencimento": ["vencimento"],
-        "valor": ["valor"],
-        "estado": ["estado"],
-        "boleto": ["boleto", "boleto anexo"],
-        "comprovante": ["comprovante", "comprovante de pagto"]
+        "fornecedor":    ["fornecedor"],
+        "os":            ["documento", "os", "os interna"],
+        "vencimento":    ["vencimento"],
+        "valor":         ["valor"],
+        "estado":        ["estado"],
+        "boleto":        ["boleto", "boleto anexo"],
+        "comprovante":   ["comprovante", "comprovante de pagto"]
     }
 
+    # mapeia posição de cada campo
     col_pos = {}
     for key, names in field_map.items():
         idx = next((i for i, h in enumerate(headers) if h in names), None)
-        col_pos[key] = idx + 2 if idx is not None else None  # +2 por conta da coluna vazia
+        col_pos[key] = idx + 2 if idx is not None else None
 
-    col_forn = col_pos.get("fornecedor", 3)
+    # fallback: garante que col_forn seja pelo menos 2
+    col_forn = col_pos.get("fornecedor")
+    if col_forn is None or col_forn < 2:
+        col_forn = 2
+
+    # encontra primeira linha vazia a partir de header_row+1
     next_row = ws.max_row + 1
     for r in range(header_row + 1, ws.max_row + 2):
         if not ws.cell(row=r, column=col_forn).value:
             next_row = r
             break
 
+    # preenche os valores
     for key, col in col_pos.items():
         if not col or key == "situacao":
             continue
         val = record.get(key, "")
-
         if key in ("data_nf", "vencimento"):
             try:
-                val = pd.to_datetime(val, errors="coerce")
-                if pd.notna(val):
-                    val = val.to_pydatetime()
+                dt = pd.to_datetime(val, errors="coerce")
+                if pd.notna(dt):
+                    val = dt.to_pydatetime()
                 else:
                     continue
             except:
                 continue
-
         if key == "valor":
             try:
                 val = float(val)
             except:
                 val = None
-
         ws.cell(row=next_row, column=col, value=val)
 
     wb.save(excel_path)
