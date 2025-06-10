@@ -510,6 +510,9 @@ elif page == "Contas a Pagar":
         table_placeholder = st.empty()
         table_placeholder.dataframe(df_display[cols_para_exibir], height=250)
     st.markdown("---")
+
+
+
    with st.expander("✏️ Editar Registro"):
     # … código para idx, rec, orig_idx …
     colv1, colv2 = st.columns(2)
