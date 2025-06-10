@@ -673,7 +673,8 @@ elif page == "Contas a Pagar":
                     f.write(uploaded.getbuffer())
                 st.success(f"Documento salvo em: {destino}")
     st.markdown("---")
-    with st.expander("➕ Adicionar Nova Conta"):
+    
+       with st.expander("➕ Adicionar Nova Conta"):
         coln1, coln2 = st.columns(2)
         with coln1:
             data_nf   = st.date_input("Data N/F:", value=date.today(), key="nova_data_nf_pagar")
@@ -683,18 +684,42 @@ elif page == "Contas a Pagar":
             os_new    = st.text_input("Documento/OS:", key="novo_os_pagar")
             venc_new  = st.date_input("Data de Vencimento:", value=date.today(), key="novo_venc_pagar")
             valor_new = st.number_input("Valor (R$):", min_value=0.0, format="%.2f", key="novo_valor_pagar2")
+
         estado_opt   = ["Em Aberto", "Pago"]
         situ_opt     = ["Em Atraso", "Pago", "Em Aberto"]
         estado_new   = st.selectbox("Estado:", options=estado_opt, key="estado_novo_pagar")
-        situ_new     = st.selectbox("Situação:", options=situ_opt,   key="situacao_novo_pagar")
+        situ_new     = st.selectbox("Situação:", options=situ_opt, key="situacao_novo_pagar")
         boleto_file   = st.file_uploader("Boleto (opcional):",   type=["pdf", "jpg", "png"], key="boleto_novo_pagar")
         comprov_file = st.file_uploader("Comprovante (opcional):", type=["pdf", "jpg", "png"], key="comprov_novo_pagar")
-                if st.button("➕ Adicionar Conta", key="adicionar_pagar"):
-            # monta record e salva no Excel
+
+        if st.button("➕ Adicionar Conta", key="adicionar_pagar"):
+            record = {
+                "data_nf":        data_nf,
+                "forma_pagamento": forma_pag,
+                "fornecedor":     forn_new,
+                "os":             os_new,
+                "vencimento":     venc_new,
+                "valor":          valor_new,
+                "estado":         estado_new,
+                "situacao":       situ_new,
+                "boleto":         "",
+                "comprovante":    ""
+            }
+            if boleto_file:
+                boleto_path = os.path.join(ANEXOS_DIR, "Contas a Pagar", f"Pagar_{aba}_boleto_{boleto_file.name}")
+                with open(boleto_path, "wb") as fb:
+                    fb.write(boleto_file.getbuffer())
+                record["boleto"] = boleto_path
+            if comprov_file:
+                comprov_path = os.path.join(ANEXOS_DIR, "Contas a Pagar", f"Pagar_{aba}_comprov_{comprov_file.name}")
+                with open(comprov_path, "wb") as fc:
+                    fc.write(comprov_file.getbuffer())
+                record["comprovante"] = comprov_path
+
             add_record(EXCEL_PAGAR, aba, record)
             st.success("Nova conta adicionada com sucesso!")
 
-            # mostra anexos
+            # ─── Exibe botões de download dos anexos ───
             if record.get("boleto"):
                 with open(record["boleto"], "rb") as f:
                     st.download_button(
@@ -714,6 +739,7 @@ elif page == "Contas a Pagar":
                         key=f"dl_comprov_{aba}"
                     )
 
+            # Recarrega a tabela com o novo registro
             df = load_data(EXCEL_PAGAR, aba)
             table_placeholder.dataframe(df[cols_para_exibir], height=250)
 
@@ -936,18 +962,42 @@ elif page == "Contas a Receber":
             os_new    = st.text_input("Documento/OS:", key="novo_os_receber")
             venc_new  = st.date_input("Data de Vencimento:", value=date.today(), key="novo_venc_receber")
             valor_new = st.number_input("Valor (R$):", min_value=0.0, format="%.2f", key="novo_valor_receber2")
-        estado_opt  = ["A Receber", "Recebido"]
-        situ_opt    = ["Em Atraso", "Recebido", "A Receber"]
-        estado_new  = st.selectbox("Estado:", options=estado_opt, key="estado_novo_receber")
-        situ_new    = st.selectbox("Situação:", options=situ_opt, key="situacao_novo_receber")
+
+        estado_opt   = ["A Receber", "Recebido"]
+        situ_opt     = ["Em Atraso", "Recebido", "A Receber"]
+        estado_new   = st.selectbox("Estado:", options=estado_opt, key="estado_novo_receber")
+        situ_new     = st.selectbox("Situação:", options=situ_opt, key="situacao_novo_receber")
         boleto_file   = st.file_uploader("Boleto (opcional):",   type=["pdf", "jpg", "png"], key="boleto_novo_receber")
         comprov_file = st.file_uploader("Comprovante (opcional):", type=["pdf", "jpg", "png"], key="comprov_novo_receber")
-             if st.button("➕ Adicionar Conta", key="adicionar_receber"):
-            # … seu código que monta `record` e faz add_record() …
+
+        if st.button("➕ Adicionar Conta", key="adicionar_receber"):
+            record = {
+                "data_nf":        data_nf,
+                "forma_pagamento": forma_pag,
+                "fornecedor":     forn_new,
+                "os":             os_new,
+                "vencimento":     venc_new,
+                "valor":          valor_new,
+                "estado":         estado_new,
+                "situacao":       situ_new,
+                "boleto":         "",
+                "comprovante":    ""
+            }
+            if boleto_file:
+                boleto_path = os.path.join(ANEXOS_DIR, "Contas a Receber", f"Receber_{aba}_boleto_{boleto_file.name}")
+                with open(boleto_path, "wb") as fb:
+                    fb.write(boleto_file.getbuffer())
+                record["boleto"] = boleto_path
+            if comprov_file:
+                comprov_path = os.path.join(ANEXOS_DIR, "Contas a Receber", f"Receber_{aba}_comprov_{comprov_file.name}")
+                with open(comprov_path, "wb") as fc:
+                    fc.write(comprov_file.getbuffer())
+                record["comprovante"] = comprov_path
+
             add_record(EXCEL_RECEBER, aba, record)
             st.success("Nova conta adicionada com sucesso!")
 
-            # ─── Exibição dos anexos que acabaram de ser salvos ───
+            # ─── Exibe botões de download dos anexos ───
             if record.get("boleto"):
                 with open(record["boleto"], "rb") as f:
                     st.download_button(
@@ -967,9 +1017,10 @@ elif page == "Contas a Receber":
                         key=f"dl_comprov_{aba}"
                     )
 
-            # Recarrega a tabela para incluir o novo registro
+            # Recarrega a tabela com o novo registro
             df = load_data(EXCEL_RECEBER, aba)
             table_placeholder_r.dataframe(df[cols_para_exibir], height=250)
+
 
     st.markdown("---")
     st.subheader("💾 Exportar Aba Atual")
