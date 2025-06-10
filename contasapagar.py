@@ -771,6 +771,10 @@ elif page == "Contas a Pagar":
         st.error(f"Erro ao preparar download: {e}")
     st.markdown("---")
 
+
+    elif page == "Contas a Receber":
+    st.subheader("🗂️ Contas a Receber")
+
     # ✏️ Editar Registro
     with st.expander("✏️ Editar Registro"):
         idx = st.number_input(
