@@ -510,31 +510,24 @@ elif page == "Contas a Pagar":
         table_placeholder = st.empty()
         table_placeholder.dataframe(df_display[cols_para_exibir], height=250)
     st.markdown("---")
-    with st.expander("✏️ Editar Registro"):
-        idx = st.number_input(
-            "Índice da linha (baseado na lista acima):",
-            min_value=0, max_value=len(df_display) - 1 if not df_display.empty else 0, step=1, key="edit_pagar"
+   with st.expander("✏️ Editar Registro"):
+    # … código para idx, rec, orig_idx …
+    colv1, colv2 = st.columns(2)
+    with colv2:
+        # usa lista fixa em vez de valores dinâmicos
+        estado_opt = ["Em Aberto", "Pago"]
+        try:
+            default_idx = estado_opt.index(str(rec["estado"]))
+        except ValueError:
+            default_idx = 0
+        new_estado = st.selectbox(
+            "Estado:",
+            options=estado_opt,
+            index=default_idx,
+            key="novo_estado_pagar"
         )
-        if not df_display.empty:
-            rec = df_display.iloc[idx]
-            orig_idx_candidates = df[
-                (df["fornecedor"] == rec["fornecedor"]) &
-                (df["valor"] == rec["valor"]) &
-                (df["vencimento"] == rec["vencimento"])
-            ].index
-            orig_idx = orig_idx_candidates[0] if len(orig_idx_candidates) > 0 else rec.name
-            colv1, colv2 = st.columns(2)
-            with colv1:
-                new_val = st.number_input("Valor:", value=float(rec["valor"]), key="novo_valor_pagar")
-                default_dt = rec["vencimento"].date() if pd.notna(rec["vencimento"]) else date.today()
-                new_venc = st.date_input("Vencimento:", value=default_dt, key="novo_vencimento_pagar")
-            with colv2:
-                estado_uni = df["estado"].dropna().astype(str).unique().tolist()
-                try:
-                    est_idx = estado_uni.index(str(rec["estado"]))
-                except ValueError:
-                    est_idx = 0
-                new_estado = st.selectbox("Estado:", options=estado_uni, index=est_idx, key="novo_estado_pagar")
+        # … resto do código para nova_sit, botão Salvar …
+
                 situ_uni = df["situacao"].dropna().astype(str).unique().tolist()
                 try:
                     sit_idx = situ_uni.index(str(rec["situacao"]))
@@ -569,29 +562,28 @@ elif page == "Contas a Pagar":
                 step=1,
                 key="remover_pagar",
             )
-            if st.button("Remover", key="btn_remover_pagar"):
-                rec_rem = df_display.iloc[idx_rem]
-                orig_idx_candidates = df[
-                    (df["fornecedor"] == rec_rem["fornecedor"]) &
-                    (df["valor"] == rec_rem["valor"]) &
-                    (df["vencimento"] == rec_rem["vencimento"])
-                ].index
-                orig_idx = orig_idx_candidates[0] if len(orig_idx_candidates) > 0 else rec_rem.name
-                df = df.drop(orig_idx).reset_index(drop=True)
-                save_data(EXCEL_PAGAR, aba, df)
-                df = load_data(EXCEL_PAGAR, aba)
-                st.success("Registro removido com sucesso!")
-                if view_sel == "Pagas":
-                    df_display = df[df["estado"].astype(str).str.strip().str.lower() == "pago"].copy()
-                elif view_sel == "Pendentes":
-                    df_display = df[df["estado"].str.strip().str.lower() != "pago"].copy()
-                else:
-                    df_display = df.copy()
-                if "forn" in locals() and forn != "Todos":
-                    df_display = df_display[df_display["fornecedor"] == forn]
-                if "status_sel" in locals() and status_sel != "Todos":
-                    df_display = df_display[df_display["estado"] == status_sel]
-                table_placeholder.dataframe(df_display[cols_para_exibir], height=250)
+           if st.button("Remover", key="btn_remover_receber"):
+            rec_rem = df_display.iloc[idx_rem_r]
+            orig_idx_candidates = df[
+                (df["fornecedor"] == rec_rem["fornecedor"]) &
+                (df["valor"]      == rec_rem["valor"]) &
+                (df["vencimento"] == rec_rem["vencimento"])
+            ].index
+            orig_idx = orig_idx_candidates[0] if len(orig_idx_candidates) > 0 else rec_rem.name
+
+            # abre o Excel e deleta a linha correspondente
+            from openpyxl import load_workbook
+            wb = load_workbook(EXCEL_RECEBER)
+            ws = wb[aba]  # aba é a string "01", "02", etc.
+            header_row = 8
+            excel_row = header_row + 1 + orig_idx  # calcula a linha exata no Excel
+            ws.delete_rows(excel_row)
+            wb.save(EXCEL_RECEBER)
+
+            st.success("Registro removido com sucesso!")
+            # recarrega os dados e a tabela
+            df = load_data(EXCEL_RECEBER, aba)
+            table_placeholder_r.dataframe(df_display[cols_para_exibir], height=250)
     st.markdown("---")
     with st.expander("📎 Anexar Documentos"):
         if not df_display.empty:
@@ -633,47 +625,34 @@ elif page == "Contas a Pagar":
         situ_new     = st.selectbox("Situação:", options=situ_opt,   key="situacao_novo_pagar")
         boleto_file   = st.file_uploader("Boleto (opcional):",   type=["pdf", "jpg", "png"], key="boleto_novo_pagar")
         comprov_file = st.file_uploader("Comprovante (opcional):", type=["pdf", "jpg", "png"], key="comprov_novo_pagar")
-        if st.button("➕ Adicionar Conta", key="adicionar_pagar"):
-            record = {
-                "data_nf": data_nf,
-                "forma_pagamento": forma_pag,
-                "fornecedor": forn_new,
-                "os": os_new,
-                "vencimento": venc_new,
-                "valor": valor_new,
-                "estado": estado_new,
-                "situacao": situ_new,
-                "boleto": "",
-                "comprovante": ""
-            }
-            if boleto_file:
-                boleto_path = os.path.join(
-                    ANEXOS_DIR, "Contas a Pagar", f"Pagar_{aba}_boleto_{boleto_file.name}"
-                )
-                with open(boleto_path, "wb") as fb:
-                    fb.write(boleto_file.getbuffer())
-                record["boleto"] = boleto_path
-            if comprov_file:
-                comprov_path = os.path.join(
-                    ANEXOS_DIR, "Contas a Pagar", f"Pagar_{aba}_comprov_{comprov_file.name}"
-                )
-                with open(comprov_path, "wb") as fc:
-                    fc.write(comprov_file.getbuffer())
-                record["comprovante"] = comprov_path
+                if st.button("➕ Adicionar Conta", key="adicionar_pagar"):
+            # monta record e salva no Excel
             add_record(EXCEL_PAGAR, aba, record)
             st.success("Nova conta adicionada com sucesso!")
+
+            # mostra anexos
+            if record.get("boleto"):
+                with open(record["boleto"], "rb") as f:
+                    st.download_button(
+                        label="📥 Baixar Boleto",
+                        data=f.read(),
+                        file_name=os.path.basename(record["boleto"]),
+                        mime="application/octet-stream",
+                        key=f"dl_boleto_{aba}"
+                    )
+            if record.get("comprovante"):
+                with open(record["comprovante"], "rb") as f:
+                    st.download_button(
+                        label="📥 Baixar Comprovante",
+                        data=f.read(),
+                        file_name=os.path.basename(record["comprovante"]),
+                        mime="application/octet-stream",
+                        key=f"dl_comprov_{aba}"
+                    )
+
             df = load_data(EXCEL_PAGAR, aba)
-            if view_sel == "Pagas":
-                df_display = df[df["estado"].str.strip().str.lower() == "pago"].copy()
-            elif view_sel == "Pendentes":
-                df_display = df[df["estado"].str.strip().str.lower() != "pago"].copy()
-            else:
-                df_display = df.copy()
-            if "forn" in locals() and forn != "Todos":
-                df_display = df_display[df_display["fornecedor"] == forn]
-            if "status_sel" in locals() and status_sel != "Todos":
-                df_display = df_display[df_display["estado"] == status_sel]
-            table_placeholder.dataframe(df_display[cols_para_exibir], height=250)
+            table_placeholder.dataframe(df[cols_para_exibir], height=250)
+
     st.markdown("---")
     st.subheader("💾 Exportar Aba Atual")
     try:
@@ -729,24 +708,21 @@ elif page == "Contas a Receber":
         table_placeholder_r = st.empty()
         table_placeholder_r.dataframe(df_display[cols_para_exibir], height=250)
     st.markdown("---")
-    with st.expander("✏️ Editar Registro"):
-        idx = st.number_input(
-            "Índice da linha (baseado na lista acima):",
-            min_value=0, max_value=len(df_display) - 1 if not df_display.empty else 0, step=1, key="edit_receber"
+   with st.expander("✏️ Editar Registro"):
+    # … idx, rec, orig_idx …
+    colv1, colv2 = st.columns(2)
+    with colv2:
+        estado_opt = ["A Receber", "Recebido"]
+        try:
+            default_idx = estado_opt.index(str(rec["estado"]))
+        except ValueError:
+            default_idx = 0
+        new_estado = st.selectbox(
+            "Estado:",
+            options=estado_opt,
+            index=default_idx,
+            key="novo_estado_receber"
         )
-        if not df_display.empty:
-            rec = df_display.iloc[idx]
-            orig_idx_candidates = df[
-                (df["fornecedor"] == rec["fornecedor"]) &
-                (df["valor"] == rec["valor"]) &
-                (df["vencimento"] == rec["vencimento"])
-            ].index
-            orig_idx = orig_idx_candidates[0] if len(orig_idx_candidates) > 0 else rec.name
-            colv1, colv2 = st.columns(2)
-            with colv1:
-                new_val = st.number_input("Valor:", value=float(rec["valor"]), key="novo_valor_receber")
-                default_dt = rec["vencimento"].date() if pd.notna(rec["vencimento"]) else date.today()
-                new_venc = st.date_input("Vencimento:", value=default_dt, key="novo_vencimento_receber")
             with colv2:
                 estado_uni = df["estado"].dropna().astype(str).unique().tolist()
                 try:
@@ -788,29 +764,27 @@ elif page == "Contas a Receber":
                 step=1,
                 key="remover_receber",
             )
-            if st.button("Remover", key="btn_remover_receber"):
-                rec_rem = df_display.iloc[idx_rem_r]
-                orig_idx_candidates = df[
-                    (df["fornecedor"] == rec_rem["fornecedor"]) &
-                    (df["valor"] == rec_rem["valor"]) &
-                    (df["vencimento"] == rec_rem["vencimento"])
-                ].index
-                orig_idx = orig_idx_candidates[0] if len(orig_idx_candidates) > 0 else rec_rem.name
-                df = df.drop(orig_idx).reset_index(drop=True)
-                save_data(EXCEL_RECEBER, aba, df)
-                df = load_data(EXCEL_RECEBER, aba)
-                st.success("Registro removido com sucesso!")
-                if view_sel == "Recebidas":
-                    df_display = df[df["estado"].str.strip().str.lower() == "recebido"].copy()
-                elif view_sel == "Pendentes":
-                    df_display = df[df["estado"].str.strip().str.lower() != "recebido"].copy()
-                else:
-                    df_display = df.copy()
-                if "forn" in locals() and forn != "Todos":
-                    df_display = df_display[df_display["fornecedor"] == forn]
-                if "status_sel" in locals() and status_sel != "Todos":
-                    df_display = df_display[df_display["estado"] == status_sel]
-                table_placeholder_r.dataframe(df_display[cols_para_exibir], height=250)
+             if st.button("Remover", key="btn_remover_pagar"):
+            rec_rem = df_display.iloc[idx_rem]
+            orig_idx_candidates = df[
+                (df["fornecedor"] == rec_rem["fornecedor"]) &
+                (df["valor"]      == rec_rem["valor"]) &
+                (df["vencimento"] == rec_rem["vencimento"])
+            ].index
+            orig_idx = orig_idx_candidates[0] if len(orig_idx_candidates) > 0 else rec_rem.name
+
+            from openpyxl import load_workbook
+            wb = load_workbook(EXCEL_PAGAR)
+            ws = wb[aba]
+            header_row = 8
+            excel_row = header_row + 1 + orig_idx
+            ws.delete_rows(excel_row)
+            wb.save(EXCEL_PAGAR)
+
+            st.success("Registro removido com sucesso!")
+            # recarrega
+            df = load_data(EXCEL_PAGAR, aba)
+            table_placeholder.dataframe(df_display[cols_para_exibir], height=250)
     st.markdown("---")
     with st.expander("📎 Anexar Documentos"):
         if not df_display.empty:
@@ -852,47 +826,35 @@ elif page == "Contas a Receber":
         situ_new    = st.selectbox("Situação:", options=situ_opt, key="situacao_novo_receber")
         boleto_file   = st.file_uploader("Boleto (opcional):",   type=["pdf", "jpg", "png"], key="boleto_novo_receber")
         comprov_file = st.file_uploader("Comprovante (opcional):", type=["pdf", "jpg", "png"], key="comprov_novo_receber")
-        if st.button("➕ Adicionar Conta", key="adicionar_receber"):
-            record = {
-                "data_nf": data_nf,
-                "forma_pagamento": forma_pag,
-                "fornecedor": forn_new,
-                "os": os_new,
-                "vencimento": venc_new,
-                "valor": valor_new,
-                "estado": estado_new,
-                "situacao": situ_new,
-                "boleto": "",
-                "comprovante": ""
-            }
-            if boleto_file:
-                boleto_path = os.path.join(
-                    ANEXOS_DIR, "Contas a Receber", f"Receber_{aba}_boleto_{boleto_file.name}"
-                )
-                with open(boleto_path, "wb") as fb:
-                    fb.write(boleto_file.getbuffer())
-                record["boleto"] = boleto_path
-            if comprov_file:
-                comprov_path = os.path.join(
-                    ANEXOS_DIR, "Contas a Receber", f"Receber_{aba}_comprov_{comprov_file.name}"
-                )
-                with open(comprov_path, "wb") as fc:
-                    fc.write(comprov_file.getbuffer())
-                record["comprovante"] = comprov_path
+             if st.button("➕ Adicionar Conta", key="adicionar_receber"):
+            # … seu código que monta `record` e faz add_record() …
             add_record(EXCEL_RECEBER, aba, record)
             st.success("Nova conta adicionada com sucesso!")
+
+            # ─── Exibição dos anexos que acabaram de ser salvos ───
+            if record.get("boleto"):
+                with open(record["boleto"], "rb") as f:
+                    st.download_button(
+                        label="📥 Baixar Boleto",
+                        data=f.read(),
+                        file_name=os.path.basename(record["boleto"]),
+                        mime="application/octet-stream",
+                        key=f"dl_boleto_{aba}"
+                    )
+            if record.get("comprovante"):
+                with open(record["comprovante"], "rb") as f:
+                    st.download_button(
+                        label="📥 Baixar Comprovante",
+                        data=f.read(),
+                        file_name=os.path.basename(record["comprovante"]),
+                        mime="application/octet-stream",
+                        key=f"dl_comprov_{aba}"
+                    )
+
+            # Recarrega a tabela para incluir o novo registro
             df = load_data(EXCEL_RECEBER, aba)
-            if view_sel == "Recebidas":
-                df_display = df[df["estado"].str.strip().str.lower() == "recebido"].copy()
-            elif view_sel == "Pendentes":
-                df_display = df[df["estado"].str.strip().str.lower() != "recebido"].copy()
-            else:
-                df_display = df.copy()
-            if "forn" in locals() and forn != "Todos":
-                df_display = df_display[df_display["fornecedor"] == forn]
-            if "status_sel" in locals() and status_sel != "Todos":
-                df_display = df_display[df_display["estado"] == status_sel]
-            table_placeholder_r.dataframe(df_display[cols_para_exibir], height=250)
+            table_placeholder_r.dataframe(df[cols_para_exibir], height=250)
+
     st.markdown("---")
     st.subheader("💾 Exportar Aba Atual")
     try:
