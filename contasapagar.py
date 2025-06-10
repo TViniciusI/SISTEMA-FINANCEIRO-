@@ -602,49 +602,31 @@ elif page == "Contas a Pagar":
                     df_display[cols_para_exibir],
                     height=250
                 )
-    # 🗑️ Remover Registro (Contas a Receber)
+    # 🗑️ Remover Registro (Contas a Pagar)
     with st.expander("🗑️ Remover Registro"):
-        if df_display.empty:
-            st.info("Nenhum registro para remover.")
-        else:
-            idx_rem = st.number_input(
-                "Índice da linha para remover:",
-                min_value=0,
-                max_value=len(df_display) - 1,
-                step=1,
-                key="remover_receber"
-            )
-            if st.button("Remover", key="btn_remover_receber"):
-                # 1) Remove do DataFrame
-                df_display = df_display.drop(df_display.index[idx_rem]).reset_index(drop=True)
-                # 2) Reescreve a aba com pandas
-                import pandas as pd
-                from openpyxl import load_workbook
-                wb = load_workbook(EXCEL_RECEBER)
-                with pd.ExcelWriter(EXCEL_RECEBER, engine="openpyxl", mode="a", if_sheet_exists="replace") as writer:
-                    writer.book = wb
-                    df_display.to_excel(
-                        writer,
-                        sheet_name=aba,
-                        index=False,
-                        startrow=7
-                    )
-                    writer.save()
-                st.success("Registro removido com sucesso!")
-                # 3) Recarrega e reaplica filtros
-                df = load_data(EXCEL_RECEBER, aba)
-                if view_sel == "Recebidas":
-                    df_display = df[df["status_pagamento"] == "Recebido"].copy()
-                elif view_sel == "Pendentes":
-                    df_display = df[df["status_pagamento"] != "Recebido"].copy()
-                else:
-                    df_display = df.copy()
-                if forn != "Todos":
-                    df_display = df_display[df_display["fornecedor"] == forn]
-                cols_show       = ["data_nf","fornecedor","valor","vencimento","estado","status_pagamento"]
-                cols_to_display = [c for c in cols_show if c in df_display.columns]
-                table_placeholder_r.dataframe(df_display[cols_to_display], height=250)
+        if not df_display.empty:
+            idx_rem = st.number_input( …, key="remover_pagar")
+            if st.button("Remover", key="btn_remover_pagar"):
+                rec_rem = df_display.iloc[idx_rem]
+                orig_idx = rec_rem.name
 
+                # 1) Remove do DataFrame
+                df_display = df_display.drop(orig_idx).reset_index(drop=True)
+
+                # 2) Reescreve a aba no Excel usando pandas
+                import pandas as pd
+                with pd.ExcelWriter(EXCEL_PAGAR, engine="openpyxl", mode="a", if_sheet_exists="replace") as writer:
+                    # começa na linha 8 (header_row + 1)
+                    df_display.to_excel(writer, sheet_name=aba, index=False, startrow=7)
+
+                st.success("Registro removido com sucesso!")
+
+                # 3) Recarrega e exibe
+                df = load_data(EXCEL_PAGAR, aba)
+                # reaplica view_sel e filtros...
+                cols_show       = ["data_nf","fornecedor","valor","vencimento","estado","status_pagamento"]
+                cols_to_display = [c for c in cols_show if c in df.columns]
+                table_placeholder.dataframe(df[cols_to_display], height=250)
 
 
     st.markdown("---")
