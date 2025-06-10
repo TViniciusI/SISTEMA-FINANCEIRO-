@@ -66,11 +66,10 @@ def load_data(excel_path: str, sheet_name: str) -> pd.DataFrame:
         "data_nf", "forma_pagamento", "fornecedor", "os",
         "vencimento", "valor", "estado", "situacao", "boleto", "comprovante"
     ]
-    # se não existir, retorna vazio
     if not os.path.isfile(excel_path):
         return pd.DataFrame(columns=cols + ["status_pagamento"])
-    
-    # mapeia aba "02" → "2", etc.
+
+    # encontra aba real ("04" → "4")
     sheet_lookup = {}
     try:
         with pd.ExcelFile(excel_path) as wb:
@@ -80,15 +79,13 @@ def load_data(excel_path: str, sheet_name: str) -> pd.DataFrame:
                     sheet_lookup[f"{int(nome):02d}"] = nome
     except:
         return pd.DataFrame(columns=cols + ["status_pagamento"])
-
     if sheet_name not in sheet_lookup:
         return pd.DataFrame(columns=cols + ["status_pagamento"])
     real_sheet = sheet_lookup[sheet_name]
 
-    # lê o Excel pulando cabeçalhos
     try:
         df = pd.read_excel(excel_path, sheet_name=real_sheet, skiprows=7, header=0)
-    except Exception:
+    except:
         return pd.DataFrame(columns=cols + ["status_pagamento"])
 
     # renomeia colunas para padrão
@@ -102,6 +99,8 @@ def load_data(excel_path: str, sheet_name: str) -> pd.DataFrame:
         elif nome == "descrição":
             rename_map[col] = "forma_pagamento"
         elif nome == "fornecedor":
+            rename_map[col] = "fornecedor"
+        elif "cliente" in nome:                  # ← aqui
             rename_map[col] = "fornecedor"
         elif "os" in nome or nome == "documento":
             rename_map[col] = "os"
@@ -118,18 +117,22 @@ def load_data(excel_path: str, sheet_name: str) -> pd.DataFrame:
         elif "boleto" in nome:
             rename_map[col] = "boleto"
 
-    df = (
-        df.rename(columns=rename_map)
-          [[c for c in df.columns if c in cols]]
-          .dropna(subset=["fornecedor", "valor"], how="all")
-          .reset_index(drop=True)
-    )
+    # aplica renome, seleciona só as colunas que interessam
+    df = df.rename(columns=rename_map)
+    df = df[[c for c in df.columns if c in cols]]
 
-    # converte data e valor
+    # garante colunas mínimas para o dropna
+    for obrig in ["fornecedor", "valor"]:
+        if obrig not in df.columns:
+            df[obrig] = pd.NA
+
+    df = df.dropna(subset=["fornecedor", "valor"], how="all").reset_index(drop=True)
+
+    # converte tipos
     df["vencimento"] = pd.to_datetime(df["vencimento"], errors="coerce")
     df["valor"]      = pd.to_numeric(df["valor"], errors="coerce")
 
-    # detecta se estamos carregando Receber
+    # detecta se é Contas a Receber
     is_receber = os.path.basename(excel_path).lower() == EXCEL_RECEBER.lower()
 
     # monta status_pagamento
@@ -137,21 +140,21 @@ def load_data(excel_path: str, sheet_name: str) -> pd.DataFrame:
     hoje = datetime.now().date()
     for _, row in df.iterrows():
         estado_atual = str(row.get("estado", "")).strip().lower()
-        # caso já esteja marcado como pago/recebido
         if estado_atual == ("recebido" if is_receber else "pago"):
             status_list.append("Recebido" if is_receber else "Pago")
         else:
             data_venc = row["vencimento"].date() if pd.notna(row["vencimento"]) else None
             if data_venc:
-                if data_venc < hoje:
-                    status_list.append("Em Atraso")
-                else:
-                    status_list.append("A Receber" if is_receber else "A Vencer")
+                status_list.append(
+                    "Em Atraso" if data_venc < hoje
+                    else ("A Receber" if is_receber else "A Vencer")
+                )
             else:
                 status_list.append("Sem Data")
 
     df["status_pagamento"] = status_list
     return df
+
 
 def rename_col_index(ws, target_name: str) -> int:
     for row in ws.iter_rows(min_row=1, max_row=100, min_col=1, max_col=ws.max_column):
