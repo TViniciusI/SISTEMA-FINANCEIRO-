@@ -773,8 +773,57 @@ elif page == "Contas a Pagar":
 
 
 elif page == "Contas a Receber":
-    st.subheader("🗂️ Contas a Receber")    
+    st.subheader("🗂️ Contas a Receber")
 
+    # 1) Seletor de mês e carregamento dos dados
+    aba = st.selectbox(
+        "Selecione o mês:",
+        FULL_MONTHS,
+        index=FULL_MONTHS.index(date.today().strftime("%m"))
+    )
+    df = load_data(EXCEL_RECEBER, aba)
+
+    # 2) Definição de df_display via view_sel
+    view_sel = st.radio(
+        "Visualizar:",
+        ["Todos", "Recebidas", "Pendentes"],
+        horizontal=True
+    )
+    if view_sel == "Recebidas":
+        df_display = df[df["status_pagamento"] == "Recebido"].copy()
+    elif view_sel == "Pendentes":
+        df_display = df[df["status_pagamento"] != "Recebido"].copy()
+    else:
+        df_display = df.copy()
+
+    # 3) Filtros adicionais
+    with st.expander("🔍 Filtros"):
+        col1, col2 = st.columns(2)
+        with col1:
+            forn = st.selectbox(
+                "Fornecedor",
+                ["Todos"] + sorted(df["fornecedor"].dropna().astype(str).unique())
+            )
+        with col2:
+            status_sel = st.selectbox(
+                "Status",
+                ["Todos"] + sorted(df["status_pagamento"].dropna().unique())
+            )
+
+    if forn != "Todos":
+        df_display = df_display[df_display["fornecedor"] == forn]
+    if status_sel != "Todos":
+        df_display = df_display[df_display["status_pagamento"] == status_sel]
+
+    st.markdown("<hr>", unsafe_allow_html=True)
+    if df_display.empty:
+        st.warning("Nenhum registro para os filtros selecionados.")
+    else:
+        cols_show = ["data_nf","fornecedor","valor","vencimento","estado","status_pagamento"]
+        table_placeholder_r = st.empty()
+        table_placeholder_r.dataframe(df_display[cols_show], height=250)
+
+    st.markdown("---")
     # ✏️ Editar Registro
     with st.expander("✏️ Editar Registro"):
         idx = st.number_input(
