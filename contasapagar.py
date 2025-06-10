@@ -69,7 +69,7 @@ def load_data(excel_path: str, sheet_name: str) -> pd.DataFrame:
     if not os.path.isfile(excel_path):
         return pd.DataFrame(columns=cols + ["status_pagamento"])
 
-    # encontra aba real ("04" → "4")
+    # mapeia abas numéricas ("04" → "4")
     sheet_lookup = {}
     try:
         with pd.ExcelFile(excel_path) as wb:
@@ -88,7 +88,7 @@ def load_data(excel_path: str, sheet_name: str) -> pd.DataFrame:
     except:
         return pd.DataFrame(columns=cols + ["status_pagamento"])
 
-    # renomeia colunas para padrão
+    # renomeia colunas
     rename_map = {}
     for col in df.columns:
         nome = str(col).strip().lower()
@@ -98,9 +98,7 @@ def load_data(excel_path: str, sheet_name: str) -> pd.DataFrame:
             rename_map[col] = "forma_pagamento"
         elif nome == "descrição":
             rename_map[col] = "forma_pagamento"
-        elif nome == "fornecedor":
-            rename_map[col] = "fornecedor"
-        elif "cliente" in nome:                  # ← aqui
+        elif nome == "fornecedor" or "cliente" in nome:
             rename_map[col] = "fornecedor"
         elif "os" in nome or nome == "documento":
             rename_map[col] = "os"
@@ -117,11 +115,10 @@ def load_data(excel_path: str, sheet_name: str) -> pd.DataFrame:
         elif "boleto" in nome:
             rename_map[col] = "boleto"
 
-    # aplica renome, seleciona só as colunas que interessam
     df = df.rename(columns=rename_map)
     df = df[[c for c in df.columns if c in cols]]
 
-    # garante colunas mínimas para o dropna
+    # garante colunas mínimas
     for obrig in ["fornecedor", "valor"]:
         if obrig not in df.columns:
             df[obrig] = pd.NA
@@ -132,23 +129,25 @@ def load_data(excel_path: str, sheet_name: str) -> pd.DataFrame:
     df["vencimento"] = pd.to_datetime(df["vencimento"], errors="coerce")
     df["valor"]      = pd.to_numeric(df["valor"], errors="coerce")
 
-    # detecta se é Contas a Receber
-    is_receber = os.path.basename(excel_path).lower() == EXCEL_RECEBER.lower()
+    # detecta modo: Pagar ou Receber
+    is_receber = (excel_path == EXCEL_RECEBER)
 
     # monta status_pagamento
     status_list = []
     hoje = datetime.now().date()
     for _, row in df.iterrows():
         estado_atual = str(row.get("estado", "")).strip().lower()
+        # já pago / recebido
         if estado_atual == ("recebido" if is_receber else "pago"):
             status_list.append("Recebido" if is_receber else "Pago")
         else:
             data_venc = row["vencimento"].date() if pd.notna(row["vencimento"]) else None
             if data_venc:
-                status_list.append(
-                    "Em Atraso" if data_venc < hoje
-                    else ("A Receber" if is_receber else "A Vencer")
-                )
+                if data_venc < hoje:
+                    status_list.append("Em Atraso")
+                else:
+                    # pendentes: Em Aberto (pagar) ou A Receber (receber)
+                    status_list.append("A Receber" if is_receber else "Em Aberto")
             else:
                 status_list.append("Sem Data")
 
