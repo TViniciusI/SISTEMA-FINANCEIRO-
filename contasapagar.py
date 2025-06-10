@@ -820,9 +820,12 @@ elif page == "Contas a Receber":
         st.warning("Nenhum registro para os filtros selecionados.")
     else:
         cols_show = ["data_nf", "fornecedor", "valor", "vencimento", "estado", "status_pagamento"]
+        # filtra apenas as colunas presentes no DataFrame
+        cols_to_display = [c for c in cols_show if c in df_display.columns]
         table_placeholder_r = st.empty()
-        table_placeholder_r.dataframe(df_display[cols_show], height=250)
+        table_placeholder_r.dataframe(df_display[cols_to_display], height=250)
     st.markdown("---")
+
     
     with st.expander("✏️ Editar Registro"):
         idx = st.number_input(
