@@ -673,7 +673,7 @@ elif page == "Contas a Pagar":
                     f.write(uploaded.getbuffer())
                 st.success(f"Documento salvo em: {destino}")
     st.markdown("---")
-    
+
      with st.expander("➕ Adicionar Nova Conta"):
         coln1, coln2 = st.columns(2)
         with coln1:
