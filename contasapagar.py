@@ -772,8 +772,8 @@ elif page == "Contas a Pagar":
     st.markdown("---")
 
 
-    elif page == "Contas a Receber":
-    st.subheader("🗂️ Contas a Receber")
+elif page == "Contas a Receber":
+    st.subheader("🗂️ Contas a Receber")    
 
     # ✏️ Editar Registro
     with st.expander("✏️ Editar Registro"):
@@ -1015,9 +1015,6 @@ elif page == "Contas a Pagar":
         )
     except Exception as e:
         st.error(f"Erro ao preparar download: {e}")
-
-
-
 
 st.markdown("""
 <div style="text-align: center; font-size:12px; color:gray; margin-top: 20px;">
