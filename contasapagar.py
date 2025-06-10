@@ -830,12 +830,9 @@ elif page == "Contas a Receber":
             key="edit_receber"
         )
         if not df_display.empty:
-            rec = df_display.iloc[idx]
-            orig_idx = df.index[
-                (df["fornecedor"] == rec["fornecedor"]) &
-                (df["valor"] == rec["valor"]) &
-                (df["vencimento"] == rec["vencimento"])
-            ][0]
+           rec = df_display.iloc[idx]
+           orig_idx = rec.name
+
 
             c1, c2 = st.columns(2)
             with c1:
