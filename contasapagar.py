@@ -612,13 +612,7 @@ elif page == "Contas a Pagar":
             )
             # botão dentro do mesmo expander e com key paga
             if st.button("Remover", key="btn_remover_pagar"):
-                rec_rem = df_display.iloc[idx_rem]
-                orig_idx_candidates = df[
-                    (df["fornecedor"] == rec_rem["fornecedor"]) &
-                    (df["valor"]      == rec_rem["valor"]) &
-                    (df["vencimento"] == rec_rem["vencimento"])
-                ].index
-                orig_idx = orig_idx_candidates[0] if len(orig_idx_candidates) > 0 else rec_rem.name
+                orig_idx = df_display.index[idx_r]  # ou diretamente rec_rem.name
     
                 from openpyxl import load_workbook
                 wb = load_workbook(EXCEL_PAGAR)
