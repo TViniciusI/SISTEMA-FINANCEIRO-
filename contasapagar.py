@@ -600,53 +600,51 @@ elif page == "Contas a Pagar":
                     height=250
                 )
 
-    with st.expander("🗑️ Remover Registro"):
-        if not df_display.empty:
-            idx_rem = st.number_input(
-                "Índice da linha para remover:",
-                min_value=0,
-                max_value=len(df_display) - 1,
-                step=1,
-                key="remover_pagar",
-            )
-    if st.button("Remover", key="btn_remover_receber"):
-        # 1) identifica o índice original
-        rec_rem = df_display.iloc[idx_rem_r]
-        orig_idx_candidates = df[
-            (df["fornecedor"] == rec_rem["fornecedor"]) &
-            (df["valor"]      == rec_rem["valor"]) &
-            (df["vencimento"] == rec_rem["vencimento"])
-        ].index
-        orig_idx = orig_idx_candidates[0] if len(orig_idx_candidates) > 0 else rec_rem.name
+ # 🗑️ Remover Registro (Contas a Pagar)
+with st.expander("🗑️ Remover Registro"):
+    if not df_display.empty:
+        idx_rem = st.number_input(
+            "Índice da linha para remover:",
+            min_value=0,
+            max_value=len(df_display) - 1,
+            step=1,
+            key="remover_pagar"
+        )
+        # botão dentro do mesmo expander e com key paga
+        if st.button("Remover", key="btn_remover_pagar"):
+            rec_rem = df_display.iloc[idx_rem]
+            orig_idx_candidates = df[
+                (df["fornecedor"] == rec_rem["fornecedor"]) &
+                (df["valor"]      == rec_rem["valor"]) &
+                (df["vencimento"] == rec_rem["vencimento"])
+            ].index
+            orig_idx = orig_idx_candidates[0] if len(orig_idx_candidates) > 0 else rec_rem.name
 
-        # 2) remove a linha no arquivo Excel
-        from openpyxl import load_workbook
-        wb = load_workbook(EXCEL_RECEBER)
-        ws = wb[aba]  # aba ex: "03"
-        header_row = 8
-        excel_row = header_row + 1 + orig_idx
-        ws.delete_rows(excel_row)
-        wb.save(EXCEL_RECEBER)
+            from openpyxl import load_workbook
+            wb = load_workbook(EXCEL_PAGAR)
+            ws = wb[aba]
+            header_row = 8
+            excel_row = header_row + 1 + orig_idx
+            ws.delete_rows(excel_row)
+            wb.save(EXCEL_PAGAR)
 
-        st.success("Registro removido com sucesso!")
+            st.success("Registro removido com sucesso!")
 
-        # 3) recarrega os dados e reaplica filtros
-        df = load_data(EXCEL_RECEBER, aba)
-        # refaz view_sel
-        if view_sel == "Recebidas":
-            df_display = df[df["status_pagamento"] == "Recebido"].copy()
-        elif view_sel == "Pendentes":
-            df_display = df[df["status_pagamento"] != "Recebido"].copy()
-        else:
-            df_display = df.copy()
-        # reaplica filtros de Fornecedor / Status, se houver
-        if forn != "Todos":
-            df_display = df_display[df_display["fornecedor"] == forn]
-        if status_sel != "Todos":
-            df_display = df_display[df_display["status_pagamento"] == status_sel]
+            # recarrega display
+            df = load_data(EXCEL_PAGAR, aba)
+            if view_sel == "Pagas":
+                df_display = df[df["status_pagamento"] == "Pago"].copy()
+            elif view_sel == "Pendentes":
+                df_display = df[df["status_pagamento"] != "Pago"].copy()
+            else:
+                df_display = df.copy()
+            if forn != "Todos":
+                df_display = df_display[df_display["fornecedor"] == forn]
+            if status_sel != "Todos":
+                df_display = df_display[df_display["status_pagamento"] == status_sel]
 
-        # 4) atualiza a tabela na UI
-        table_placeholder_r.dataframe(df_display[cols_para_exibir], height=250)
+            table_placeholder.dataframe(df_display[cols_para_exibir], height=250)
+
 
     st.markdown("---")
     with st.expander("📎 Anexar Documentos"):
