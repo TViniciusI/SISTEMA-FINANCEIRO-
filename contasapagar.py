@@ -668,27 +668,66 @@ elif page == "Contas a Pagar":
                     f.write(uploaded.getbuffer())
                 st.success(f"Documento salvo em: {destino}")
     st.markdown("---")
-
-    # ➕ Adicionar Nova Conta
+    # ➕ Adicionar Nova Conta (Contas a Pagar)
     with st.expander("➕ Adicionar Nova Conta"):
         coln1, coln2 = st.columns(2)
         with coln1:
-            data_nf   = st.date_input("Data N/F:", value=date.today(), key="nova_data_nf_receber")
-            forma_pag = st.text_input("Descrição:", key="nova_descricao_receber")
-            forn_new  = st.text_input("Fornecedor:", key="novo_fornecedor_receber")
+            data_nf   = st.date_input(
+                "Data N/F:",
+                value=date.today(),
+                key="nova_data_nf_pagar"
+            )
+            forma_pag = st.text_input(
+                "Descrição:",
+                key="nova_descricao_pagar"
+            )
+            forn_new  = st.text_input(
+                "Fornecedor:",
+                key="novo_fornecedor_pagar"
+            )
         with coln2:
-            os_new    = st.text_input("Documento/OS:", key="novo_os_receber")
-            venc_new  = st.date_input("Data de Vencimento:", value=date.today(), key="novo_venc_receber")
-            valor_new = st.number_input("Valor (R$):", min_value=0.0, format="%.2f", key="novo_valor_receber2")
+            os_new    = st.text_input(
+                "Documento/OS:",
+                key="novo_os_pagar"
+            )
+            venc_new  = st.date_input(
+                "Data de Vencimento:",
+                value=date.today(),
+                key="novo_venc_pagar"
+            )
+            valor_new = st.number_input(
+                "Valor (R$):",
+                min_value=0.0,
+                format="%.2f",
+                key="novo_valor_pagar2"
+            )
 
-        estado_opt = ["A Receber", "Recebido"]
-        situ_opt   = ["Em Atraso", "Recebido", "A Receber"]
-        estado_new = st.selectbox("Estado:", options=estado_opt, key="estado_novo_receber")
-        situ_new   = st.selectbox("Situação:", options=situ_opt,   key="situacao_novo_receber")
-        boleto_file   = st.file_uploader("Boleto (opcional):",   type=["pdf","jpg","png"], key="boleto_novo_receber")
-        comprov_file = st.file_uploader("Comprovante (opcional):", type=["pdf","jpg","png"], key="comprov_novo_receber")
+        # Opções para Contas a Pagar
+        estado_opt = ["Em Aberto", "Pago"]
+        situ_opt   = ["Em Atraso", "Pago", "Em Aberto"]
+        estado_new = st.selectbox(
+            "Estado:",
+            options=estado_opt,
+            key="estado_novo_pagar"
+        )
+        situ_new   = st.selectbox(
+            "Situação:",
+            options=situ_opt,
+            key="situacao_novo_pagar"
+        )
 
-        if st.button("➕ Adicionar Conta", key="adicionar_receber"):
+        boleto_file   = st.file_uploader(
+            "Boleto (opcional):",
+            type=["pdf", "jpg", "png"],
+            key="boleto_novo_pagar"
+        )
+        comprov_file = st.file_uploader(
+            "Comprovante (opcional):",
+            type=["pdf", "jpg", "png"],
+            key="comprov_novo_pagar"
+        )
+
+        if st.button("➕ Adicionar Conta", key="adicionar_pagar"):
             record = {
                 "data_nf":        data_nf,
                 "forma_pagamento": forma_pag,
@@ -701,29 +740,28 @@ elif page == "Contas a Pagar":
                 "boleto":         "",
                 "comprovante":    ""
             }
+            # salva anexos em pasta correta
             if boleto_file:
                 boleto_path = os.path.join(
-                    ANEXOS_DIR,
-                    "Contas a Receber",
-                    f"Receber_{aba}_boleto_{boleto_file.name}"
+                    ANEXOS_DIR, "Contas a Pagar",
+                    f"Pagar_{aba}_boleto_{boleto_file.name}"
                 )
                 with open(boleto_path, "wb") as fb:
                     fb.write(boleto_file.getbuffer())
                 record["boleto"] = boleto_path
             if comprov_file:
                 comprov_path = os.path.join(
-                    ANEXOS_DIR,
-                    "Contas a Receber",
-                    f"Receber_{aba}_comprov_{comprov_file.name}"
+                    ANEXOS_DIR, "Contas a Pagar",
+                    f"Pagar_{aba}_comprov_{comprov_file.name}"
                 )
                 with open(comprov_path, "wb") as fc:
                     fc.write(comprov_file.getbuffer())
                 record["comprovante"] = comprov_path
 
-            add_record(EXCEL_RECEBER, aba, record)
+            add_record(EXCEL_PAGAR, aba, record)
             st.success("Nova conta adicionada com sucesso!")
 
-            # ─── Exibe botões de download dos anexos ───
+            # botões de download dos anexos
             if record.get("boleto"):
                 with open(record["boleto"], "rb") as f:
                     st.download_button(
@@ -731,7 +769,7 @@ elif page == "Contas a Pagar":
                         data=f.read(),
                         file_name=os.path.basename(record["boleto"]),
                         mime="application/octet-stream",
-                        key=f"dl_boleto_{aba}"
+                        key=f"dl_boleto_pagar_{aba}"
                     )
             if record.get("comprovante"):
                 with open(record["comprovante"], "rb") as f:
@@ -740,14 +778,14 @@ elif page == "Contas a Pagar":
                         data=f.read(),
                         file_name=os.path.basename(record["comprovante"]),
                         mime="application/octet-stream",
-                        key=f"dl_comprov_{aba}"
+                        key=f"dl_comprov_pagar_{aba}"
                     )
 
-            # Recarrega a tabela com o novo registro
-            df = load_data(EXCEL_RECEBER, aba)
-            table_placeholder_r.dataframe(df[cols_para_exibir], height=250)
-
-
+            # Recarrega tabela
+            df = load_data(EXCEL_PAGAR, aba)
+            cols_show       = ["data_nf","fornecedor","valor","vencimento","estado","status_pagamento"]
+            cols_to_display = [c for c in cols_show if c in df.columns]
+            table_placeholder.dataframe(df[cols_to_display], height=250)
 
 
     st.markdown("---")
