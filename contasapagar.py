@@ -1036,8 +1036,12 @@ elif page == "Contas a Receber":
                         key=f"dl_comprov_{aba}"
                     )
 
+            # Recarrega e exibe o DataFrame atualizado
             df = load_data(EXCEL_RECEBER, aba)
-            table_placeholder_r.dataframe(df[cols_para_exibir], height=250)
+            # define quais colunas mostrar, verificando quais existem de fato
+            cols_show      = ["data_nf", "fornecedor", "valor", "vencimento", "estado", "status_pagamento"]
+            cols_to_display = [c for c in cols_show if c in df.columns]
+            table_placeholder_r.dataframe(df[cols_to_display], height=250)
 
     st.markdown("---")
     st.subheader("💾 Exportar Aba Atual")
