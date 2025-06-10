@@ -40,8 +40,8 @@ if not st.session_state.logged_in:
 logged_user = st.session_state.username
 st.sidebar.write(f"Logado como: **{logged_user}**")
 
-EXCEL_PAGAR   = "Contas a pagar 2025 Sistema.xlsx"
-EXCEL_RECEBER = "Contas a Receber 2025 Sistema.xlsx"
+EXCEL_PAGAR   = "Contas a pagar 2025.xlsx"
+EXCEL_RECEBER = "Contas a receber 2025.xlsx"
 ANEXOS_DIR    = "anexos"
 FULL_MONTHS   = [f"{i:02d}" for i in range(1, 13)]
 
