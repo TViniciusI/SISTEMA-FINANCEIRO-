@@ -6,6 +6,35 @@ from datetime import datetime, date
 import os
 from openpyxl import load_workbook
 
+VALID_USERS = {
+    "Vinicius": "vinicius4223",
+    "Flavio": "1234",
+}
+
+def check_login(username: str, password: str) -> bool:
+    return VALID_USERS.get(username) == password
+
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
+    st.session_state.username = ""
+
+if not st.session_state.logged_in:
+    st.write("\n" * 5)
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        st.title("🔒 Login")
+        username_input = st.text_input("Usuário:")
+        password_input = st.text_input("Senha:", type="password")
+        if st.button("Entrar"):
+            if check_login(username_input, password_input):
+                st.session_state.logged_in = True
+                st.session_state.username = username_input
+            else:
+                st.error("Usuário ou senha inválidos.")
+    st.stop()
+
+logged_user = st.session_state.username
+st.sidebar.write(f"Logado como: **{logged_user}**")
 
 # Constantes no início do arquivo (após as imports)
 EXCEL_PAGAR = "Contas a pagar 2025.xlsx"
