@@ -26,102 +26,114 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Estilos CSS personalizados
 st.markdown("""
 <style>
-    /* Fonte moderna */
+    /* Importa fonte Inter */
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
-    
+
     html, body, [class*="css"] {
         font-family: 'Inter', sans-serif;
     }
-    
-    /* Cabeçalho estilizado */
+
+    /* Cabeçalho */
     .header {
-        background: linear-gradient(135deg, #6e8efb, #a777e3);
+        background: linear-gradient(135deg, #4e54c8, #8f94fb);
         color: white;
         padding: 1.5rem;
-        border-radius: 10px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         margin-bottom: 1.5rem;
     }
-    
+
     /* Cards de métricas */
     .metric-card {
-        background: white;
-        border-radius: 10px;
+        background: #f9fafe;
+        border-radius: 12px;
         padding: 1.5rem;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-        border-left: 4px solid #6e8efb;
-        transition: transform 0.3s;
+        border-left: 4px solid #4e54c8;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        transition: transform 0.3s ease;
     }
-    
+
     .metric-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+        transform: translateY(-4px);
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
     }
-    
+
     .metric-value {
-        font-size: 2rem;
+        font-size: 2.2rem;
         font-weight: 600;
-        color: #2c3e50;
+        color: #2e3a59;
     }
-    
+
     .metric-label {
-        font-size: 0.9rem;
-        color: #7f8c8d;
+        font-size: 0.85rem;
+        color: #8898aa;
         text-transform: uppercase;
-        letter-spacing: 1px;
+        letter-spacing: 0.8px;
+        margin-top: 0.5rem;
     }
-    
-    /* Tabs estilizadas */
+
+    /* Tabs */
     .stTabs [role="tablist"] {
-        gap: 10px;
+        gap: 8px;
     }
-    
+
     .stTabs [role="tab"] {
-        padding: 10px 20px;
-        border-radius: 8px 8px 0 0;
+        padding: 10px 18px;
+        border-radius: 10px 10px 0 0;
         border: none;
-        background: #f1f3f6;
-        color: #7f8c8d;
+        background: #eaeef5;
+        color: #5a5f73;
         font-weight: 500;
-        transition: all 0.3s;
+        transition: all 0.3s ease;
     }
-    
+
     .stTabs [role="tab"][aria-selected="true"] {
-        background: #6e8efb;
-        color: white;
+        background: #4e54c8;
+        color: #ffffff;
     }
-    
-    /* Gráficos container */
+
+    /* Gráfico container */
     .chart-container {
-        background: white;
-        border-radius: 10px;
+        background: #ffffff;
+        border-radius: 12px;
         padding: 1.5rem;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        box-shadow: 0 1px 6px rgba(0, 0, 0, 0.04);
         margin-bottom: 1.5rem;
     }
-    
-    /* Botões estilizados */
-    .stButton>button {
+
+    /* Botões */
+    .stButton > button {
+        border-radius: 8px;
+        padding: 8px 18px;
+        font-weight: 500;
+        background-color: #4e54c8;
+        color: white;
+        transition: all 0.3s ease;
+        border: none;
+    }
+
+    .stButton > button:hover {
+        background-color: #3c40a4;
+        color: white;
+    }
+
+    .stDownloadButton > button {
+        background-color: #6c70f8;
+        color: white;
         border-radius: 8px;
         padding: 8px 16px;
         font-weight: 500;
-        transition: all 0.3s;
+        border: none;
     }
-    
-    .stDownloadButton>button {
-        background-color: #6e8efb;
-        color: white;
-    }
-    
-    .stDownloadButton>button:hover {
-        background-color: #5a7df4;
-        color: white;
+
+    .stDownloadButton > button:hover {
+        background-color: #5c61db;
     }
 </style>
 """, unsafe_allow_html=True)
+
 
 def get_existing_sheets(excel_path: str) -> list[str]:
     try:
