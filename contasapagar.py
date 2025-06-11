@@ -977,61 +977,55 @@ with st.expander("🗑️ Remover Registro"):
         )
 
         if st.button("Remover", key="btn_remover_receber"):
+            # Obtém o índice original no DataFrame completo
             rec_rem = df_display.iloc[idx_rem]
             orig_idx = rec_rem.name
-
-            from openpyxl import load_workbook
-            wb = load_workbook(EXCEL_RECEBER)
-            ws = wb[aba]
-            header_row = 8
-            excel_row = header_row + 1 + orig_idx
-
-            headers = [
-                str(ws.cell(row=header_row, column=col).value).strip().lower()
-                for col in range(2, ws.max_column + 1)
-            ]
-            field_map = {
-                "data_nf": ["data_nf", "data documento", "data da nota fiscal"],
-                "forma_pagamento": ["forma_pagamento", "descrição"],
-                "fornecedor": ["fornecedor"],
-                "os": ["os", "documento"],
-                "vencimento": ["vencimento"],
-                "valor": ["valor"],
-                "estado": ["estado"],
-                "boleto": ["boleto"],
-                "comprovante": ["comprovante"]
-            }
-
-            cols_to_clear = []
-            for key, names in field_map.items():
-                for i, h in enumerate(headers):
-                    if h in names:
-                        cols_to_clear.append(i + 2)
-                        break
-
-            for col in cols_to_clear:
-                ws.cell(row=excel_row, column=col, value=None)
-
-            wb.save(EXCEL_RECEBER)
-            st.success("Registro removido com sucesso!")
-
-            # recarrega e atualiza a tabela
-            df = load_data(EXCEL_RECEBER, aba)
-            if view_sel == "Recebidas":
-                df_display = df[df["status_pagamento"] == "Recebido"].copy()
-            elif view_sel == "Pendentes":
-                df_display = df[df["status_pagamento"] != "Recebido"].copy()
-            else:
-                df_display = df.copy()
-            if forn != "Todos":
-                df_display = df_display[df_display["fornecedor"] == forn]
-            if status_sel != "Todos":
-                df_display = df_display[df_display["status_pagamento"] == status_sel]
-
-            cols_show = ["data_nf", "fornecedor", "valor", "vencimento", "estado", "status_pagamento"]
-            cols_to_display = [c for c in cols_show if c in df_display.columns]
-            table_placeholder_r.dataframe(df_display[cols_to_display], height=250)
-
+            
+            try:
+                # Carrega o arquivo Excel
+                from openpyxl import load_workbook
+                wb = load_workbook(EXCEL_RECEBER)
+                ws = wb[aba]
+                
+                # Encontra a linha correspondente no Excel
+                # (assumindo que os dados começam na linha 9, com cabeçalho na 8)
+                excel_row = 9 + orig_idx  # ajuste conforme necessário
+                
+                # Verifica se a linha existe
+                if excel_row > ws.max_row:
+                    st.error("Linha não encontrada no arquivo Excel.")
+                else:
+                    # Limpa todas as células da linha (exceto a primeira coluna se necessário)
+                    for col in range(2, ws.max_column + 1):  # começa da coluna 2
+                        ws.cell(row=excel_row, column=col, value=None)
+                    
+                    # Salva as alterações
+                    wb.save(EXCEL_RECEBER)
+                    st.success("Registro removido com sucesso!")
+                    
+                    # Recarrega os dados para atualizar a visualização
+                    df = load_data(EXCEL_RECEBER, aba)
+                    
+                    # Reaplica os filtros
+                    if view_sel == "Recebidas":
+                        df_display = df[df["status_pagamento"] == "Recebido"].copy()
+                    elif view_sel == "Pendentes":
+                        df_display = df[df["status_pagamento"] != "Recebido"].copy()
+                    else:
+                        df_display = df.copy()
+                    
+                    if forn != "Todos":
+                        df_display = df_display[df_display["fornecedor"] == forn]
+                    if status_sel != "Todos":
+                        df_display = df_display[df_display["status_pagamento"] == status_sel]
+                    
+                    # Atualiza a tabela exibida
+                    cols_show = ["data_nf", "fornecedor", "valor", "vencimento", "estado", "status_pagamento"]
+                    cols_to_display = [c for c in cols_show if c in df_display.columns]
+                    table_placeholder_r.dataframe(df_display[cols_to_display], height=250)
+                    
+            except Exception as e:
+                st.error(f"Erro ao remover registro: {str(e)}")
 
 
 # 📎 Anexar Documentos (Contas a Receber)
