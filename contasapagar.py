@@ -973,76 +973,57 @@ elif page == "Contas a Pagar":
                 else:
                     st.error("Erro ao salvar alterações.")
 
-    with st.expander("🗑️ Remover Registro"):
-        if not df_display.empty:
-            idx_rem = st.number_input(
-                "Índice da linha para remover:",
-                min_value=0,
-                max_value=len(df_display) - 1,
-                step=1,
-                key="remover_pagar"
-            )
+with st.expander("🗑️ Remover Registro"):
+    if not df_display.empty:
+        idx_rem = st.number_input(
+            "Índice da linha para remover:",
+            min_value=0,
+            max_value=len(df_display) - 1,
+            step=1,
+            key="remover_pagar"
+        )
+        
+        if st.button("Remover", key="btn_remover_pagar"):
+            rec_rem = df_display.iloc[idx_rem]
+            orig_idx = rec_rem.name
             
-            if st.button("Remover", key="btn_remover_pagar"):
-                rec_rem = df_display.iloc[idx_rem]
-                orig_idx = rec_rem.name
+            try:
+                # Carrega o arquivo Excel
+                wb = load_workbook(EXCEL_PAGAR)
+                ws = wb[aba]
                 
-                try:
-                    wb = load_workbook(EXCEL_PAGAR)
-                    ws = wb[aba]
-                    header_row = 8
-                    excel_row = header_row + 1 + orig_idx
-                    
-                    headers = [
-                        str(ws.cell(row=header_row, column=col).value).strip().lower()
-                        for col in range(2, ws.max_column + 1)
-                    ]
-                    
-                    field_map = {
-                        "data_nf": ["data_nf", "data documento", "data da nota fiscal"],
-                        "forma_pagamento": ["forma_pagamento", "descrição"],
-                        "fornecedor": ["fornecedor"],
-                        "os": ["os", "documento"],
-                        "vencimento": ["vencimento"],
-                        "valor": ["valor"],
-                        "estado": ["estado"],
-                        "boleto": ["boleto"],
-                        "comprovante": ["comprovante"]
-                    }
-                    
-                    cols_to_clear = []
-                    for key, names in field_map.items():
-                        for i, h in enumerate(headers):
-                            if h in names:
-                                cols_to_clear.append(i + 2)
-                                break
-
-                    for col in cols_to_clear:
-                        ws.cell(row=excel_row, column=col, value=None)
-                    
-                    wb.save(EXCEL_PAGAR)
-                    st.success("Registro removido com sucesso!")
-                    
-                    # Recarrega dados
-                    df = load_data(EXCEL_PAGAR, aba)
-                    
-                    # Reaplica filtros
-                    if view_sel == "Pagas":
-                        df_display = df[df["status_pagamento"] == "Pago"].copy()
-                    elif view_sel == "Pendentes":
-                        df_display = df[df["status_pagamento"] != "Pago"].copy()
-                    else:
-                        df_display = df.copy()
-                    
-                    if forn != "Todos":
-                        df_display = df_display[df_display["fornecedor"] == forn]
-                    if status_sel != "Todos":
-                        df_display = df_display[df_display["estado"] == status_sel]
-                    
-                    table_placeholder.dataframe(df_display[cols_para_exibir], height=250)
-                    
-                except Exception as e:
-                    st.error(f"Erro ao remover registro: {e}")
+                # Encontra a linha correspondente (cabeçalho na linha 8, dados começam na 9)
+                excel_row = 9 + orig_idx
+                
+                # Remove a linha inteira
+                ws.delete_rows(excel_row)
+                
+                # Salva as alterações
+                wb.save(EXCEL_PAGAR)
+                st.success("Registro removido com sucesso!")
+                
+                # Recarrega os dados
+                df = load_data(EXCEL_PAGAR, aba)
+                
+                # Reaplica filtros
+                if view_sel == "Pagas":
+                    df_display = df[df["status_pagamento"] == "Pago"].copy()
+                elif view_sel == "Pendentes":
+                    df_display = df[df["status_pagamento"] != "Pago"].copy()
+                else:
+                    df_display = df.copy()
+                
+                if forn != "Todos":
+                    df_display = df_display[df_display["fornecedor"] == forn]
+                if status_sel != "Todos":
+                    df_display = df_display[df_display["estado"] == status_sel]
+                
+                # Atualiza a exibição
+                cols_para_exibir = [c for c in cols_esperadas if c in df_display.columns]
+                table_placeholder.dataframe(df_display[cols_para_exibir], height=250)
+                
+            except Exception as e:
+                st.error(f"Erro ao remover registro: {str(e)}")
 
     with st.expander("📎 Anexar Documentos"):
         if not df_display.empty:
@@ -1346,76 +1327,91 @@ elif page == "Contas a Receber":
                 else:
                     st.error("Erro ao salvar alterações.")
 
-    with st.expander("🗑️ Remover Registro"):
-        if not df_display.empty:
-            idx_r = st.number_input(
-                "Índice para remover:",
-                min_value=0,
-                max_value=len(df_display) - 1,
-                step=1,
-                key="remover_receber"
-            )
+with st.expander("🗑️ Remover Registro"):
+    if not df_display.empty:
+        idx_rem = st.number_input(
+            "Índice da linha para remover:",
+            min_value=0,
+            max_value=len(df_display) - 1,
+            step=1,
+            key="remover_receber"
+        )
+        
+        if st.button("Remover", key="btn_remover_receber"):
+            rec_rem = df_display.iloc[idx_rem]
+            orig_idx = rec_rem.name
             
-            if st.button("Remover", key="btn_remover_receber"):
-                rec = df_display.iloc[idx_r]
-                orig_idx = rec.name
+            try:
+                # Carrega o arquivo Excel
+                wb = load_workbook(EXCEL_RECEBER)
+                ws = wb[aba]
                 
-                try:
-                    wb = load_workbook(EXCEL_RECEBER)
-                    ws = wb[aba]
-                    ws.delete_rows(8 + 1 + orig_idx)
-                    wb.save(EXCEL_RECEBER)
-                    st.success("Registro removido com sucesso!")
-                    
-                    # Recarrega dados
-                    df = load_data(EXCEL_RECEBER, aba)
-                    
-                    # Reaplica filtros
-                    if view_sel == "Recebidas":
-                        df_display = df[df["status_pagamento"] == "Recebido"].copy()
-                    elif view_sel == "Pendentes":
-                        df_display = df[df["status_pagamento"] != "Recebido"].copy()
-                    else:
-                        df_display = df.copy()
-                    
-                    if forn != "Todos":
-                        df_display = df_display[df_display["fornecedor"] == forn]
-                    if status_sel != "Todos":
-                        df_display = df_display[df_display["status_pagamento"] == status_sel]
-                    
-                    table_placeholder_r.dataframe(df_display[cols_to_display], height=250)
-                    
-                except Exception as e:
-                    st.error(f"Erro ao remover registro: {e}")
+                # Encontra a linha correspondente (cabeçalho na linha 8, dados começam na 9)
+                excel_row = 9 + orig_idx
+                
+                # Remove a linha inteira
+                ws.delete_rows(excel_row)
+                
+                # Salva as alterações
+                wb.save(EXCEL_RECEBER)
+                st.success("Registro removido com sucesso!")
+                
+                # Recarrega os dados
+                df = load_data(EXCEL_RECEBER, aba)
+                
+                # Reaplica filtros
+                if view_sel == "Recebidas":
+                    df_display = df[df["status_pagamento"] == "Recebido"].copy()
+                elif view_sel == "Pendentes":
+                    df_display = df[df["status_pagamento"] != "Recebido"].copy()
+                else:
+                    df_display = df.copy()
+                
+                if forn != "Todos":
+                    df_display = df_display[df_display["fornecedor"] == forn]
+                if status_sel != "Todos":
+                    df_display = df_display[df_display["status_pagamento"] == status_sel]
+                
+                # Atualiza a exibição
+                cols_para_exibir = [c for c in cols_esperadas if c in df_display.columns]
+                table_placeholder.dataframe(df_display[cols_para_exibir], height=250)
+                
+            except Exception as e:
+                st.error(f"Erro ao remover registro: {str(e)}")
 
-    with st.expander("📎 Anexar Documentos"):
-        if not df_display.empty:
-            idx2 = st.number_input(
-                "Índice para anexar:",
-                min_value=0,
-                max_value=len(df_display) - 1,
-                step=1,
-                key=f"idx_anex_receber_{aba}"
+with st.expander("📎 Anexar Documentos"):
+    if not df_display.empty:
+        idx2 = st.number_input(
+            "Índice para anexar (baseado na lista acima):",
+            min_value=0, 
+            max_value=len(df_display) - 1, 
+            step=1, 
+            key="idx_anex_receber"
+        )
+        
+        rec_anex = df_display.iloc[idx2]
+        orig_idx_anex_candidates = df[
+            (df["fornecedor"] == rec_anex["fornecedor"]) &
+            (df["valor"] == rec_anex["valor"]) &
+            (df["vencimento"] == rec_anex["vencimento"])
+        ].index
+        orig_idx_anex = orig_idx_anex_candidates[0] if len(orig_idx_anex_candidates) > 0 else rec_anex.name
+        
+        uploaded = st.file_uploader(
+            "Selecione (pdf/jpg/png):", 
+            type=["pdf", "jpg", "png"], 
+            key=f"up_receber_{aba}_{idx2}"
+        )
+        
+        if uploaded:
+            destino = os.path.join(
+                ANEXOS_DIR, 
+                "Contas a Receber", 
+                f"Receber_{aba}_{orig_idx_anex}_{uploaded.name}"
             )
-            
-            rec2 = df_display.iloc[idx2]
-            orig2 = rec2.name
-            
-            up = st.file_uploader(
-                "Selecione (pdf/jpg/png):",
-                type=["pdf", "jpg", "png"],
-                key=f"up_receber_{aba}_{idx2}"
-            )
-            
-            if up:
-                destino = os.path.join(
-                    ANEXOS_DIR,
-                    "Contas a Receber",
-                    f"Receber_{aba}_{orig2}_{up.name}"
-                )
-                with open(destino, "wb") as f:
-                    f.write(up.getbuffer())
-                st.success(f"Documento salvo em: {destino}")
+            with open(destino, "wb") as f:
+                f.write(uploaded.getbuffer())
+            st.success(f"Documento salvo em: {destino}")
 
     with st.expander("➕ Adicionar Nova Conta"):
         coln1, coln2 = st.columns(2)
