@@ -1,13 +1,17 @@
 import streamlit as st
 import pandas as pd
-import os
+import plotly.express as px
+import plotly.graph_objects as go
 from datetime import datetime, date
+import os
 from openpyxl import load_workbook
 
+# Configuração da página
 st.set_page_config(
     page_title="💼 Sistema Financeiro 2025",
     page_icon="💰",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 
 VALID_USERS = {
@@ -33,18 +37,167 @@ if not st.session_state.logged_in:
             if check_login(username_input, password_input):
                 st.session_state.logged_in = True
                 st.session_state.username = username_input
-                st.rerun()
             else:
                 st.error("Usuário ou senha inválidos.")
     st.stop()
 
-logged_user = st.session_state.username
-st.sidebar.write(f"Logado como: **{logged_user}**")
-
+# Constantes no início do arquivo (após as imports)
 EXCEL_PAGAR = "Contas a pagar 2025.xlsx"
 EXCEL_RECEBER = "Contas a receber 2025.xlsx"
-ANEXOS_DIR = "anexos"
+ANEXOS_DIR = "anexos"  # Esta linha estava faltando
 FULL_MONTHS = [f"{i:02d}" for i in range(1, 13)]
+
+# Garante pastas de anexos (esta parte deve vir DEPOIS de definir ANEXOS_DIR)
+for pasta in ["Contas a Pagar", "Contas a Receber"]:
+    os.makedirs(os.path.join(ANEXOS_DIR, pasta), exist_ok=True)
+
+
+
+st.markdown("""
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
+
+    html, body, [class*="css"] {
+        font-family: 'Inter', sans-serif;
+    }
+
+    /* ------------------------- Cabeçalho ------------------------- */
+    .header {
+        background: linear-gradient(135deg, #3c3b92, #6051db);
+        color: white;
+        padding: 1.5rem;
+        border-radius: 14px;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+        margin-bottom: 2rem;
+    }
+
+    /* ------------------------- Cards de Métricas ------------------------- */
+    .metric-card {
+        border-radius: 14px;
+        padding: 1.5rem;
+        border-left: 4px solid #6051db;
+        transition: transform 0.25s ease;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+    }
+
+    .metric-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 18px rgba(0, 0, 0, 0.1);
+    }
+
+    .metric-value {
+        font-size: 2.4rem;
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+    }
+
+    .metric-label {
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.7px;
+    }
+
+    /* Tema Claro */
+    .stApp:not([data-theme="dark"]) .metric-card {
+        background: #f8f9fc;
+    }
+
+    .stApp:not([data-theme="dark"]) .metric-value {
+        color: #2c3e50;
+    }
+
+    .stApp:not([data-theme="dark"]) .metric-label {
+        color: #7b8a97;
+    }
+
+    /* Tema Escuro */
+    .stApp[data-theme="dark"] .metric-card {
+        background: #20212b;
+    }
+
+    .stApp[data-theme="dark"]) .metric-value {
+        color: #f0f2f5;
+    }
+
+    .stApp[data-theme="dark"] .metric-label {
+        color: #b0b3bd;
+    }
+
+    /* ------------------------- Tabs ------------------------- */
+    .stTabs [role="tablist"] {
+        gap: 10px;
+    }
+
+    .stTabs [role="tab"] {
+        padding: 10px 20px;
+        border-radius: 10px 10px 0 0;
+        font-weight: 500;
+        transition: all 0.2s ease-in-out;
+        border: none;
+    }
+
+    .stApp:not([data-theme="dark"]) .stTabs [role="tab"] {
+        background: #e0e3ec;
+        color: #2c3e50;
+    }
+
+    .stApp[data-theme="dark"] .stTabs [role="tab"] {
+        background: #2a2b38;
+        color: #ccc;
+    }
+
+    .stTabs [role="tab"][aria-selected="true"] {
+        background: #6051db !important;
+        color: #fff !important;
+    }
+
+    /* ------------------------- Gráfico Container ------------------------- */
+    .chart-container {
+        border-radius: 14px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .stApp:not([data-theme="dark"]) .chart-container {
+        background: #ffffff;
+        box-shadow: 0 1px 6px rgba(0, 0, 0, 0.04);
+    }
+
+    .stApp[data-theme="dark"] .chart-container {
+        background: #1d1e26;
+        box-shadow: 0 1px 10px rgba(0, 0, 0, 0.2);
+    }
+
+    /* ------------------------- Botões ------------------------- */
+    .stButton > button, .stDownloadButton > button {
+        border-radius: 8px;
+        padding: 10px 20px;
+        font-weight: 500;
+        transition: all 0.25s ease;
+        border: none;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .stApp:not([data-theme="dark"]) .stButton > button,
+    .stApp:not([data-theme="dark"]) .stDownloadButton > button {
+        background-color: #4e54c8;
+        color: white;
+    }
+
+    .stApp[data-theme="dark"] .stButton > button,
+    .stApp[data-theme="dark"] .stDownloadButton > button {
+        background-color: #7a7ef7;
+        color: white;
+    }
+
+    .stButton > button:hover,
+    .stDownloadButton > button:hover {
+        filter: brightness(0.9);
+        transform: scale(1.02);
+    }
+
+</style>
+""", unsafe_allow_html=True)
 
 def get_existing_sheets(excel_path: str) -> list[str]:
     try:
@@ -313,8 +466,15 @@ st.markdown("""
 """, unsafe_allow_html=True)
 st.markdown("---")
 
+# Dashboard Modernizado
 if page == "Dashboard":
-    st.subheader("📊 Painel de Controle Financeiro Avançado")
+    # Cabeçalho moderno
+    st.markdown("""
+    <div class="header">
+        <h1 style="color: white; margin: 0;">💼 Sistema Financeiro 2025</h1>
+        <p style="color: rgba(255, 255, 255, 0.8); margin: 0.5rem 0 0;">Dashboard avançado com estatísticas e gráficos interativos</p>
+    </div>
+    """, unsafe_allow_html=True)
     
     # Verificação dos arquivos
     if not os.path.isfile(EXCEL_PAGAR):
@@ -327,17 +487,19 @@ if page == "Dashboard":
     sheets_p = get_existing_sheets(EXCEL_PAGAR)
     sheets_r = get_existing_sheets(EXCEL_RECEBER)
     
-    tabs = st.tabs(["📥 Contas a Pagar", "📤 Contas a Receber"])
+    # Layout com tabs modernas
+    tab1, tab2 = st.tabs(["📥 Contas a Pagar", "📤 Contas a Receber"])
     
-    with tabs[0]:
+    with tab1:
         if not sheets_p:
-            st.warning("'Contas a Pagar' encontrado, mas não há abas numéricas válidas (espera-se '01'..'12').")
+            st.warning("Nenhuma aba válida encontrada em Contas a Pagar")
         else:
             df_all_p = pd.concat([load_data(EXCEL_PAGAR, s) for s in sheets_p], ignore_index=True)
             
             if df_all_p.empty:
                 st.info("Nenhum dado encontrado nas planilhas de Contas a Pagar")
             else:
+                # Métricas principais
                 total_p = df_all_p["valor"].sum()
                 num_lanc_p = len(df_all_p)
                 media_p = df_all_p["valor"].mean() if num_lanc_p else 0
@@ -345,6 +507,47 @@ if page == "Dashboard":
                 num_atras_p = len(atrasados_p)
                 perc_atras_p = (num_atras_p / num_lanc_p * 100) if num_lanc_p else 0
                 
+                # Layout de métricas
+                col1, col2, col3, col4 = st.columns(4)
+                with col1:
+                    st.markdown(f"""
+                    <div class="metric-card">
+                        <div class="metric-label">Total a Pagar</div>
+                        <div class="metric-value">R$ {total_p:,.2f}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col2:
+                    st.markdown(f"""
+                    <div class="metric-card">
+                        <div class="metric-label">Lançamentos</div>
+                        <div class="metric-value">{num_lanc_p}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col3:
+                    st.markdown(f"""
+                    <div class="metric-card">
+                        <div class="metric-label">Média por Conta</div>
+                        <div class="metric-value">R$ {media_p:,.2f}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col4:
+                    st.markdown(f"""
+                    <div class="metric-card">
+                        <div class="metric-label">Em Atraso</div>
+                        <div class="metric-value">{perc_atras_p:.1f}%</div>
+                        <div style="font-size: 0.8rem; color: {'#e74c3c' if perc_atras_p > 10 else '#27ae60'}">
+                            ({num_atras_p} conta{'s' if num_atras_p != 1 else ''})
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                st.markdown("---")
+                
+                # Gráfico de distribuição por status
+                st.markdown("#### 📊 Distribuição por Status")
                 status_counts_p = (
                     df_all_p["status_pagamento"]
                     .value_counts()
@@ -352,25 +555,51 @@ if page == "Dashboard":
                     .reset_index(name="contagem")
                 )
                 
-                st.markdown(
-                    "<div style='padding:10px; background-color:#E8F8F5; border-radius:8px;'>"
-                    "<strong>Contas a Pagar - Estatísticas Gerais</strong></div>",
-                    unsafe_allow_html=True
+                fig_status = px.pie(
+                    status_counts_p,
+                    values="contagem",
+                    names="status",
+                    hole=0.4,
+                    color_discrete_sequence=px.colors.qualitative.Pastel
+                )
+                fig_status.update_traces(
+                    textposition="inside",
+                    textinfo="percent+label",
+                    hovertemplate="<b>%{label}</b><br>%{value} contas (%{percent})"
+                )
+                fig_status.update_layout(
+                    showlegend=False,
+                    margin=dict(l=20, r=20, t=30, b=20),
+                    height=350
                 )
                 
-                c1, c2, c3, c4, c5 = st.columns([1.5, 1.5, 1.5, 1.5, 2])
-                c1.metric("Total a Pagar", f"R$ {total_p:,.2f}")
-                c2.metric("Nº Lançamentos", f"{num_lanc_p}")
-                c3.metric("Média Valores", f"R$ {media_p:,.2f}")
-                c4.metric("Em Atraso (%)", f"{perc_atras_p:.1f}% ({num_atras_p})")
+                col1, col2 = st.columns([3, 1])
+                with col1:
+                    st.plotly_chart(fig_status, use_container_width=True)
                 
-                with c5:
-                    st.markdown("##### Distribuição por Status")
-                    st.bar_chart(status_counts_p.set_index("status")["contagem"])
+                with col2:
+                    st.markdown("""
+                    <div style="background: #f8f9fa; padding: 1rem; border-radius: 10px;">
+                        <h4 style="margin-top: 0;">Legenda</h4>
+                        <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                            <div style="width: 12px; height: 12px; background: #636EFA; border-radius: 50%; margin-right: 8px;"></div>
+                            <span>Em Aberto</span>
+                        </div>
+                        <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                            <div style="width: 12px; height: 12px; background: #EF553B; border-radius: 50%; margin-right: 8px;"></div>
+                            <span>Em Atraso</span>
+                        </div>
+                        <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                            <div style="width: 12px; height: 12px; background: #00CC96; border-radius: 50%; margin-right: 8px;"></div>
+                            <span>Pago</span>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
                 
                 st.markdown("---")
-                st.markdown("#### 📈 Evolução Mensal de Gastos")
                 
+                # Evolução mensal
+                st.markdown("#### 📈 Evolução Mensal")
                 df_all_p["mes_ano"] = df_all_p["vencimento"].dt.to_period("M")
                 monthly_group_p = (
                     df_all_p
@@ -383,45 +612,108 @@ if page == "Dashboard":
                     .reset_index()
                 )
                 monthly_group_p["mes_ano_str"] = monthly_group_p["mes_ano"].dt.strftime("%b/%Y")
-                monthly_group_p = monthly_group_p.set_index("mes_ano_str")
-                st.line_chart(monthly_group_p[["total_mes", "pagos_mes", "pendentes_mes"]])
                 
+                fig_evolucao = go.Figure()
+                fig_evolucao.add_trace(go.Scatter(
+                    x=monthly_group_p["mes_ano_str"],
+                    y=monthly_group_p["total_mes"],
+                    name="Total",
+                    line=dict(color="#6e8efb", width=3),
+                    mode="lines+markers",
+                    hovertemplate="<b>%{x}</b><br>Total: R$ %{y:,.2f}<extra></extra>"
+                ))
+                fig_evolucao.add_trace(go.Scatter(
+                    x=monthly_group_p["mes_ano_str"],
+                    y=monthly_group_p["pagos_mes"],
+                    name="Pagas",
+                    line=dict(color="#00CC96", width=2),
+                    mode="lines+markers",
+                    hovertemplate="<b>%{x}</b><br>Pagas: R$ %{y:,.2f}<extra></extra>"
+                ))
+                fig_evolucao.add_trace(go.Scatter(
+                    x=monthly_group_p["mes_ano_str"],
+                    y=monthly_group_p["pendentes_mes"],
+                    name="Pendentes",
+                    line=dict(color="#EF553B", width=2),
+                    mode="lines+markers",
+                    hovertemplate="<b>%{x}</b><br>Pendentes: R$ %{y:,.2f}<extra></extra>"
+                ))
+                
+                fig_evolucao.update_layout(
+                    hovermode="x unified",
+                    legend=dict(
+                        orientation="h",
+                        yanchor="bottom",
+                        y=1.02,
+                        xanchor="right",
+                        x=1
+                    ),
+                    margin=dict(l=20, r=20, t=30, b=20),
+                    height=400,
+                    xaxis_title="Mês/Ano",
+                    yaxis_title="Valor (R$)",
+                    plot_bgcolor="rgba(0,0,0,0)",
+                    paper_bgcolor="rgba(0,0,0,0)"
+                )
+                
+                st.plotly_chart(fig_evolucao, use_container_width=True)
+                
+                # Top 10 fornecedores
                 st.markdown("---")
-                st.markdown("#### 📊 Percentual por Status de Pagamento")
+                st.markdown("#### 🏆 Top 10 Fornecedores")
+                top_fornecedores = (
+                    df_all_p.groupby("fornecedor")
+                    .agg(total=("valor", "sum"), contagem=("valor", "count"))
+                    .sort_values("total", ascending=False)
+                    .head(10)
+                    .reset_index()
+                )
                 
-                status_counts_p["percentual"] = status_counts_p["contagem"] / num_lanc_p * 100
-                df_status_pct = status_counts_p.set_index("status")[["percentual"]]
-                df_status_pct.columns = ["% (%)"]
-                st.bar_chart(df_status_pct)
+                fig_fornecedores = px.bar(
+                    top_fornecedores,
+                    x="total",
+                    y="fornecedor",
+                    orientation="h",
+                    color="contagem",
+                    color_continuous_scale="Blues",
+                    labels={"total": "Valor Total (R$)", "fornecedor": "", "contagem": "Nº Contas"},
+                    hover_data={"contagem": True}
+                )
+                fig_fornecedores.update_layout(
+                    height=500,
+                    xaxis_title="Valor Total (R$)",
+                    yaxis_title="",
+                    yaxis={"categoryorder": "total ascending"},
+                    margin=dict(l=20, r=20, t=30, b=20),
+                    coloraxis_colorbar=dict(title="Nº Contas")
+                )
                 
+                st.plotly_chart(fig_fornecedores, use_container_width=True)
+                
+                # Download dos dados
                 st.markdown("---")
-                st.subheader("💾 Exportar Planilhas Originais (Contas a Pagar)")
-                
-                ep1, ep2 = st.columns(2)
-                with ep1:
+                with st.expander("💾 Exportar Dados", expanded=False):
                     try:
                         with open(EXCEL_PAGAR, "rb") as f:
-                            dados_p = f.read()
-                        st.download_button(
-                            label="Download Excel (Pagar)",
-                            data=dados_p,
-                            file_name=EXCEL_PAGAR,
-                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                        )
-                    except FileNotFoundError:
-                        st.error(f"'{EXCEL_PAGAR}' não encontrado.")
-                with ep2:
-                    st.info("Para detalhes, acesse 'Contas a Pagar' no menu lateral.")
-    
-    with tabs[1]:
+                            st.download_button(
+                                label="Baixar Planilha Completa (Contas a Pagar)",
+                                data=f.read(),
+                                file_name=EXCEL_PAGAR,
+                                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                            )
+                    except Exception as e:
+                        st.error(f"Erro ao preparar download: {e}")
+
+    with tab2:
         if not sheets_r:
-            st.warning("'Contas a Receber' encontrado, mas não há abas numéricas válidas (espera-se '01'..'12').")
+            st.warning("Nenhuma aba válida encontrada em Contas a Receber")
         else:
             df_all_r = pd.concat([load_data(EXCEL_RECEBER, s) for s in sheets_r], ignore_index=True)
             
             if df_all_r.empty:
                 st.info("Nenhum dado encontrado nas planilhas de Contas a Receber")
             else:
+                # Métricas principais
                 total_r = df_all_r["valor"].sum()
                 num_lanc_r = len(df_all_r)
                 media_r = df_all_r["valor"].mean() if num_lanc_r else 0
@@ -429,6 +721,47 @@ if page == "Dashboard":
                 num_atras_r = len(atrasados_r)
                 perc_atras_r = (num_atras_r / num_lanc_r * 100) if num_lanc_r else 0
                 
+                # Layout de métricas
+                col1, col2, col3, col4 = st.columns(4)
+                with col1:
+                    st.markdown(f"""
+                    <div class="metric-card">
+                        <div class="metric-label">Total a Receber</div>
+                        <div class="metric-value">R$ {total_r:,.2f}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col2:
+                    st.markdown(f"""
+                    <div class="metric-card">
+                        <div class="metric-label">Lançamentos</div>
+                        <div class="metric-value">{num_lanc_r}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col3:
+                    st.markdown(f"""
+                    <div class="metric-card">
+                        <div class="metric-label">Média por Conta</div>
+                        <div class="metric-value">R$ {media_r:,.2f}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col4:
+                    st.markdown(f"""
+                    <div class="metric-card">
+                        <div class="metric-label">Em Atraso</div>
+                        <div class="metric-value">{perc_atras_r:.1f}%</div>
+                        <div style="font-size: 0.8rem; color: {'#e74c3c' if perc_atras_r > 10 else '#27ae60'}">
+                            ({num_atras_r} conta{'s' if num_atras_r != 1 else ''})
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                st.markdown("---")
+                
+                # Gráfico de distribuição por status
+                st.markdown("#### 📊 Distribuição por Status")
                 status_counts_r = (
                     df_all_r["status_pagamento"]
                     .value_counts()
@@ -436,25 +769,51 @@ if page == "Dashboard":
                     .reset_index(name="contagem")
                 )
                 
-                st.markdown(
-                    "<div style='padding:10px; background-color:#FEF9E7; border-radius:8px;'>"
-                    "<strong>Contas a Receber - Estatísticas Gerais</strong></div>",
-                    unsafe_allow_html=True
+                fig_status = px.pie(
+                    status_counts_r,
+                    values="contagem",
+                    names="status",
+                    hole=0.4,
+                    color_discrete_sequence=px.colors.qualitative.Pastel
+                )
+                fig_status.update_traces(
+                    textposition="inside",
+                    textinfo="percent+label",
+                    hovertemplate="<b>%{label}</b><br>%{value} contas (%{percent})"
+                )
+                fig_status.update_layout(
+                    showlegend=False,
+                    margin=dict(l=20, r=20, t=30, b=20),
+                    height=350
                 )
                 
-                d1, d2, d3, d4, d5 = st.columns([1.5, 1.5, 1.5, 1.5, 2])
-                d1.metric("Total a Receber", f"R$ {total_r:,.2f}")
-                d2.metric("Nº Lançamentos", f"{num_lanc_r}")
-                d3.metric("Média Valores", f"R$ {media_r:,.2f}")
-                d4.metric("Em Atraso (%)", f"{perc_atras_r:.1f}% ({num_atras_r})")
+                col1, col2 = st.columns([3, 1])
+                with col1:
+                    st.plotly_chart(fig_status, use_container_width=True)
                 
-                with d5:
-                    st.markdown("##### Distribuição por Status")
-                    st.bar_chart(status_counts_r.set_index("status")["contagem"])
+                with col2:
+                    st.markdown("""
+                    <div style="background: #f8f9fa; padding: 1rem; border-radius: 10px;">
+                        <h4 style="margin-top: 0;">Legenda</h4>
+                        <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                            <div style="width: 12px; height: 12px; background: #636EFA; border-radius: 50%; margin-right: 8px;"></div>
+                            <span>A Receber</span>
+                        </div>
+                        <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                            <div style="width: 12px; height: 12px; background: #EF553B; border-radius: 50%; margin-right: 8px;"></div>
+                            <span>Em Atraso</span>
+                        </div>
+                        <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                            <div style="width: 12px; height: 12px; background: #00CC96; border-radius: 50%; margin-right: 8px;"></div>
+                            <span>Recebido</span>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
                 
                 st.markdown("---")
-                st.markdown("#### 📈 Evolução Mensal de Recebimentos")
                 
+                # Evolução mensal
+                st.markdown("#### 📈 Evolução Mensal")
                 df_all_r["mes_ano"] = df_all_r["vencimento"].dt.to_period("M")
                 monthly_group_r = (
                     df_all_r
@@ -467,35 +826,98 @@ if page == "Dashboard":
                     .reset_index()
                 )
                 monthly_group_r["mes_ano_str"] = monthly_group_r["mes_ano"].dt.strftime("%b/%Y")
-                monthly_group_r = monthly_group_r.set_index("mes_ano_str")
-                st.line_chart(monthly_group_r[["total_mes", "recebidos_mes", "pendentes_mes"]])
                 
+                fig_evolucao = go.Figure()
+                fig_evolucao.add_trace(go.Scatter(
+                    x=monthly_group_r["mes_ano_str"],
+                    y=monthly_group_r["total_mes"],
+                    name="Total",
+                    line=dict(color="#6e8efb", width=3),
+                    mode="lines+markers",
+                    hovertemplate="<b>%{x}</b><br>Total: R$ %{y:,.2f}<extra></extra>"
+                ))
+                fig_evolucao.add_trace(go.Scatter(
+                    x=monthly_group_r["mes_ano_str"],
+                    y=monthly_group_r["recebidos_mes"],
+                    name="Recebidos",
+                    line=dict(color="#00CC96", width=2),
+                    mode="lines+markers",
+                    hovertemplate="<b>%{x}</b><br>Recebidos: R$ %{y:,.2f}<extra></extra>"
+                ))
+                fig_evolucao.add_trace(go.Scatter(
+                    x=monthly_group_r["mes_ano_str"],
+                    y=monthly_group_r["pendentes_mes"],
+                    name="Pendentes",
+                    line=dict(color="#EF553B", width=2),
+                    mode="lines+markers",
+                    hovertemplate="<b>%{x}</b><br>Pendentes: R$ %{y:,.2f}<extra></extra>"
+                ))
+                
+                fig_evolucao.update_layout(
+                    hovermode="x unified",
+                    legend=dict(
+                        orientation="h",
+                        yanchor="bottom",
+                        y=1.02,
+                        xanchor="right",
+                        x=1
+                    ),
+                    margin=dict(l=20, r=20, t=30, b=20),
+                    height=400,
+                    xaxis_title="Mês/Ano",
+                    yaxis_title="Valor (R$)",
+                    plot_bgcolor="rgba(0,0,0,0)",
+                    paper_bgcolor="rgba(0,0,0,0)"
+                )
+                
+                st.plotly_chart(fig_evolucao, use_container_width=True)
+                
+                # Top 10 clientes
                 st.markdown("---")
-                st.markdown("#### 📊 Percentual por Status de Recebimento")
+                st.markdown("#### 🏆 Top 10 Clientes")
+                top_clientes = (
+                    df_all_r.groupby("fornecedor")
+                    .agg(total=("valor", "sum"), contagem=("valor", "count"))
+                    .sort_values("total", ascending=False)
+                    .head(10)
+                    .reset_index()
+                )
                 
-                status_counts_r["percentual"] = status_counts_r["contagem"] / num_lanc_r * 100
-                df_status_pct_r = status_counts_r.set_index("status")[["percentual"]]
-                df_status_pct_r.columns = ["% (%)"]
-                st.bar_chart(df_status_pct_r)
+                fig_clientes = px.bar(
+                    top_clientes,
+                    x="total",
+                    y="fornecedor",
+                    orientation="h",
+                    color="contagem",
+                    color_continuous_scale="Blues",
+                    labels={"total": "Valor Total (R$)", "fornecedor": "", "contagem": "Nº Contas"},
+                    hover_data={"contagem": True}
+                )
+                fig_clientes.update_layout(
+                    height=500,
+                    xaxis_title="Valor Total (R$)",
+                    yaxis_title="",
+                    yaxis={"categoryorder": "total ascending"},
+                    margin=dict(l=20, r=20, t=30, b=20),
+                    coloraxis_colorbar=dict(title="Nº Contas")
+                )
                 
+                st.plotly_chart(fig_clientes, use_container_width=True)
+                
+                # Download dos dados
                 st.markdown("---")
-                st.subheader("💾 Exportar Planilhas Originais (Contas a Receber)")
-                
-                er1, er2 = st.columns(2)
-                with er1:
+                with st.expander("💾 Exportar Dados", expanded=False):
                     try:
                         with open(EXCEL_RECEBER, "rb") as f:
-                            dados_r = f.read()
-                        st.download_button(
-                            label="Download Excel (Receber)",
-                            data=dados_r,
-                            file_name=EXCEL_RECEBER,
-                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                        )
-                    except FileNotFoundError:
-                        st.error(f"'{EXCEL_RECEBER}' não encontrado.")
-                with er2:
-                    st.info("Para detalhes, acesse 'Contas a Receber' no menu lateral.")
+                            st.download_button(
+                                label="Baixar Planilha Completa (Contas a Receber)",
+                                data=f.read(),
+                                file_name=EXCEL_RECEBER,
+                                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                            )
+                    except Exception as e:
+                        st.error(f"Erro ao preparar download: {e}")
+
 
 elif page == "Contas a Pagar":
     st.subheader("🗂️ Contas a Pagar")
