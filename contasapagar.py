@@ -6,22 +6,6 @@ from datetime import datetime, date
 import os
 from openpyxl import load_workbook
 
-def is_valid_excel(file_path: str) -> bool:
-    """Verifica se o arquivo é um Excel válido"""
-    if not os.path.isfile(file_path):
-        return False
-    try:
-        # Tenta abrir com openpyxl primeiro
-        load_workbook(file_path)
-        return True
-    except Exception as e:
-        try:
-            # Se falhar, tenta com pandas como fallback
-            pd.ExcelFile(file_path)
-            return True
-        except:
-            return False
-
 
 # Constantes no início do arquivo (após as imports)
 EXCEL_PAGAR = "Contas a pagar 2025.xlsx"
@@ -189,28 +173,20 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 def get_existing_sheets(excel_path: str) -> list[str]:
-    """Obtém abas numéricas válidas do arquivo Excel"""
-    if not is_valid_excel(excel_path):
-        st.error(f"Arquivo '{excel_path}' inválido ou corrompido")
-        return []
-    
     try:
-        wb = load_workbook(excel_path)
+        wb = pd.ExcelFile(excel_path)
         numeric_sheets = []
-        for sheet_name in wb.sheetnames:
-            nome = sheet_name.strip()
+        for s in wb.sheet_names:
+            nome = s.strip()
             if nome.lower() == "tutorial":
                 continue
             if nome.isdigit():
                 nome_formatado = f"{int(nome):02d}"
-                if nome_formatado in FULL_MONTHS:
-                    numeric_sheets.append(nome_formatado)
-        return sorted(numeric_sheets)
+                numeric_sheets.append(nome_formatado)
+        return sorted(set(numeric_sheets))
     except Exception as e:
-        st.error(f"Erro ao ler abas do arquivo: {str(e)}")
+        st.error(f"Erro ao ler abas do arquivo: {e}")
         return []
-        
-# Modifique a função load_data
 
 def load_data(excel_path: str, sheet_name: str) -> pd.DataFrame:
     cols = [
@@ -218,100 +194,92 @@ def load_data(excel_path: str, sheet_name: str) -> pd.DataFrame:
         "vencimento", "valor", "estado", "situacao", "boleto", "comprovante"
     ]
     
-    if not is_valid_excel(excel_path):
+    if not os.path.isfile(excel_path):
         return pd.DataFrame(columns=cols + ["status_pagamento"])
 
     try:
-        # Usa openpyxl para leitura mais robusta
-        wb = load_workbook(excel_path)
+        # Mapeia abas numéricas ("04" → "4")
+        sheet_lookup = {}
+        with pd.ExcelFile(excel_path) as wb:
+            for s in wb.sheet_names:
+                nome = s.strip()
+                if nome.lower() != "tutorial" and nome.isdigit():
+                    sheet_lookup[f"{int(nome):02d}"] = nome
         
-        # Encontra a aba correta (compatível com nomes em formato diferente)
-        real_sheet = None
-        for s in wb.sheetnames:
-            nome = s.strip()
-            if nome.isdigit() and f"{int(nome):02d}" == sheet_name:
-                real_sheet = s
-                break
-        
-        if not real_sheet:
+        if sheet_name not in sheet_lookup:
             return pd.DataFrame(columns=cols + ["status_pagamento"])
             
-        ws = wb[real_sheet]
-        data = []
-        
-        # Encontra a linha de cabeçalho (assumindo linha 8)
-        header_row = 8
-        headers = []
-        for col in range(2, ws.max_column + 1):
-            cell_value = ws.cell(row=header_row, column=col).value
-            headers.append(str(cell_value).strip().lower() if cell_value else "")
+        real_sheet = sheet_lookup[sheet_name]
+        df = pd.read_excel(excel_path, sheet_name=real_sheet, skiprows=7, header=0)
 
-        # Mapeamento de campos
-        field_map = {
-            "data_nf": ["data documento", "data_nf", "data n/f", "data da nota fiscal"],
-            "forma_pagamento": ["descrição", "forma_pagamento", "forma de pagamento"],
-            "fornecedor": ["fornecedor", "cliente"],
-            "os": ["documento", "os", "os interna"],
-            "vencimento": ["vencimento"],
-            "valor": ["valor"],
-            "estado": ["estado"],
-            "situacao": ["situacao", "situação"],
-            "boleto": ["boleto", "boleto anexo"],
-            "comprovante": ["comprovante", "comprovante de pagto"]
-        }
-        
-        # Processa linhas de dados
-        for row in range(header_row + 1, ws.max_row + 1):
-            row_data = {}
-            has_data = False
-            
-            for key, names in field_map.items():
-                for col, header in enumerate(headers, start=2):
-                    if header in names:
-                        val = ws.cell(row=row, column=col).value
-                        if val is not None:
-                            row_data[key] = val
-                            has_data = True
-                            break
-            
-            if has_data:  # Só adiciona se houver dados
-                data.append(row_data)
-                
-        df = pd.DataFrame(data)
-        
-        # Conversão de tipos
-        if "valor" in df.columns:
-            df["valor"] = pd.to_numeric(df["valor"], errors="coerce")
-        for col in ["data_nf", "vencimento"]:
-            if col in df.columns:
-                df[col] = pd.to_datetime(df[col], errors="coerce")
-        
-        # Determina status_pagamento
+        # Renomeia colunas
+        rename_map = {}
+        for col in df.columns:
+            nome = str(col).strip().lower()
+            if ("data" in nome and "nf" in nome) or "data da nota fiscal" in nome:
+                rename_map[col] = "data_nf"
+            elif "forma" in nome and "pagamento" in nome:
+                rename_map[col] = "forma_pagamento"
+            elif nome == "descrição":
+                rename_map[col] = "forma_pagamento"
+            elif nome == "fornecedor" or "cliente" in nome:
+                rename_map[col] = "fornecedor"
+            elif "os" in nome or nome == "documento":
+                rename_map[col] = "os"
+            elif "vencimento" in nome:
+                rename_map[col] = "vencimento"
+            elif "valor" in nome:
+                rename_map[col] = "valor"
+            elif nome == "estado":
+                rename_map[col] = "estado"
+            elif "situa" in nome:
+                rename_map[col] = "situacao"
+            elif "comprov" in nome:
+                rename_map[col] = "comprovante"
+            elif "boleto" in nome:
+                rename_map[col] = "boleto"
+
+        df = df.rename(columns=rename_map)
+        df = df[[c for c in df.columns if c in cols]]
+
+        # Garante colunas mínimas
+        for obrig in ["fornecedor", "valor"]:
+            if obrig not in df.columns:
+                df[obrig] = pd.NA
+
+        df = df.dropna(subset=["fornecedor", "valor"], how="all").reset_index(drop=True)
+
+        # Converte tipos
+        df["vencimento"] = pd.to_datetime(df["vencimento"], errors="coerce")
+        df["valor"] = pd.to_numeric(df["valor"], errors="coerce")
+
+        # Detecta modo: Pagar ou Receber
         is_receber = (excel_path == EXCEL_RECEBER)
+
+        # Monta status_pagamento
+        status_list = []
         hoje = datetime.now().date()
-        
-        def determine_status(row):
-            estado = str(row.get("estado", "")).lower()
-            vencimento = row.get("vencimento")
-            
-            if estado == ("recebido" if is_receber else "pago"):
-                return "Recebido" if is_receber else "Pago"
-            elif pd.isna(vencimento):
-                return "Sem Data"
-            elif vencimento.date() < hoje:
-                return "Em Atraso"
+        for _, row in df.iterrows():
+            estado_atual = str(row.get("estado", "")).strip().lower()
+            if estado_atual == ("recebido" if is_receber else "pago"):
+                status_list.append("Recebido" if is_receber else "Pago")
             else:
-                return "A Receber" if is_receber else "Em Aberto"
-        
-        if not df.empty:
-            df["status_pagamento"] = df.apply(determine_status, axis=1)
-        
+                data_venc = row["vencimento"].date() if pd.notna(row["vencimento"]) else None
+                if data_venc:
+                    if data_venc < hoje:
+                        status_list.append("Em Atraso")
+                    else:
+                        status_list.append("A Receber" if is_receber else "Em Aberto")
+                else:
+                    status_list.append("Sem Data")
+
+        df["status_pagamento"] = status_list
         return df
 
     except Exception as e:
-        st.error(f"Erro ao carregar dados da aba {sheet_name}: {str(e)}")
+        st.error(f"Erro ao carregar dados: {e}")
         return pd.DataFrame(columns=cols + ["status_pagamento"])
-        
+
 def save_data(excel_path: str, sheet_name: str, df: pd.DataFrame) -> bool:
     try:
         wb = load_workbook(excel_path)
@@ -927,87 +895,53 @@ if page == "Dashboard":
 elif page == "Contas a Pagar":
     st.subheader("🗂️ Contas a Pagar")
     
-    if not is_valid_excel(EXCEL_PAGAR):
-        st.error(f"Arquivo '{EXCEL_PAGAR}' não encontrado ou inválido. Verifique:")
-        st.markdown("- Se o arquivo existe no local correto")
-        st.markdown("- Se o arquivo não está corrompido")
-        st.markdown("- Se é um arquivo Excel válido (.xlsx)")
-        
-        if st.button("🔄 Tentar recarregar arquivo"):
-            st.experimental_rerun()
-            
-        if st.button("➕ Criar novo arquivo (se não existir)"):
-            try:
-                wb = Workbook()
-                ws = wb.active
-                ws.title = "01"
-                wb.save(EXCEL_PAGAR)
-                st.success("Arquivo criado com sucesso! Recarregue a página.")
-            except Exception as e:
-                st.error(f"Erro ao criar arquivo: {e}")
+    if not os.path.isfile(EXCEL_PAGAR):
+        st.error(f"Arquivo '{EXCEL_PAGAR}' não encontrado. Verifique o caminho.")
         st.stop()
     
-    existing_sheets = get_existing_sheets(EXCEL_PAGAR)
-    if not existing_sheets:
-        st.warning("Nenhuma aba mensal encontrada no arquivo.")
-        if st.button("➕ Criar nova aba para este mês"):
-            try:
-                wb = load_workbook(EXCEL_PAGAR)
-                mes_atual = date.today().strftime("%m")
-                if mes_atual not in wb.sheetnames:
-                    if wb.sheetnames:
-                        new_ws = wb.copy_worksheet(wb[wb.sheetnames[0]])
-                        new_ws.title = mes_atual
-                    else:
-                        wb.create_sheet(mes_atual)
-                    wb.save(EXCEL_PAGAR)
-                    st.success(f"Aba {mes_atual} criada com sucesso!")
-                    st.experimental_rerun()
-                else:
-                    st.warning(f"A aba {mes_atual} já existe.")
-            except Exception as e:
-                st.error(f"Erro ao criar aba: {e}")
-    
-    aba = st.selectbox("Selecione o mês:", FULL_MONTHS, index=FULL_MONTHS.index(date.today().strftime("%m")))
+    existing = get_existing_sheets(EXCEL_PAGAR)
+    aba = st.selectbox("Selecione o mês:", FULL_MONTHS, index=0)
     df = load_data(EXCEL_PAGAR, aba)
     
     if df.empty:
-        st.info("Nenhum registro encontrado para este mês.")
+        st.info("Nenhum registro encontrado para este mês (ou a aba não existia).")
+    
+    view_sel = st.radio("Visualizar:", ["Todos", "Pagas", "Pendentes"], horizontal=True)
+    
+    if view_sel == "Pagas":
+        df_display = df[df["status_pagamento"] == "Pago"].copy()
+    elif view_sel == "Pendentes":
+        df_display = df[df["status_pagamento"] != "Pago"].copy()
     else:
-        # Definir df_display antes de usar
-        view_sel = st.radio("Visualizar:", ["Todos", "Pagas", "Pendentes"], horizontal=True)
-        
-        if view_sel == "Pagas":
-            df_display = df[df["status_pagamento"] == "Pago"].copy()
-        elif view_sel == "Pendentes":
-            df_display = df[df["status_pagamento"] != "Pago"].copy()
-        else:
-            df_display = df.copy()
-        
-        # Aplicar filtros se existirem
-        with st.expander("🔍 Filtros"):
-            col1, col2 = st.columns(2)
-            with col1:
-                fornec_list = df["fornecedor"].dropna().astype(str).unique().tolist()
-                forn = st.selectbox("Fornecedor", ["Todos"] + sorted(fornec_list))
-            with col2:
-                est_list = df["estado"].dropna().astype(str).unique().tolist()
-                status_sel = st.selectbox("Estado/Status", ["Todos"] + sorted(est_list))
-        
-        if forn != "Todos":
-            df_display = df_display[df_display["fornecedor"] == forn]
-        if status_sel != "Todos":
-            df_display = df_display[df_display["estado"] == status_sel]
-        
-        # Agora podemos usar df_display com segurança
+        df_display = df.copy()
+    
+    with st.expander("🔍 Filtros"):
+        colf1, colf2 = st.columns(2)
+        with colf1:
+            fornec_list = df["fornecedor"].dropna().astype(str).unique().tolist()
+            forn = st.selectbox("Fornecedor", ["Todos"] + sorted(fornec_list))
+        with colf2:
+            est_list = df["estado"].dropna().astype(str).unique().tolist()
+            status_sel = st.selectbox("Estado/Status", ["Todos"] + sorted(est_list))
+    
+    if forn != "Todos":
+        df_display = df_display[df_display["fornecedor"] == forn]
+    if status_sel != "Todos":
+        df_display = df_display[df_display["estado"] == status_sel]
+    
+    st.markdown("<hr style='border:1px solid #ddd;'>", unsafe_allow_html=True)
+    
+    if df_display.empty:
+        st.warning("Nenhum registro para os filtros/visualização selecionados.")
+    else:
         cols_esperadas = ["data_nf", "fornecedor", "valor", "vencimento", "estado", "status_pagamento"]
         cols_para_exibir = [c for c in cols_esperadas if c in df_display.columns]
-        
         st.markdown("#### 📋 Lista de Lançamentos")
         table_placeholder = st.empty()
         table_placeholder.dataframe(df_display[cols_para_exibir], height=250)
     
     st.markdown("---")
+
     with st.expander("✏️ Editar Registro"):
         if not df_display.empty:
             idx = st.number_input(
@@ -1337,56 +1271,59 @@ elif page == "Contas a Pagar":
         st.error(f"Erro ao preparar download: {e}")
     st.markdown("---")
 
-# Página Contas a Receber (substitua a seção existente)
 elif page == "Contas a Receber":
     st.subheader("🗂️ Contas a Receber")
     
-    if not is_valid_excel(EXCEL_RECEBER):
-        st.error(f"Arquivo '{EXCEL_RECEBER}' não encontrado ou inválido. Verifique:")
-        st.markdown("- Se o arquivo existe no local correto")
-        st.markdown("- Se o arquivo não está corrompido")
-        st.markdown("- Se é um arquivo Excel válido (.xlsx)")
-        
-        if st.button("🔄 Tentar recarregar arquivo"):
-            st.experimental_rerun()
-            
-        if st.button("➕ Criar novo arquivo (se não existir)"):
-            try:
-                wb = Workbook()
-                ws = wb.active
-                ws.title = "01"
-                wb.save(EXCEL_RECEBER)
-                st.success("Arquivo criado com sucesso! Recarregue a página.")
-            except Exception as e:
-                st.error(f"Erro ao criar arquivo: {e}")
+    if not os.path.isfile(EXCEL_RECEBER):
+        st.error(f"Arquivo '{EXCEL_RECEBER}' não encontrado. Verifique o caminho.")
         st.stop()
     
-    existing_sheets = get_existing_sheets(EXCEL_RECEBER)
-    if not existing_sheets:
-        st.warning("Nenhuma aba mensal encontrada no arquivo.")
-        if st.button("➕ Criar nova aba para este mês"):
-            try:
-                wb = load_workbook(EXCEL_RECEBER)
-                mes_atual = date.today().strftime("%m")
-                if mes_atual not in wb.sheetnames:
-                    if wb.sheetnames:  # Se houver abas existentes, copia a primeira
-                        new_ws = wb.copy_worksheet(wb[wb.sheetnames[0]])
-                        new_ws.title = mes_atual
-                    else:  # Se não houver abas, cria uma nova
-                        wb.create_sheet(mes_atual)
-                    wb.save(EXCEL_RECEBER)
-                    st.success(f"Aba {mes_atual} criada com sucesso!")
-                    st.experimental_rerun()
-                else:
-                    st.warning(f"A aba {mes_atual} já existe.")
-            except Exception as e:
-                st.error(f"Erro ao criar aba: {e}")
-    
-    aba = st.selectbox("Selecione o mês:", FULL_MONTHS, index=FULL_MONTHS.index(date.today().strftime("%m")))
+    existing = get_existing_sheets(EXCEL_RECEBER)
+    aba = st.selectbox(
+        "Selecione o mês:",
+        FULL_MONTHS,
+        index=FULL_MONTHS.index(date.today().strftime("%m"))
+    )
     df = load_data(EXCEL_RECEBER, aba)
     
     if df.empty:
-        st.info("Nenhum registro encontrado para este mês.")
+        st.info("Nenhum registro encontrado para este mês (ou a aba não existia).")
+    
+    view_sel = st.radio(
+        "Visualizar:",
+        ["Todos", "Recebidas", "Pendentes"],
+        horizontal=True
+    )
+    
+    if view_sel == "Recebidas":
+        df_display = df[df["status_pagamento"] == "Recebido"].copy()
+    elif view_sel == "Pendentes":
+        df_display = df[df["status_pagamento"] != "Recebido"].copy()
+    else:
+        df_display = df.copy()
+    
+    with st.expander("🔍 Filtros"):
+        col1, col2 = st.columns(2)
+        with col1:
+            forn = st.selectbox(
+                "Fornecedor",
+                ["Todos"] + sorted(df["fornecedor"].dropna().astype(str).unique())
+            )
+        with col2:
+            status_sel = st.selectbox(
+                "Status",
+                ["Todos"] + sorted(df["status_pagamento"].dropna().unique())
+            )
+    
+    if forn != "Todos":
+        df_display = df_display[df_display["fornecedor"] == forn]
+    if status_sel != "Todos":
+        df_display = df_display[df_display["status_pagamento"] == status_sel]
+    
+    st.markdown("<hr>", unsafe_allow_html=True)
+    
+    if df_display.empty:
+        st.warning("Nenhum registro para os filtros selecionados.")
     else:
         cols_show = ["data_nf", "fornecedor", "valor", "vencimento", "estado", "status_pagamento"]
         cols_to_display = [c for c in cols_show if c in df_display.columns]
