@@ -596,8 +596,8 @@ with st.expander("🔍 Filtros Avançados"):
             nova_data = st.date_input(
                 "Data N/F:",
                 value=date.today(),
-                key="nova_data_pagar"
-            )
+                key="nova_data_receber"
+)
             nova_desc = st.text_input(
                 "Descrição:",
                 key="nova_desc_pagar"
