@@ -971,76 +971,80 @@ elif page == "Contas a Receber":
                 table_placeholder_r.dataframe(df_display[cols_to_display], height=250)
 
  # 🗑️ Remover Registro
-    with st.expander("🗑️ Remover Registro"):
-        if not df_display.empty:
-            idx_r = st.number_input(
-                "Índice para remover:",
-                min_value=0,
-                max_value=len(df_display) - 1,
-                step=1,
-                key="remover_receber"
-            )
-if st.button("Remover", key="btn_remover_receber"):
-    rec = df_display.iloc[idx_r]
+with st.expander("🗑️ Remover Registro"):
+    if not df_display.empty:
+        idx_r = st.number_input(
+            "Índice para remover:",
+            min_value=0,
+            max_value=len(df_display) - 1,
+            step=1,
+            key="remover_receber"
+        )
 
-    # tenta localizar a linha original no df carregado
-    orig_idx_candidates = df[
-        (df["fornecedor"] == rec["fornecedor"]) &
-        (df["valor"] == rec["valor"]) &
-        (df["vencimento"] == rec["vencimento"])
-    ].index
-    orig_idx = orig_idx_candidates[0] if len(orig_idx_candidates) > 0 else rec.name
+        if st.button("Remover", key="btn_remover_receber"):
+            rec = df_display.iloc[idx_r]
 
-    # abre e edita o Excel
-    wb = load_workbook(EXCEL_RECEBER)
-    ws = wb[aba]
-    header_row = 8
-    excel_row = header_row + 1 + orig_idx
+            # tenta localizar a linha original no df carregado
+            orig_idx_candidates = df[
+                (df["fornecedor"] == rec["fornecedor"]) &
+                (df["valor"] == rec["valor"]) &
+                (df["vencimento"] == rec["vencimento"])
+            ].index
+            orig_idx = orig_idx_candidates[0] if len(orig_idx_candidates) > 0 else rec.name
 
-    # mapeia as colunas a limpar
-    headers = [
-        str(ws.cell(row=header_row, column=col).value).strip().lower()
-        for col in range(2, ws.max_column + 1)
-    ]
-    field_map = {
-        "data_nf": ["data_nf", "data documento", "data da nota fiscal"],
-        "forma_pagamento": ["forma_pagamento", "descrição"],
-        "fornecedor": ["fornecedor"],
-        "os": ["os", "documento"],
-        "vencimento": ["vencimento"],
-        "valor": ["valor"],
-        "estado": ["estado"],
-        "boleto": ["boleto"],
-        "comprovante": ["comprovante"]
-    }
+            # abre e edita o Excel
+            wb = load_workbook(EXCEL_RECEBER)
+            ws = wb[aba]
+            header_row = 8
+            excel_row = header_row + 1 + orig_idx
 
-    cols_to_clear = []
-    for key, names in field_map.items():
-        for i, h in enumerate(headers):
-            if h in names:
-                cols_to_clear.append(i + 2)  # +2 por causa do deslocamento
-                break
+            # mapeia as colunas a limpar
+            headers = [
+                str(ws.cell(row=header_row, column=col).value).strip().lower()
+                for col in range(2, ws.max_column + 1)
+            ]
+            field_map = {
+                "data_nf": ["data_nf", "data documento", "data da nota fiscal"],
+                "forma_pagamento": ["forma_pagamento", "descrição"],
+                "fornecedor": ["fornecedor"],
+                "os": ["os", "documento"],
+                "vencimento": ["vencimento"],
+                "valor": ["valor"],
+                "estado": ["estado"],
+                "boleto": ["boleto"],
+                "comprovante": ["comprovante"]
+            }
 
-    for col in cols_to_clear:
-        ws.cell(row=excel_row, column=col, value=None)
+            cols_to_clear = []
+            for key, names in field_map.items():
+                for i, h in enumerate(headers):
+                    if h in names:
+                        cols_to_clear.append(i + 2)  # +2 por causa do deslocamento
+                        break
 
-    wb.save(EXCEL_RECEBER)
-    st.success("Registro removido com sucesso!")
+            for col in cols_to_clear:
+                ws.cell(row=excel_row, column=col, value=None)
 
+            wb.save(EXCEL_RECEBER)
+            st.success("Registro removido com sucesso!")
 
-                df = load_data(EXCEL_RECEBER, aba)
-                # reaplica filtros
-                if view_sel == "Recebidas":
-                    df_display = df[df["status_pagamento"] == "Recebido"].copy()
-                elif view_sel == "Pendentes":
-                    df_display = df[df["status_pagamento"] != "Recebido"].copy()
-                else:
-                    df_display = df.copy()
-                if forn != "Todos":
-                    df_display = df_display[df_display["fornecedor"] == forn]
-                if status_sel != "Todos":
-                    df_display = df_display[df_display["status_pagamento"] == status_sel]
-                table_placeholder_r.dataframe(df_display[cols_show], height=250)
+            # recarrega os dados e reaplica os filtros
+            df = load_data(EXCEL_RECEBER, aba)
+            if view_sel == "Recebidas":
+                df_display = df[df["status_pagamento"] == "Recebido"].copy()
+            elif view_sel == "Pendentes":
+                df_display = df[df["status_pagamento"] != "Recebido"].copy()
+            else:
+                df_display = df.copy()
+            if forn != "Todos":
+                df_display = df_display[df_display["fornecedor"] == forn]
+            if status_sel != "Todos":
+                df_display = df_display[df_display["status_pagamento"] == status_sel]
+
+            cols_show = ["data_nf", "fornecedor", "valor", "vencimento", "estado", "status_pagamento"]
+            cols_to_display = [c for c in cols_show if c in df_display.columns]
+            table_placeholder_r.dataframe(df_display[cols_to_display], height=250)
+
        # 📎 Anexar Documentos
     with st.expander("📎 Anexar Documentos"):
         if not df_display.empty:
