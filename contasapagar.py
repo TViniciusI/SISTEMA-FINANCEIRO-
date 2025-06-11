@@ -551,6 +551,21 @@ elif page == "Contas a Pagar":
                     df_display[cols_para_exibir],
                     height=250
                 )
+    # 🔄 Carrega os dados atualizados
+    df = load_data(EXCEL_RECEBER, aba)
+    
+    # Aplica os filtros ativos do usuário
+    if view_sel == "Recebidas":
+        df_display = df[df["status_pagamento"] == "Recebido"].copy()
+    elif view_sel == "Pendentes":
+        df_display = df[df["status_pagamento"] != "Recebido"].copy()
+    else:
+        df_display = df.copy()
+    
+    if forn != "Todos":
+        df_display = df_display[df_display["fornecedor"] == forn]
+    if status_sel != "Todos":
+        df_display = df_display[df_display["status_pagamento"] == status_sel]
 
      # 🗑️ Remover Registro (Contas a Pagar)
     with st.expander("🗑️ Remover Registro"):
