@@ -730,37 +730,37 @@ def display_receber():
     # Seletor de mês
     aba = st.selectbox("Selecione o mês:", FULL_MONTHS, index=int(datetime.now().strftime("%m"))-1)
     
-# Carrega os dados
-df = load_data(EXCEL_RECEBER, aba)
+    # Carrega os dados
+    df = load_data(EXCEL_RECEBER, aba)
 
-# Filtros básicos
-view_sel = st.radio("Visualizar:", ["Todos", "Recebidas", "Pendentes"], horizontal=True)
+    # Filtros básicos
+    view_sel = st.radio("Visualizar:", ["Todos", "Recebidas", "Pendentes"], horizontal=True)
 
-if view_sel == "Recebidas":
-    df_display = df[df["status_pagamento"] == "Recebido"].copy()
-elif view_sel == "Pendentes":
-    df_display = df[df["status_pagamento"] != "Recebido"].copy()
-else:
-    df_display = df.copy()
+    if view_sel == "Recebidas":
+        df_display = df[df["status_pagamento"] == "Recebido"].copy()
+    elif view_sel == "Pendentes":
+        df_display = df[df["status_pagamento"] != "Recebido"].copy()
+    else:
+        df_display = df.copy()
 
-# Filtros avançados
-with st.expander("🔍 Filtros Avançados"):
-    col1, col2 = st.columns(2)
-    with col1:
-        cliente = st.selectbox(
-            "Cliente",
-            ["Todos"] + sorted(df["fornecedor"].dropna().unique().tolist())
-        )
-    with col2:
-        status = st.selectbox(
-            "Status",
-            ["Todos"] + sorted(df["status_pagamento"].dropna().unique().tolist())
-        )
+    # Filtros avançados
+    with st.expander("🔍 Filtros Avançados"):
+        col1, col2 = st.columns(2)
+        with col1:
+            cliente = st.selectbox(
+                "Cliente",
+                ["Todos"] + sorted(df["fornecedor"].dropna().unique().tolist())
+            )
+        with col2:
+            status = st.selectbox(
+                "Status",
+                ["Todos"] + sorted(df["status_pagamento"].dropna().unique().tolist())
+            )
 
-if cliente != "Todos":
-    df_display = df_display[df_display["fornecedor"] == cliente]
-if status != "Todos":
-    df_display = df_display[df_display["status_pagamento"] == status]
+    if cliente != "Todos":
+        df_display = df_display[df_display["fornecedor"] == cliente]
+    if status != "Todos":
+        df_display = df_display[df_display["status_pagamento"] == status]
 
     # Exibe tabela
     st.markdown("---")
@@ -833,104 +833,103 @@ if status != "Todos":
                     st.success("Registro atualizado com sucesso!")
                     st.experimental_rerun()
     
-with tab_add:
-    col1, col2 = st.columns(2)
-    with col1:
-        nova_data = st.date_input(
-            "Data N/F:",
-            value=date.today(),
-            key="nova_data_receber"
-        )
-        nova_desc = st.text_input(
-            "Descrição:",
-            key="nova_desc_receber"
-        )
-        novo_cliente = st.text_input(
-            "Cliente:",
-            key="novo_cliente_receber"
-        )
-    with col2:
-        novo_os = st.text_input(
-            "Documento/OS:",
-            key="novo_os_receber"
-        )
-        novo_venc = st.date_input(
-            "Vencimento:",
-            value=date.today(),
-            key="novo_venc_add_receber"
-        )
-        novo_valor = st.number_input(
-            "Valor:",
-            min_value=0.01,
-            value=100.00,
-            step=1.0,
-            format="%.2f",
-            key="novo_valor_add_receber"
-        )
-
-    novo_estado = st.selectbox(
-        "Estado:",
-        options=["A Receber", "Recebido"],
-        index=0,
-        key="novo_estado_add_receber"
-    )
-    novo_situacao = st.selectbox(
-        "Situação:",
-        options=["Em Atraso", "Recebido", "A Receber"],
-        index=2,
-        key="novo_situacao_add_receber"
-    )
-
-    novo_boleto = st.file_uploader(
-        "Boleto (opcional):",
-        type=["pdf", "jpg", "png"],
-        key="novo_boleto_receber"
-    )
-    novo_comprov = st.file_uploader(
-        "Comprovante (opcional):",
-        type=["pdf", "jpg", "png"],
-        key="novo_comprov_receber"
-    )
-
-    if st.button("➕ Adicionar Registro", key="btn_add_receber"):
-        record = {
-            "data_nf": nova_data,
-            "forma_pagamento": nova_desc,
-            "fornecedor": novo_cliente,
-            "os": novo_os,
-            "vencimento": novo_venc,
-            "valor": novo_valor,
-            "estado": novo_estado,
-            "situacao": novo_situacao,
-            "boleto": "",
-            "comprovante": ""
-        }
-
-        # Salva anexos
-        if novo_boleto:
-            boleto_path = os.path.join(
-                ANEXOS_DIR,
-                "Contas a Receber",
-                f"Receber_{aba}_{novo_cliente}_{novo_boleto.name}"
+    with tab_add:
+        col1, col2 = st.columns(2)
+        with col1:
+            nova_data = st.date_input(
+                "Data N/F:",
+                                value=date.today(),
+                key="nova_data_receber"
             )
-            with open(boleto_path, "wb") as f:
-                f.write(novo_boleto.getbuffer())
-            record["boleto"] = boleto_path
-
-        if novo_comprov:
-            comprov_path = os.path.join(
-                ANEXOS_DIR,
-                "Contas a Receber",
-                f"Receber_{aba}_{novo_cliente}_{novo_comprov.name}"
+            nova_desc = st.text_input(
+                "Descrição:",
+                key="nova_desc_receber"
             )
-            with open(comprov_path, "wb") as f:
-                f.write(novo_comprov.getbuffer())
-            record["comprovante"] = comprov_path
-
-        if add_record(EXCEL_RECEBER, aba, record):
-            st.success("Registro adicionado com sucesso!")
-            st.experimental_rerun()
-
+            novo_cliente = st.text_input(
+                "Cliente:",
+                key="novo_cliente_receber"
+            )
+        with col2:
+            novo_os = st.text_input(
+                "Documento/OS:",
+                key="novo_os_receber"
+            )
+            novo_venc = st.date_input(
+                "Vencimento:",
+                value=date.today(),
+                key="novo_venc_add_receber"
+            )
+            novo_valor = st.number_input(
+                "Valor:",
+                min_value=0.01,
+                value=100.00,
+                step=1.0,
+                format="%.2f",
+                key="novo_valor_add_receber"
+            )
+        
+        novo_estado = st.selectbox(
+            "Estado:",
+            options=["A Receber", "Recebido"],
+            index=0,
+            key="novo_estado_add_receber"
+        )
+        novo_situacao = st.selectbox(
+            "Situação:",
+            options=["Em Atraso", "Recebido", "A Receber"],
+            index=2,
+            key="novo_situacao_add_receber"
+        )
+        
+        novo_boleto = st.file_uploader(
+            "Boleto (opcional):",
+            type=["pdf", "jpg", "png"],
+            key="novo_boleto_receber"
+        )
+        novo_comprov = st.file_uploader(
+            "Comprovante (opcional):",
+            type=["pdf", "jpg", "png"],
+            key="novo_comprov_receber"
+        )
+        
+        if st.button("➕ Adicionar Registro", key="btn_add_receber"):
+            record = {
+                "data_nf": nova_data,
+                "forma_pagamento": nova_desc,
+                "fornecedor": novo_cliente,
+                "os": novo_os,
+                "vencimento": novo_venc,
+                "valor": novo_valor,
+                "estado": novo_estado,
+                "situacao": novo_situacao,
+                "boleto": "",
+                "comprovante": ""
+            }
+            
+            # Salva anexos
+            if novo_boleto:
+                boleto_path = os.path.join(
+                    ANEXOS_DIR,
+                    "Contas a Receber",
+                    f"Receber_{aba}_{novo_cliente}_{novo_boleto.name}"
+                )
+                with open(boleto_path, "wb") as f:
+                    f.write(novo_boleto.getbuffer())
+                record["boleto"] = boleto_path
+            
+            if novo_comprov:
+                comprov_path = os.path.join(
+                    ANEXOS_DIR,
+                    "Contas a Receber",
+                    f"Receber_{aba}_{novo_cliente}_{novo_comprov.name}"
+                )
+                with open(comprov_path, "wb") as f:
+                    f.write(novo_comprov.getbuffer())
+                record["comprovante"] = comprov_path
+            
+            if add_record(EXCEL_RECEBER, aba, record):
+                st.success("Registro adicionado com sucesso!")
+                st.experimental_rerun()
     
     with tab_del:
         if df_display.empty:
@@ -953,76 +952,49 @@ with tab_add:
                     st.success("Registro removido com sucesso!")
                     st.experimental_rerun()
 
-# Sistema de login
-def login_section():
-    """Exibe a seção de login e gerencia o estado da sessão."""
-    if "logged_in" not in st.session_state:
-        st.session_state.logged_in = False
-        st.session_state.username = ""
-    
-    if not st.session_state.logged_in:
-        st.write("\n" * 5)
-        col1, col2, col3 = st.columns([1, 2, 1])
-        with col2:
-            st.title("🔒 Login")
-            username = st.text_input("Usuário:")
-            password = st.text_input("Senha:", type="password")
-            
-            if st.button("Entrar"):
-                if check_login(username, password):
-                    st.session_state.logged_in = True
-                    st.session_state.username = username
-                    st.experimental_rerun()
-                else:
-                    st.error("Usuário ou senha inválidos.")
-        st.stop()
-    
-    # Logout button in sidebar
-    st.sidebar.write(f"Logado como: **{st.session_state.username}**")
-    if st.sidebar.button("🚪 Sair"):
-        st.session_state.logged_in = False
-        st.session_state.username = ""
-        st.experimental_rerun()
-
-# Menu principal
-def main_menu():
-    """Exibe o menu principal e gerencia a navegação."""
-    st.sidebar.markdown("""
-    ## 📂 Navegação  
-    Selecione a seção desejada para visualizar e gerenciar  
-    suas contas a pagar e receber.  
-    """, unsafe_allow_html=True)
-    
-    page = st.sidebar.radio("", ["Dashboard", "Contas a Pagar", "Contas a Receber"], index=0)
-    
-    st.markdown("""
-    <div style="text-align: center; color: #4B8BBE; margin-bottom: 10px;">
-        <h1>💼 Sistema Financeiro 2025</h1>
-        <p style="color: #555; font-size: 16px;">Dashboard avançado com estatísticas e gráficos interativos.</p>
-    </div>
-    """, unsafe_allow_html=True)
-    st.markdown("---")
-    
-    if page == "Dashboard":
-        display_dashboard()
-    elif page == "Contas a Pagar":
-        display_pagar()
-    elif page == "Contas a Receber":
-        display_receber()
-    
-    st.markdown("""
-    <div style="text-align: center; font-size:12px; color:gray; margin-top: 20px;">
-        <p>© 2025 Desenvolvido por Vinicius Magalhães</p>
-    </div>
-    """, unsafe_allow_html=True)
-
-# Inicialização do app
 def main():
-    """Função principal que orquestra a execução do aplicativo."""
+    """Função principal que gerencia a aplicação."""
     criar_pastas_necessarias()
     verificar_arquivos_excel()
-    login_section()
-    main_menu()
+    
+    # Verificação de login
+    if "logged_in" not in st.session_state:
+        st.session_state.logged_in = False
+    
+    if not st.session_state.logged_in:
+        st.title("🔒 Login - Sistema Financeiro 2025")
+        username = st.text_input("Usuário:")
+        password = st.text_input("Senha:", type="password")
+        
+        if st.button("Entrar"):
+            if check_login(username, password):
+                st.session_state.logged_in = True
+                st.session_state.username = username
+                st.experimental_rerun()
+            else:
+                st.error("Credenciais inválidas. Tente novamente.")
+        return
+    
+    # Menu principal
+    st.sidebar.title(f"👋 Olá, {st.session_state.username}!")
+    menu = st.sidebar.radio(
+        "Menu:",
+        ["📊 Dashboard", "📥 Contas a Pagar", "📤 Contas a Receber"],
+        index=0
+    )
+    
+    if menu == "📊 Dashboard":
+        display_dashboard()
+    elif menu == "📥 Contas a Pagar":
+        display_pagar()
+    elif menu == "📤 Contas a Receber":
+        display_receber()
+    
+    # Logout
+    st.sidebar.markdown("---")
+    if st.sidebar.button("🚪 Sair"):
+        st.session_state.logged_in = False
+        st.experimental_rerun()
 
 if __name__ == "__main__":
     main()
