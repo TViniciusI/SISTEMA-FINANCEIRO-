@@ -890,44 +890,45 @@ with tab_add:
         key="novo_comprov_receber"
     )
 
-        if st.button("➕ Adicionar Registro", key="btn_add_receber"):
-            record = {
-                "data_nf": nova_data,
-                "forma_pagamento": nova_desc,
-                "fornecedor": novo_cliente,
-                "os": novo_os,
-                "vencimento": novo_venc,
-                "valor": novo_valor,
-                "estado": novo_estado,
-                "situacao": novo_situacao,
-                "boleto": "",
-                "comprovante": ""
-            }
-            
-            # Salva anexos
-            if novo_boleto:
-                boleto_path = os.path.join(
-                    ANEXOS_DIR,
-                    "Contas a Receber",
-                    f"Receber_{aba}_{novo_cliente}_{novo_boleto.name}"
-                )
-                with open(boleto_path, "wb") as f:
-                    f.write(novo_boleto.getbuffer())
-                record["boleto"] = boleto_path
-            
-            if novo_comprov:
-                comprov_path = os.path.join(
-                    ANEXOS_DIR,
-                    "Contas a Receber",
-                    f"Receber_{aba}_{novo_cliente}_{novo_comprov.name}"
-                )
-                with open(comprov_path, "wb") as f:
-                    f.write(novo_comprov.getbuffer())
-                record["comprovante"] = comprov_path
-            
-            if add_record(EXCEL_RECEBER, aba, record):
-                st.success("Registro adicionado com sucesso!")
-                st.experimental_rerun()
+    if st.button("➕ Adicionar Registro", key="btn_add_receber"):
+        record = {
+            "data_nf": nova_data,
+            "forma_pagamento": nova_desc,
+            "fornecedor": novo_cliente,
+            "os": novo_os,
+            "vencimento": novo_venc,
+            "valor": novo_valor,
+            "estado": novo_estado,
+            "situacao": novo_situacao,
+            "boleto": "",
+            "comprovante": ""
+        }
+
+        # Salva anexos
+        if novo_boleto:
+            boleto_path = os.path.join(
+                ANEXOS_DIR,
+                "Contas a Receber",
+                f"Receber_{aba}_{novo_cliente}_{novo_boleto.name}"
+            )
+            with open(boleto_path, "wb") as f:
+                f.write(novo_boleto.getbuffer())
+            record["boleto"] = boleto_path
+
+        if novo_comprov:
+            comprov_path = os.path.join(
+                ANEXOS_DIR,
+                "Contas a Receber",
+                f"Receber_{aba}_{novo_cliente}_{novo_comprov.name}"
+            )
+            with open(comprov_path, "wb") as f:
+                f.write(novo_comprov.getbuffer())
+            record["comprovante"] = comprov_path
+
+        if add_record(EXCEL_RECEBER, aba, record):
+            st.success("Registro adicionado com sucesso!")
+            st.experimental_rerun()
+
     
     with tab_del:
         if df_display.empty:
