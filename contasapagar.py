@@ -980,18 +980,18 @@ elif page == "Contas a Receber":
                 step=1,
                 key="remover_receber"
             )
-            if st.button("Remover", key="btn_remover_receber"):
-                rec = df_display.iloc[idx_r]
-                orig_idx = df.index[
-                    (df["fornecedor"] == rec["fornecedor"]) &
-                    (df["valor"] == rec["valor"]) &
-                    (df["vencimento"] == rec["vencimento"])
-                ][0]
-                wb = load_workbook(EXCEL_RECEBER)
-                ws = wb[aba]
-                ws.delete_rows(8 + 1 + orig_idx)
-                wb.save(EXCEL_RECEBER)
-                st.success("Registro removido com sucesso!")
+        if st.button("Remover", key="btn_remover_receber"):
+            rec = df_display.iloc[idx_r]
+            orig_idx = df.index[
+                (df["fornecedor"] == rec["fornecedor"]) &
+                (df["valor"] == rec["valor"]) &
+                (df["vencimento"] == rec["vencimento"])
+            ][0]
+            wb = load_workbook(EXCEL_RECEBER)
+            ws = wb[aba]
+            ws.delete_rows(8 + 1 + orig_idx)
+            wb.save(EXCEL_RECEBER)
+            st.success("Registro removido com sucesso!")
 
                 df = load_data(EXCEL_RECEBER, aba)
                 # reaplica filtros
