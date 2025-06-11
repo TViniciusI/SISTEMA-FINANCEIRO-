@@ -955,10 +955,10 @@ elif page == "Contas a Pagar":
                 wb = load_workbook(EXCEL_PAGAR)
                 mes_atual = date.today().strftime("%m")
                 if mes_atual not in wb.sheetnames:
-                    if wb.sheetnames:  # Se houver abas existentes, copia a primeira
+                    if wb.sheetnames:
                         new_ws = wb.copy_worksheet(wb[wb.sheetnames[0]])
                         new_ws.title = mes_atual
-                    else:  # Se não houver abas, cria uma nova
+                    else:
                         wb.create_sheet(mes_atual)
                     wb.save(EXCEL_PAGAR)
                     st.success(f"Aba {mes_atual} criada com sucesso!")
@@ -974,14 +974,40 @@ elif page == "Contas a Pagar":
     if df.empty:
         st.info("Nenhum registro encontrado para este mês.")
     else:
+        # Definir df_display antes de usar
+        view_sel = st.radio("Visualizar:", ["Todos", "Pagas", "Pendentes"], horizontal=True)
+        
+        if view_sel == "Pagas":
+            df_display = df[df["status_pagamento"] == "Pago"].copy()
+        elif view_sel == "Pendentes":
+            df_display = df[df["status_pagamento"] != "Pago"].copy()
+        else:
+            df_display = df.copy()
+        
+        # Aplicar filtros se existirem
+        with st.expander("🔍 Filtros"):
+            col1, col2 = st.columns(2)
+            with col1:
+                fornec_list = df["fornecedor"].dropna().astype(str).unique().tolist()
+                forn = st.selectbox("Fornecedor", ["Todos"] + sorted(fornec_list))
+            with col2:
+                est_list = df["estado"].dropna().astype(str).unique().tolist()
+                status_sel = st.selectbox("Estado/Status", ["Todos"] + sorted(est_list))
+        
+        if forn != "Todos":
+            df_display = df_display[df_display["fornecedor"] == forn]
+        if status_sel != "Todos":
+            df_display = df_display[df_display["estado"] == status_sel]
+        
+        # Agora podemos usar df_display com segurança
         cols_esperadas = ["data_nf", "fornecedor", "valor", "vencimento", "estado", "status_pagamento"]
         cols_para_exibir = [c for c in cols_esperadas if c in df_display.columns]
+        
         st.markdown("#### 📋 Lista de Lançamentos")
         table_placeholder = st.empty()
         table_placeholder.dataframe(df_display[cols_para_exibir], height=250)
     
     st.markdown("---")
-
     with st.expander("✏️ Editar Registro"):
         if not df_display.empty:
             idx = st.number_input(
