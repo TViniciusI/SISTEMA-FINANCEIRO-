@@ -811,7 +811,7 @@ with st.expander("🗑️ Remover Registro"):
         st.error(f"Erro ao preparar download: {e}")
     st.markdown("---")
 
-elif page == "Contas a Receber":
+if page == "Contas a Receber":
     st.subheader("🗂️ Contas a Receber")
     
     # Verificação do arquivo
