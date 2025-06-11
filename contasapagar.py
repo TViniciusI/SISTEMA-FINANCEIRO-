@@ -517,23 +517,13 @@ with st.expander("🔍 Filtros Avançados"):
         fornecedor = st.selectbox(
             "Fornecedor",
             ["Todos"] + sorted(df["fornecedor"].dropna().unique().tolist())
+        )  # <-- aqui estava o erro, faltava fechar
     with col2:
         status = st.selectbox(
             "Status",
-            ["Todos"] + sorted(df["status_pagamento"].dropna().unique().tolist()))
-    # Exibe tabela
-    st.markdown("---")
-    st.subheader("📋 Lançamentos")
-    
-    if df_display.empty:
-        st.warning("Nenhum registro encontrado para os filtros selecionados.")
-    else:
-        cols_to_show = [c for c in COLUNAS_PADRAO if c in df_display.columns] + ["status_pagamento"]
-        st.dataframe(
-            df_display[cols_to_show],
-            height=400,
-            use_container_width=True
+            ["Todos"] + sorted(df["status_pagamento"].dropna().unique().tolist())
         )
+
     
     # Operações CRUD
     st.markdown("---")
