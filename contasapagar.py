@@ -831,65 +831,65 @@ with st.expander("🔍 Filtros Avançados"):
                     st.success("Registro atualizado com sucesso!")
                     st.experimental_rerun()
     
-    with tab_add:
-        col1, col2 = st.columns(2)
-        with col1:
-                       nova_data = st.date_input(
-                "Data N/F:",
-                value=date.today(),
-                key="nova_data_receber"
-            )
-            nova_desc = st.text_input(
-                "Descrição:",
-                key="nova_desc_receber"
-            )
-            novo_cliente = st.text_input(
-                "Cliente:",
-                key="novo_cliente_receber"
-            )
-        with col2:
-            novo_os = st.text_input(
-                "Documento/OS:",
-                key="novo_os_receber"
-            )
-            novo_venc = st.date_input(
-                "Vencimento:",
-                value=date.today(),
-                key="novo_venc_add_receber"
-            )
-            novo_valor = st.number_input(
-                "Valor:",
-                min_value=0.01,
-                value=100.00,
-                step=1.0,
-                format="%.2f",
-                key="novo_valor_add_receber"
-            )
-        
-        novo_estado = st.selectbox(
-            "Estado:",
-            options=["A Receber", "Recebido"],
-            index=0,
-            key="novo_estado_add_receber"
+with tab_add:
+    col1, col2 = st.columns(2)
+    with col1:
+        nova_data = st.date_input(
+            "Data N/F:",
+            value=date.today(),
+            key="nova_data_receber"
         )
-        novo_situacao = st.selectbox(
-            "Situação:",
-            options=["Em Atraso", "Recebido", "A Receber"],
-            index=2,
-            key="novo_situacao_add_receber"
+        nova_desc = st.text_input(
+            "Descrição:",
+            key="nova_desc_receber"
         )
-        
-        novo_boleto = st.file_uploader(
-            "Boleto (opcional):",
-            type=["pdf", "jpg", "png"],
-            key="novo_boleto_receber"
+        novo_cliente = st.text_input(
+            "Cliente:",
+            key="novo_cliente_receber"
         )
-        novo_comprov = st.file_uploader(
-            "Comprovante (opcional):",
-            type=["pdf", "jpg", "png"],
-            key="novo_comprov_receber"
+    with col2:
+        novo_os = st.text_input(
+            "Documento/OS:",
+            key="novo_os_receber"
         )
-        
+        novo_venc = st.date_input(
+            "Vencimento:",
+            value=date.today(),
+            key="novo_venc_add_receber"
+        )
+        novo_valor = st.number_input(
+            "Valor:",
+            min_value=0.01,
+            value=100.00,
+            step=1.0,
+            format="%.2f",
+            key="novo_valor_add_receber"
+        )
+
+    novo_estado = st.selectbox(
+        "Estado:",
+        options=["A Receber", "Recebido"],
+        index=0,
+        key="novo_estado_add_receber"
+    )
+    novo_situacao = st.selectbox(
+        "Situação:",
+        options=["Em Atraso", "Recebido", "A Receber"],
+        index=2,
+        key="novo_situacao_add_receber"
+    )
+
+    novo_boleto = st.file_uploader(
+        "Boleto (opcional):",
+        type=["pdf", "jpg", "png"],
+        key="novo_boleto_receber"
+    )
+    novo_comprov = st.file_uploader(
+        "Comprovante (opcional):",
+        type=["pdf", "jpg", "png"],
+        key="novo_comprov_receber"
+    )
+
         if st.button("➕ Adicionar Registro", key="btn_add_receber"):
             record = {
                 "data_nf": nova_data,
