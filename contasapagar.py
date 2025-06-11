@@ -303,39 +303,37 @@ def remove_record(excel_path: str, sheet_name: str, index: int) -> bool:
     """Remove um registro específico do arquivo Excel."""
     try:
         wb = load_workbook(excel_path)
-        
+
         # Encontra o nome real da aba
         sheet_lookup = {}
         for s in wb.sheetnames:
             nome = s.strip()
             if nome.lower() != "tutorial" and nome.isdigit():
                 sheet_lookup[f"{int(nome):02d}"] = nome
-        
+
         real_sheet = sheet_lookup.get(sheet_name, sheet_name)
-        
+
         if real_sheet not in wb.sheetnames:
             return False
-            
+
         ws = wb[real_sheet]
         header_row = 8
         row_to_delete = header_row + 1 + index
-        
+
         if row_to_delete > ws.max_row:
             return False
-            
-        # Limpa todas as células da linha antes de deletar
-        for col in range(1, ws.max_column + 1):
-            ws.cell(row=row_to_delete, column=col, value=None)
-            
-        # Remove a linha
+
+        # Apenas remove a linha completa — isso já apaga os dados
         ws.delete_rows(row_to_delete)
-        
+
         # Salva as alterações
         wb.save(excel_path)
         return True
+
     except Exception as e:
         st.error(f"Erro ao remover registro: {e}")
         return False
+
 
 def format_currency(value: float) -> str:
     """Formata um valor como moeda brasileira."""
