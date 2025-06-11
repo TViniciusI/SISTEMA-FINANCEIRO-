@@ -321,7 +321,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 st.markdown("---")
 
-if page == "Dashboard":
+ == "Dashboard":
     st.title("💼 Painel Financeiro 2025")
     st.markdown("Visualize as principais informações de **Contas a Pagar** e **Contas a Receber** com gráficos interativos e estatísticas claras.")
 
