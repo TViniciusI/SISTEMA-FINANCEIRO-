@@ -887,7 +887,7 @@ elif page == "Contas a Pagar":
     st.markdown("---")
 
     with st.expander("✏️ Editar Registro"):
-        if not df_display.empty:
+        if 'df_display' in locals() and not df_display.empty:
             idx = st.number_input(
                 "Índice da linha (baseado na lista acima):",
                 min_value=0,
@@ -975,7 +975,7 @@ elif page == "Contas a Pagar":
 
 # 🔽 Remover Registro
 with st.expander("🗑️ Remover Registro"):
-    if not df_display.empty:
+    if 'df_display' in locals() and not df_display.empty:
         idx_rem = st.number_input(
             "Índice da linha para remover:",
             min_value=0,
@@ -1014,7 +1014,7 @@ with st.expander("🗑️ Remover Registro"):
 
 # 🔽 Anexar Documentos
 with st.expander("📎 Anexar Documentos"):
-    if not df_display.empty:
+   if 'df_display' in locals() and not df_display.empty:
         idx2 = st.number_input(
             "Índice para anexar (baseado na lista acima):",
             min_value=0, 
@@ -1113,7 +1113,7 @@ st.markdown("---")
 st.subheader("💾 Exportar Aba Atual")
 try:
     df_to_save = load_data(EXCEL_PAGAR, aba)
-    if not df_to_save.empty:
+    if 'df_display' in locals() and not df_display.empty:f
         save_data(EXCEL_PAGAR, aba, df_to_save)
     with open(EXCEL_PAGAR, "rb") as fx:
         bytes_data = fx.read()
@@ -1272,7 +1272,7 @@ if page == "Contas a Receber":
 
     # Seção de Remoção
     with st.expander("🗑️ Remover Registro"):
-        if not df_display.empty:
+        if 'df_display' in locals() and not df_display.empty:
             idx_rem = st.number_input(
                 "Índice da linha para remover:",
                 min_value=0,
@@ -1321,7 +1321,7 @@ if page == "Contas a Receber":
 
     # Seção de Anexos
     with st.expander("📎 Anexar Documentos"):
-        if not df_display.empty:
+        if 'df_display' in locals() and not df_display.empty:
             idx2 = st.number_input(
                 "Índice para anexar:",
                 min_value=0,
