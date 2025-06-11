@@ -616,7 +616,12 @@ elif page == "Contas a Pagar":
             if st.button("Remover", key="btn_remover_pagar"):
                 # pega o índice original no DataFrame
                 rec_rem = df_display.iloc[idx_rem]
-                orig_idx = rec_rem.name
+                orig_idx_candidates = df[
+                    (df["fornecedor"] == rec_rem["fornecedor"]) &
+                    (df["valor"] == rec_rem["valor"]) &
+                    (df["vencimento"] == rec_rem["vencimento"])
+                ].index
+                orig_idx = orig_idx_candidates[0] if len(orig_idx_candidates) > 0 else rec_rem.name
 
                 # abre o Excel e limpa a linha
                 from openpyxl import load_workbook
