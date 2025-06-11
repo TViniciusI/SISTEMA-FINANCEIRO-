@@ -973,6 +973,7 @@ elif page == "Contas a Pagar":
                 else:
                     st.error("Erro ao salvar alterações.")
 
+# 🔽 Remover Registro
 with st.expander("🗑️ Remover Registro"):
     if not df_display.empty:
         idx_rem = st.number_input(
@@ -988,213 +989,144 @@ with st.expander("🗑️ Remover Registro"):
             orig_idx = rec_rem.name
             
             try:
-                # Carrega o arquivo Excel
                 wb = load_workbook(EXCEL_PAGAR)
                 ws = wb[aba]
-                
-                # Encontra a linha correspondente (cabeçalho na linha 8, dados começam na 9)
                 excel_row = 9 + orig_idx
-                
-                # Remove a linha inteira
                 ws.delete_rows(excel_row)
-                
-                # Salva as alterações
                 wb.save(EXCEL_PAGAR)
                 st.success("Registro removido com sucesso!")
                 
-                # Recarrega os dados
                 df = load_data(EXCEL_PAGAR, aba)
-                
-                # Reaplica filtros
                 if view_sel == "Pagas":
                     df_display = df[df["status_pagamento"] == "Pago"].copy()
                 elif view_sel == "Pendentes":
                     df_display = df[df["status_pagamento"] != "Pago"].copy()
                 else:
                     df_display = df.copy()
-                
                 if forn != "Todos":
                     df_display = df_display[df_display["fornecedor"] == forn]
                 if status_sel != "Todos":
                     df_display = df_display[df_display["estado"] == status_sel]
-                
-                # Atualiza a exibição
                 cols_para_exibir = [c for c in cols_esperadas if c in df_display.columns]
                 table_placeholder.dataframe(df_display[cols_para_exibir], height=250)
-                
             except Exception as e:
                 st.error(f"Erro ao remover registro: {str(e)}")
 
-    with st.expander("📎 Anexar Documentos"):
-        if not df_display.empty:
-            idx2 = st.number_input(
-                "Índice para anexar (baseado na lista acima):",
-                min_value=0, 
-                max_value=len(df_display) - 1, 
-                step=1, 
-                key="idx_anex_pagar"
-            )
-            
-            rec_anex = df_display.iloc[idx2]
-            orig_idx_anex_candidates = df[
-                (df["fornecedor"] == rec_anex["fornecedor"]) &
-                (df["valor"] == rec_anex["valor"]) &
-                (df["vencimento"] == rec_anex["vencimento"])
-            ].index
-            orig_idx_anex = orig_idx_anex_candidates[0] if len(orig_idx_anex_candidates) > 0 else rec_anex.name
-            
-            uploaded = st.file_uploader(
-                "Selecione (pdf/jpg/png):", 
-                type=["pdf", "jpg", "png"], 
-                key=f"up_pagar_{aba}_{idx2}"
-            )
-            
-            if uploaded:
-                destino = os.path.join(
-                    ANEXOS_DIR, 
-                    "Contas a Pagar", 
-                    f"Pagar_{aba}_{orig_idx_anex}_{uploaded.name}"
-                )
-                with open(destino, "wb") as f:
-                    f.write(uploaded.getbuffer())
-                st.success(f"Documento salvo em: {destino}")
-
-    with st.expander("➕ Adicionar Nova Conta"):
-        coln1, coln2 = st.columns(2)
-        with coln1:
-            data_nf = st.date_input(
-                "Data N/F:",
-                value=date.today(),
-                key="nova_data_nf_pagar"
-            )
-            forma_pag = st.text_input(
-                "Descrição:",
-                key="nova_descricao_pagar"
-            )
-            forn_new = st.text_input(
-                "Fornecedor:",
-                key="novo_fornecedor_pagar"
-            )
-        with coln2:
-            os_new = st.text_input(
-                "Documento/OS:",
-                key="novo_os_pagar"
-            )
-            venc_new = st.date_input(
-                "Data de Vencimento:",
-                value=date.today(),
-                key="novo_venc_pagar"
-            )
-            valor_new = st.number_input(
-                "Valor (R$):",
-                min_value=0.0,
-                format="%.2f",
-                key="novo_valor_pagar2"
-            )
-
-        estado_opt = ["Em Aberto", "Pago"]
-        situ_opt = ["Em Atraso", "Pago", "Em Aberto"]
-        estado_new = st.selectbox(
-            "Estado:",
-            options=estado_opt,
-            key="estado_novo_pagar"
+# 🔽 Anexar Documentos
+with st.expander("📎 Anexar Documentos"):
+    if not df_display.empty:
+        idx2 = st.number_input(
+            "Índice para anexar (baseado na lista acima):",
+            min_value=0, 
+            max_value=len(df_display) - 1, 
+            step=1, 
+            key="idx_anex_pagar"
         )
-        situ_new = st.selectbox(
-            "Situação:",
-            options=situ_opt,
-            key="situacao_novo_pagar"
+        
+        rec_anex = df_display.iloc[idx2]
+        orig_idx_anex_candidates = df[
+            (df["fornecedor"] == rec_anex["fornecedor"]) &
+            (df["valor"] == rec_anex["valor"]) &
+            (df["vencimento"] == rec_anex["vencimento"])
+        ].index
+        orig_idx_anex = orig_idx_anex_candidates[0] if len(orig_idx_anex_candidates) > 0 else rec_anex.name
+        
+        uploaded = st.file_uploader(
+            "Selecione (pdf/jpg/png):", 
+            type=["pdf", "jpg", "png"], 
+            key=f"up_pagar_{aba}_{idx2}"
         )
+        
+        if uploaded:
+            destino = os.path.join(
+                ANEXOS_DIR, 
+                "Contas a Pagar", 
+                f"Pagar_{aba}_{orig_idx_anex}_{uploaded.name}"
+            )
+            with open(destino, "wb") as f:
+                f.write(uploaded.getbuffer())
+            st.success(f"Documento salvo em: {destino}")
 
-        boleto_file = st.file_uploader(
-            "Boleto (opcional):",
-            type=["pdf", "jpg", "png"],
-            key="boleto_novo_pagar"
-        )
-        comprov_file = st.file_uploader(
-            "Comprovante (opcional):",
-            type=["pdf", "jpg", "png"],
-            key="comprov_novo_pagar"
-        )
+# 🔽 Adicionar Nova Conta
+with st.expander("➕ Adicionar Nova Conta"):
+    coln1, coln2 = st.columns(2)
+    with coln1:
+        data_nf = st.date_input("Data N/F:", value=date.today(), key="nova_data_nf_pagar")
+        forma_pag = st.text_input("Descrição:", key="nova_descricao_pagar")
+        forn_new = st.text_input("Fornecedor:", key="novo_fornecedor_pagar")
+    with coln2:
+        os_new = st.text_input("Documento/OS:", key="novo_os_pagar")
+        venc_new = st.date_input("Data de Vencimento:", value=date.today(), key="novo_venc_pagar")
+        valor_new = st.number_input("Valor (R$):", min_value=0.0, format="%.2f", key="novo_valor_pagar2")
 
-        if st.button("➕ Adicionar Conta", key="adicionar_pagar"):
-            record = {
-                "data_nf": data_nf,
-                "forma_pagamento": forma_pag,
-                "fornecedor": forn_new,
-                "os": os_new,
-                "vencimento": venc_new,
-                "valor": valor_new,
-                "estado": estado_new,
-                "situacao": situ_new,
-                "boleto": "",
-                "comprovante": ""
-            }
+    estado_opt = ["Em Aberto", "Pago"]
+    situ_opt = ["Em Atraso", "Pago", "Em Aberto"]
+    estado_new = st.selectbox("Estado:", options=estado_opt, key="estado_novo_pagar")
+    situ_new = st.selectbox("Situação:", options=situ_opt, key="situacao_novo_pagar")
 
-            if boleto_file:
-                boleto_path = os.path.join(
-                    ANEXOS_DIR, "Contas a Pagar",
-                    f"Pagar_{aba}_boleto_{boleto_file.name}"
-                )
-                with open(boleto_path, "wb") as fb:
-                    fb.write(boleto_file.getbuffer())
-                record["boleto"] = boleto_path
+    boleto_file = st.file_uploader("Boleto (opcional):", type=["pdf", "jpg", "png"], key="boleto_novo_pagar")
+    comprov_file = st.file_uploader("Comprovante (opcional):", type=["pdf", "jpg", "png"], key="comprov_novo_pagar")
 
-            if comprov_file:
-                comprov_path = os.path.join(
-                    ANEXOS_DIR, "Contas a Pagar",
-                    f"Pagar_{aba}_comprov_{comprov_file.name}"
-                )
-                with open(comprov_path, "wb") as fc:
-                    fc.write(comprov_file.getbuffer())
-                record["comprovante"] = comprov_path
+    if st.button("➕ Adicionar Conta", key="adicionar_pagar"):
+        record = {
+            "data_nf": data_nf,
+            "forma_pagamento": forma_pag,
+            "fornecedor": forn_new,
+            "os": os_new,
+            "vencimento": venc_new,
+            "valor": valor_new,
+            "estado": estado_new,
+            "situacao": situ_new,
+            "boleto": "",
+            "comprovante": ""
+        }
 
-            if add_record(EXCEL_PAGAR, aba, record):
-                st.success("Nova conta adicionada com sucesso!")
-                
-                if record.get("boleto"):
-                    with open(record["boleto"], "rb") as f:
-                        st.download_button(
-                            label="📥 Baixar Boleto",
-                            data=f.read(),
-                            file_name=os.path.basename(record["boleto"]),
-                            mime="application/octet-stream",
-                            key=f"dl_boleto_pagar_{aba}"
-                        )
-                if record.get("comprovante"):
-                    with open(record["comprovante"], "rb") as f:
-                        st.download_button(
-                            label="📥 Baixar Comprovante",
-                            data=f.read(),
-                            file_name=os.path.basename(record["comprovante"]),
-                            mime="application/octet-stream",
-                            key=f"dl_comprov_pagar_{aba}"
-                        )
+        if boleto_file:
+            boleto_path = os.path.join(ANEXOS_DIR, "Contas a Pagar", f"Pagar_{aba}_boleto_{boleto_file.name}")
+            with open(boleto_path, "wb") as fb:
+                fb.write(boleto_file.getbuffer())
+            record["boleto"] = boleto_path
 
-                # Recarrega dados
-                df = load_data(EXCEL_PAGAR, aba)
-                cols_show = ["data_nf", "fornecedor", "valor", "vencimento", "estado", "status_pagamento"]
-                cols_to_display = [c for c in cols_show if c in df.columns]
-                table_placeholder.dataframe(df[cols_to_display], height=250)
-            else:
-                st.error("Erro ao adicionar nova conta.")
+        if comprov_file:
+            comprov_path = os.path.join(ANEXOS_DIR, "Contas a Pagar", f"Pagar_{aba}_comprov_{comprov_file.name}")
+            with open(comprov_path, "wb") as fc:
+                fc.write(comprov_file.getbuffer())
+            record["comprovante"] = comprov_path
 
-    st.markdown("---")
-    st.subheader("💾 Exportar Aba Atual")
-    try:
-        df_to_save = load_data(EXCEL_PAGAR, aba)
-        if not df_to_save.empty:
-            save_data(EXCEL_PAGAR, aba, df_to_save)
-        with open(EXCEL_PAGAR, "rb") as fx:
-            bytes_data = fx.read()
-        st.download_button(
-            label=f"Exportar '{aba}'",
-            data=bytes_data,
-            file_name=f"Contas a Pagar - {aba}.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        )
-    except Exception as e:
-        st.error(f"Erro ao preparar download: {e}")
-    st.markdown("---")
+        if add_record(EXCEL_PAGAR, aba, record):
+            st.success("Nova conta adicionada com sucesso!")
+            if record.get("boleto"):
+                with open(record["boleto"], "rb") as f:
+                    st.download_button("📥 Baixar Boleto", f.read(), os.path.basename(record["boleto"]), "application/octet-stream", key=f"dl_boleto_pagar_{aba}")
+            if record.get("comprovante"):
+                with open(record["comprovante"], "rb") as f:
+                    st.download_button("📥 Baixar Comprovante", f.read(), os.path.basename(record["comprovante"]), "application/octet-stream", key=f"dl_comprov_pagar_{aba}")
+            df = load_data(EXCEL_PAGAR, aba)
+            cols_show = ["data_nf", "fornecedor", "valor", "vencimento", "estado", "status_pagamento"]
+            cols_to_display = [c for c in cols_show if c in df.columns]
+            table_placeholder.dataframe(df[cols_to_display], height=250)
+        else:
+            st.error("Erro ao adicionar nova conta.")
+
+# 🔽 Exportar Aba Atual
+st.markdown("---")
+st.subheader("💾 Exportar Aba Atual")
+try:
+    df_to_save = load_data(EXCEL_PAGAR, aba)
+    if not df_to_save.empty:
+        save_data(EXCEL_PAGAR, aba, df_to_save)
+    with open(EXCEL_PAGAR, "rb") as fx:
+        bytes_data = fx.read()
+    st.download_button(
+        label=f"Exportar '{aba}'",
+        data=bytes_data,
+        file_name=f"Contas a Pagar - {aba}.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+except Exception as e:
+    st.error(f"Erro ao preparar download: {e}")
+st.markdown("---")
+
 
 if page == "Contas a Receber":
     st.subheader("🗂️ Contas a Receber")
