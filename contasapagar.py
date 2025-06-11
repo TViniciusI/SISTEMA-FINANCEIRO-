@@ -980,18 +980,53 @@ elif page == "Contas a Receber":
                 step=1,
                 key="remover_receber"
             )
-        if st.button("Remover", key="btn_remover_receber"):
-            rec = df_display.iloc[idx_r]
-            orig_idx = df.index[
-                (df["fornecedor"] == rec["fornecedor"]) &
-                (df["valor"] == rec["valor"]) &
-                (df["vencimento"] == rec["vencimento"])
-            ][0]
-            wb = load_workbook(EXCEL_RECEBER)
-            ws = wb[aba]
-            ws.delete_rows(8 + 1 + orig_idx)
-            wb.save(EXCEL_RECEBER)
-            st.success("Registro removido com sucesso!")
+if st.button("Remover", key="btn_remover_receber"):
+    rec = df_display.iloc[idx_r]
+
+    # tenta localizar a linha original no df carregado
+    orig_idx_candidates = df[
+        (df["fornecedor"] == rec["fornecedor"]) &
+        (df["valor"] == rec["valor"]) &
+        (df["vencimento"] == rec["vencimento"])
+    ].index
+    orig_idx = orig_idx_candidates[0] if len(orig_idx_candidates) > 0 else rec.name
+
+    # abre e edita o Excel
+    wb = load_workbook(EXCEL_RECEBER)
+    ws = wb[aba]
+    header_row = 8
+    excel_row = header_row + 1 + orig_idx
+
+    # mapeia as colunas a limpar
+    headers = [
+        str(ws.cell(row=header_row, column=col).value).strip().lower()
+        for col in range(2, ws.max_column + 1)
+    ]
+    field_map = {
+        "data_nf": ["data_nf", "data documento", "data da nota fiscal"],
+        "forma_pagamento": ["forma_pagamento", "descrição"],
+        "fornecedor": ["fornecedor"],
+        "os": ["os", "documento"],
+        "vencimento": ["vencimento"],
+        "valor": ["valor"],
+        "estado": ["estado"],
+        "boleto": ["boleto"],
+        "comprovante": ["comprovante"]
+    }
+
+    cols_to_clear = []
+    for key, names in field_map.items():
+        for i, h in enumerate(headers):
+            if h in names:
+                cols_to_clear.append(i + 2)  # +2 por causa do deslocamento
+                break
+
+    for col in cols_to_clear:
+        ws.cell(row=excel_row, column=col, value=None)
+
+    wb.save(EXCEL_RECEBER)
+    st.success("Registro removido com sucesso!")
+
 
                 df = load_data(EXCEL_RECEBER, aba)
                 # reaplica filtros
