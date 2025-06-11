@@ -965,42 +965,73 @@ elif page == "Contas a Receber":
                 cols_to_display = [c for c in cols_show if c in df_display.columns]
                 table_placeholder_r.dataframe(df_display[cols_to_display], height=250)
 
- # 🗑️ Remover Registro
+     # 🗑️ Remover Registro (Contas a Pagar)
     with st.expander("🗑️ Remover Registro"):
         if not df_display.empty:
-            idx_r = st.number_input(
-                "Índice para remover:",
+            idx_rem = st.number_input(
+                "Índice da linha para remover:",
                 min_value=0,
                 max_value=len(df_display) - 1,
                 step=1,
-                key="remover_receber"
+                key="remover_pagar"
             )
-            if st.button("Remover", key="btn_remover_receber"):
-                rec = df_display.iloc[idx_r]
-                orig_idx = df.index[
-                    (df["fornecedor"] == rec["fornecedor"]) &
-                    (df["valor"] == rec["valor"]) &
-                    (df["vencimento"] == rec["vencimento"])
-                ][0]
+            if st.button("Remover", key="btn_remover_pagar"):
+                # pega o índice original no DataFrame
+                rec_rem = df_display.iloc[idx_rem]
+                orig_idx = rec_rem.name
+
                 wb = load_workbook(EXCEL_RECEBER)
                 ws = wb[aba]
-                ws.delete_rows(8 + 1 + orig_idx)
-                wb.save(EXCEL_RECEBER)
-                st.success("Registro removido com sucesso!")
+                header_row = 8
+                excel_row = header_row + 1 + orig_idx
 
+                # mapeia onde estão as colunas importantes
+                headers = [
+                    str(ws.cell(row=header_row, column=col).value).strip().lower()
+                    for col in range(2, ws.max_column + 1)
+                ]
+                field_map = {
+                    "data_nf": ["data_nf", "data documento", "data da nota fiscal"],
+                    "forma_pagamento": ["forma_pagamento", "descrição"],
+                    "fornecedor": ["fornecedor"],
+                    "os": ["os", "documento"],
+                    "vencimento": ["vencimento"],
+                    "valor": ["valor"],
+                    "estado": ["estado"],
+                    "boleto": ["boleto"],
+                    "comprovante": ["comprovante"]
+                }
+                # identifica as colunas no Excel
+                cols_to_clear = []
+                for key, names in field_map.items():
+                    for i, h in enumerate(headers):
+                        if h in names:
+                            cols_to_clear.append(i + 2)  # +2 porque headers começa em col 2
+                            break
+
+                # limpa cada célula dessa linha
+                for col in cols_to_clear:
+                    ws.cell(row=excel_row, column=col, value=None)
+
+                wb.save(EXCEL_RECEBER)
+                st.success("Registro removido (conteúdo limpo) com sucesso!")
+
+                # recarrega e atualiza a tabela
                 df = load_data(EXCEL_RECEBER, aba)
-                # reaplica filtros
-                if view_sel == "Recebidas":
+                if view_sel == "Recebido":
                     df_display = df[df["status_pagamento"] == "Recebido"].copy()
                 elif view_sel == "Pendentes":
-                    df_display = df[df["status_pagamento"] != "Recebido"].copy()
+                    df_display = df[df["status_pagamento"] != "Pago"].copy()
                 else:
                     df_display = df.copy()
                 if forn != "Todos":
                     df_display = df_display[df_display["fornecedor"] == forn]
-                if status_sel != "Todos":
-                    df_display = df_display[df_display["status_pagamento"] == status_sel]
-                table_placeholder_r.dataframe(df_display[cols_show], height=250)
+
+                cols_show       = ["data_nf","fornecedor","valor","vencimento","estado","status_pagamento"]
+                cols_to_display = [c for c in cols_show if c in df_display.columns]
+                table_placeholder.dataframe(df_display[cols_to_display], height=250)
+
+
        # 📎 Anexar Documentos
     with st.expander("📎 Anexar Documentos"):
         if not df_display.empty:
