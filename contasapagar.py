@@ -743,17 +743,19 @@ def display_receber():
     else:
         df_display = df.copy()
     
-    with st.expander("🔍 Filtros Avançados"):
-        col1, col2 = st.columns(2)
-        with col1:
-            cliente = st.selectbox(
-                "Cliente",
-                ["Todos"] + sorted(df["fornecedor"].dropna().unique().tolist())
-        with col2:
-            status = st.selectbox(
-                "Status",
-                ["Todos"] + sorted(df["status_pagamento"].dropna().unique().tolist())
-    
+with st.expander("🔍 Filtros Avançados"):
+    col1, col2 = st.columns(2)
+    with col1:
+        cliente = st.selectbox(
+            "Cliente:",
+            ["Todos"] + sorted(df["fornecedor"].dropna().unique().tolist())
+        )
+    with col2:
+        status = st.selectbox(
+            "Status:",
+            ["Todos"] + sorted(df["status_pagamento"].dropna().unique().tolist())
+        )
+
     if cliente != "Todos":
         df_display = df_display[df_display["fornecedor"] == cliente]
     if status != "Todos":
