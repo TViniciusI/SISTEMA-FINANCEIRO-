@@ -730,36 +730,38 @@ def display_receber():
     # Seletor de mês
     aba = st.selectbox("Selecione o mês:", FULL_MONTHS, index=int(datetime.now().strftime("%m"))-1)
     
-    # Carrega dados
-    df = load_data(EXCEL_RECEBER, aba)
-    
-    # Filtros
-    view_sel = st.radio("Visualizar:", ["Todos", "Recebidas", "Pendentes"], horizontal=True)
-    
-    if view_sel == "Recebidas":
-        df_display = df[df["status_pagamento"] == "Recebido"].copy()
-    elif view_sel == "Pendentes":
-        df_display = df[df["status_pagamento"] != "Recebido"].copy()
-    else:
-        df_display = df.copy()
-    
+# Carrega os dados
+df = load_data(EXCEL_RECEBER, aba)
+
+# Filtros básicos
+view_sel = st.radio("Visualizar:", ["Todos", "Recebidas", "Pendentes"], horizontal=True)
+
+if view_sel == "Recebidas":
+    df_display = df[df["status_pagamento"] == "Recebido"].copy()
+elif view_sel == "Pendentes":
+    df_display = df[df["status_pagamento"] != "Recebido"].copy()
+else:
+    df_display = df.copy()
+
+# Filtros avançados
 with st.expander("🔍 Filtros Avançados"):
     col1, col2 = st.columns(2)
     with col1:
         cliente = st.selectbox(
-            "Cliente:",
+            "Cliente",
             ["Todos"] + sorted(df["fornecedor"].dropna().unique().tolist())
         )
     with col2:
         status = st.selectbox(
-            "Status:",
+            "Status",
             ["Todos"] + sorted(df["status_pagamento"].dropna().unique().tolist())
         )
 
-    if cliente != "Todos":
-        df_display = df_display[df_display["fornecedor"] == cliente]
-    if status != "Todos":
-        df_display = df_display[df_display["status_pagamento"] == status]
+if cliente != "Todos":
+    df_display = df_display[df_display["fornecedor"] == cliente]
+if status != "Todos":
+    df_display = df_display[df_display["status_pagamento"] == status]
+
     # Exibe tabela
     st.markdown("---")
     st.subheader("📋 Lançamentos")
