@@ -103,7 +103,6 @@ def load_data(excel_path: str, sheet_name: str) -> pd.DataFrame:
                     if alias.lower().strip() == col_normalizado:
                         rename_map[col] = target
                         break
-
         
         df = df.rename(columns=rename_map)
         
@@ -325,17 +324,13 @@ def remove_record(excel_path: str, sheet_name: str, index: int) -> bool:
         if row_to_delete > ws.max_row:
             return False
 
-        # Apenas remove a linha completa — isso já apaga os dados
         ws.delete_rows(row_to_delete)
-
-        # Salva as alterações
         wb.save(excel_path)
         return True
 
     except Exception as e:
         st.error(f"Erro ao remover registro: {e}")
         return False
-
 
 def format_currency(value: float) -> str:
     """Formata um valor como moeda brasileira."""
@@ -511,27 +506,37 @@ def display_pagar():
     else:
         df_display = df.copy()
     
-# Após carregar df e df_display
-
-with st.expander("🔍 Filtros Avançados"):
-    col1, col2 = st.columns(2)
-    with col1:
-        fornecedor = st.selectbox(
-            "Fornecedor",
-            ["Todos"] + sorted(df["fornecedor"].dropna().unique().tolist())
+    with st.expander("🔍 Filtros Avançados"):
+        col1, col2 = st.columns(2)
+        with col1:
+            fornecedor = st.selectbox(
+                "Fornecedor",
+                ["Todos"] + sorted(df["fornecedor"].dropna().unique().tolist())
+            )
+        with col2:
+            status = st.selectbox(
+                "Status",
+                ["Todos"] + sorted(df["status_pagamento"].dropna().unique().tolist())
+            )
+    
+    if fornecedor != "Todos":
+        df_display = df_display[df_display["fornecedor"] == fornecedor]
+    if status != "Todos":
+        df_display = df_display[df_display["status_pagamento"] == status]
+    
+    # Exibe tabela
+    st.markdown("---")
+    st.subheader("📋 Lançamentos")
+    
+    if df_display.empty:
+        st.warning("Nenhum registro encontrado para os filtros selecionados.")
+    else:
+        cols_to_show = [c for c in COLUNAS_PADRAO if c in df_display.columns] + ["status_pagamento"]
+        st.dataframe(
+            df_display[cols_to_show],
+            height=400,
+            use_container_width=True
         )
-    with col2:
-        status = st.selectbox(
-            "Status",
-            ["Todos"] + sorted(df["status_pagamento"].dropna().unique().tolist())
-        )
-
-# Aplique os filtros
-if fornecedor != "Todos":
-    df_display = df_display[df_display["fornecedor"] == fornecedor]
-if status != "Todos":
-    df_display = df_display[df_display["status_pagamento"] == status]
-
     
     # Operações CRUD
     st.markdown("---")
@@ -596,8 +601,8 @@ if status != "Todos":
             nova_data = st.date_input(
                 "Data N/F:",
                 value=date.today(),
-                key="nova_data_receber"
-)
+                key="nova_data_pagar"
+            )
             nova_desc = st.text_input(
                 "Descrição:",
                 key="nova_desc_pagar"
@@ -743,11 +748,11 @@ def display_receber():
         with col1:
             cliente = st.selectbox(
                 "Cliente",
-                ["Todos"] + sorted(df["fornecedor"].dropna().unique().tolist()))
+                ["Todos"] + sorted(df["fornecedor"].dropna().unique().tolist())
         with col2:
             status = st.selectbox(
                 "Status",
-                ["Todos"] + sorted(df["status_pagamento"].dropna().unique().tolist()))
+                ["Todos"] + sorted(df["status_pagamento"].dropna().unique().tolist())
     
     if cliente != "Todos":
         df_display = df_display[df_display["fornecedor"] == cliente]
@@ -828,7 +833,7 @@ def display_receber():
     with tab_add:
         col1, col2 = st.columns(2)
         with col1:
-            nova_data = st.date_input(
+                       nova_data = st.date_input(
                 "Data N/F:",
                 value=date.today(),
                 key="nova_data_receber"
@@ -859,7 +864,7 @@ def display_receber():
                 format="%.2f",
                 key="novo_valor_add_receber"
             )
-
+        
         novo_estado = st.selectbox(
             "Estado:",
             options=["A Receber", "Recebido"],
@@ -872,7 +877,7 @@ def display_receber():
             index=2,
             key="novo_situacao_add_receber"
         )
-
+        
         novo_boleto = st.file_uploader(
             "Boleto (opcional):",
             type=["pdf", "jpg", "png"],
@@ -883,7 +888,7 @@ def display_receber():
             type=["pdf", "jpg", "png"],
             key="novo_comprov_receber"
         )
-
+        
         if st.button("➕ Adicionar Registro", key="btn_add_receber"):
             record = {
                 "data_nf": nova_data,
@@ -1017,4 +1022,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-               
