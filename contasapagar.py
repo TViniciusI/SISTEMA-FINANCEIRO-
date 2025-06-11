@@ -323,7 +323,14 @@ def remove_record(excel_path: str, sheet_name: str, index: int) -> bool:
         if row_to_delete > ws.max_row:
             return False
             
+        # Limpa todas as células da linha antes de deletar
+        for col in range(1, ws.max_column + 1):
+            ws.cell(row=row_to_delete, column=col, value=None)
+            
+        # Remove a linha
         ws.delete_rows(row_to_delete)
+        
+        # Salva as alterações
         wb.save(excel_path)
         return True
     except Exception as e:
