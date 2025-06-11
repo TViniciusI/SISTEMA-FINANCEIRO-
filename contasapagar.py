@@ -28,7 +28,6 @@ st.set_page_config(
 
 st.markdown("""
 <style>
-    /* Importa fonte Inter */
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
 
     html, body, [class*="css"] {
@@ -41,34 +40,53 @@ st.markdown("""
         color: white;
         padding: 1.5rem;
         border-radius: 12px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
         margin-bottom: 1.5rem;
     }
 
     /* Cards de métricas */
     .metric-card {
-        background: #f9fafe;
         border-radius: 12px;
         padding: 1.5rem;
         border-left: 4px solid #4e54c8;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
         transition: transform 0.3s ease;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
     }
 
     .metric-card:hover {
         transform: translateY(-4px);
-        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.08);
+    }
+
+    /* Tema claro */
+    .stApp:not([data-theme="dark"]) .metric-card {
+        background: #f9fafe;
+    }
+    .stApp:not([data-theme="dark"]) .metric-value {
+        color: #2e3a59;
+    }
+    .stApp:not([data-theme="dark"]) .metric-label {
+        color: #7b8a97;
+    }
+
+    /* Tema escuro */
+    .stApp[data-theme="dark"] .metric-card {
+        background: #1e1e26;
+    }
+    .stApp[data-theme="dark"] .metric-value {
+        color: #ffffff;
+    }
+    .stApp[data-theme="dark"] .metric-label {
+        color: #c2c7cf;
     }
 
     .metric-value {
         font-size: 2.2rem;
         font-weight: 600;
-        color: #2e3a59;
     }
 
     .metric-label {
         font-size: 0.85rem;
-        color: #8898aa;
         text-transform: uppercase;
         letter-spacing: 0.8px;
         margin-top: 0.5rem;
@@ -83,54 +101,68 @@ st.markdown("""
         padding: 10px 18px;
         border-radius: 10px 10px 0 0;
         border: none;
-        background: #eaeef5;
-        color: #5a5f73;
         font-weight: 500;
         transition: all 0.3s ease;
     }
 
+    .stApp:not([data-theme="dark"]) .stTabs [role="tab"] {
+        background: #eaeef5;
+        color: #5a5f73;
+    }
+
+    .stApp[data-theme="dark"] .stTabs [role="tab"] {
+        background: #2c2f36;
+        color: #aaa;
+    }
+
     .stTabs [role="tab"][aria-selected="true"] {
-        background: #4e54c8;
-        color: #ffffff;
+        background: #4e54c8 !important;
+        color: white !important;
     }
 
     /* Gráfico container */
     .chart-container {
-        background: #ffffff;
         border-radius: 12px;
         padding: 1.5rem;
-        box-shadow: 0 1px 6px rgba(0, 0, 0, 0.04);
         margin-bottom: 1.5rem;
     }
 
-    /* Botões */
-    .stButton > button {
+    .stApp:not([data-theme="dark"]) .chart-container {
+        background: #ffffff;
+        box-shadow: 0 1px 6px rgba(0, 0, 0, 0.04);
+    }
+
+    .stApp[data-theme="dark"] .chart-container {
+        background: #1a1a1f;
+        box-shadow: 0 1px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Botões gerais */
+    .stButton > button, .stDownloadButton > button {
         border-radius: 8px;
         padding: 8px 18px;
         font-weight: 500;
-        background-color: #4e54c8;
-        color: white;
         transition: all 0.3s ease;
         border: none;
     }
 
-    .stButton > button:hover {
-        background-color: #3c40a4;
+    .stApp:not([data-theme="dark"]) .stButton > button,
+    .stApp:not([data-theme="dark"]) .stDownloadButton > button {
+        background-color: #4e54c8;
         color: white;
     }
 
-    .stDownloadButton > button {
+    .stApp[data-theme="dark"] .stButton > button,
+    .stApp[data-theme="dark"] .stDownloadButton > button {
         background-color: #6c70f8;
         color: white;
-        border-radius: 8px;
-        padding: 8px 16px;
-        font-weight: 500;
-        border: none;
     }
 
+    .stButton > button:hover,
     .stDownloadButton > button:hover {
-        background-color: #5c61db;
+        filter: brightness(0.9);
     }
+
 </style>
 """, unsafe_allow_html=True)
 
