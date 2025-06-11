@@ -956,13 +956,13 @@ elif page == "Contas a Pagar":
                 estado_options += sorted(df["estado"].dropna().astype(str).unique().tolist())
             status_sel = st.selectbox("Estado/Status", estado_options)
 
-    # Aplicando filtros com verificações adicionais
-    if forn != "Todos" and "fornecedor" in df_display.columns:
-        df_display = df_display[df_display["fornecedor"] == forn]
-    if status_sel != "Todos" and "estado" in df_display.columns:
-        df_display = df_display[df_display["estado"] == status_sel]
+        # Aplicando filtros DENTRO do expander
+        if forn != "Todos" and "fornecedor" in df_display.columns:
+            df_display = df_display[df_display["fornecedor"] == forn]
+        if status_sel != "Todos" and "estado" in df_display.columns:
+            df_display = df_display[df_display["estado"] == status_sel]
 
-    st.markdown("<hr style='border:1px solid #ddd;'>", unsafe_allow_html=True)
+        st.markdown("<hr style='border:1px solid #ddd;'>", unsafe_allow_html=True)
 
     if df_display.empty:
         st.warning("Nenhum registro para os filtros/visualização selecionados.")
