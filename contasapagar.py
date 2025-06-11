@@ -1111,10 +1111,10 @@ with st.expander("➕ Adicionar Nova Conta"):
 # 🔽 Exportar Aba Atual
 st.markdown("---")
 st.subheader("💾 Exportar Aba Atual")
-try:
+   try:
     df_to_save = load_data(EXCEL_PAGAR, aba)
-    if 'df_display' in locals() and not df_display.empty:f
-        save_data(EXCEL_PAGAR, aba, df_to_save)
+    if not df_to_save.empty:
+        save_data(EXCEL_PAGAR, aba, df_to_save)  # ✅ indentação correta aqui
     with open(EXCEL_PAGAR, "rb") as fx:
         bytes_data = fx.read()
     st.download_button(
@@ -1408,9 +1408,10 @@ if page == "Contas a Receber":
     st.markdown("---")
     st.subheader("💾 Exportar Aba Atual")
     try:
-        df_to_save = load_data(EXCEL_RECEBER, aba)
-        if not df_to_save.empty:
-            save_data(EXCEL_RECEBER, aba, df_to_save)
+    df_to_save = load_data(EXCEL_RECEBER, aba)
+    if not df_to_save.empty:
+        save_data(EXCEL_RECEBER, aba, df_to_save)  # ✅ indentação correta aqui
+
         with open(EXCEL_RECEBER, "rb") as fx:
             st.download_button(
                 label=f"Exportar '{aba}'",
