@@ -1070,85 +1070,79 @@ with st.expander("📎 Anexar Documentos"):
             st.success(f"📎 Documento salvo com sucesso em:\n{destino}")
 
 
-    # ➕ Adicionar Nova Conta
-    with st.expander("➕ Adicionar Nova Conta"):
-        coln1, coln2 = st.columns(2)
-        with coln1:
-            data_nf   = st.date_input("Data N/F:", value=date.today(), key="nova_data_nf_receber")
-            forma_pag = st.text_input("Descrição:", key="nova_descricao_receber")
-            forn_new  = st.text_input("Fornecedor:", key="novo_fornecedor_receber")
-        with coln2:
-            os_new    = st.text_input("Documento/OS:", key="novo_os_receber")
-            venc_new  = st.date_input("Data de Vencimento:", value=date.today(), key="novo_venc_receber")
-            valor_new = st.number_input("Valor (R$):", min_value=0.0, format="%.2f", key="novo_valor_receber2")
+ # ➕ Adicionar Nova Conta (Contas a Receber)
+with st.expander("➕ Adicionar Nova Conta"):
+    coln1, coln2 = st.columns(2)
+    with coln1:
+        data_nf   = st.date_input("Data N/F:", value=date.today(), key="nova_data_nf_receber")
+        forma_pag = st.text_input("Descrição:", key="nova_descricao_receber")
+        forn_new  = st.text_input("Fornecedor:", key="novo_fornecedor_receber")
+    with coln2:
+        os_new    = st.text_input("Documento/OS:", key="novo_os_receber")
+        venc_new  = st.date_input("Data de Vencimento:", value=date.today(), key="novo_venc_receber")
+        valor_new = st.number_input("Valor (R$):", min_value=0.0, format="%.2f", key="novo_valor_receber2")
 
-        estado_opt = ["A Receber", "Recebido"]
-        situ_opt   = ["Em Atraso", "Recebido", "A Receber"]
-        estado_new = st.selectbox("Estado:", options=estado_opt, key="estado_novo_receber")
-        situ_new   = st.selectbox("Situação:", options=situ_opt,   key="situacao_novo_receber")
-        boleto_file   = st.file_uploader("Boleto (opcional):",   type=["pdf","jpg","png"], key="boleto_novo_receber")
-        comprov_file = st.file_uploader("Comprovante (opcional):", type=["pdf","jpg","png"], key="comprov_novo_receber")
+    estado_opt = ["A Receber", "Recebido"]
+    situ_opt   = ["Em Atraso", "Recebido", "A Receber"]
+    estado_new = st.selectbox("Estado:", options=estado_opt, key="estado_novo_receber")
+    situ_new   = st.selectbox("Situação:", options=situ_opt,   key="situacao_novo_receber")
 
-        if st.button("➕ Adicionar Conta", key="adicionar_receber"):
-            record = {
-                "data_nf":        data_nf,
-                "forma_pagamento": forma_pag,
-                "fornecedor":     forn_new,
-                "os":             os_new,
-                "vencimento":     venc_new,
-                "valor":          valor_new,
-                "estado":         estado_new,
-                "situacao":       situ_new,
-                "boleto":         "",
-                "comprovante":    ""
-            }
-            if boleto_file:
-                p = os.path.join(
-                    ANEXOS_DIR,
-                    "Contas a Receber",
-                    f"Receber_{aba}_boleto_{boleto_file.name}"
+    boleto_file   = st.file_uploader("Boleto (opcional):",     type=["pdf","jpg","png"], key="boleto_novo_receber")
+    comprov_file  = st.file_uploader("Comprovante (opcional):", type=["pdf","jpg","png"], key="comprov_novo_receber")
+
+    if st.button("➕ Adicionar Conta", key="adicionar_receber"):
+        record = {
+            "data_nf":          data_nf,
+            "forma_pagamento": forma_pag,
+            "fornecedor":      forn_new,
+            "os":              os_new,
+            "vencimento":      venc_new,
+            "valor":           valor_new,
+            "estado":          estado_new,
+            "situacao":        situ_new,
+            "boleto":          "",
+            "comprovante":     ""
+        }
+
+        if boleto_file:
+            p = os.path.join(ANEXOS_DIR, "Contas a Receber", f"Receber_{aba}_boleto_{boleto_file.name}")
+            with open(p, "wb") as fb:
+                fb.write(boleto_file.getbuffer())
+            record["boleto"] = p
+
+        if comprov_file:
+            p = os.path.join(ANEXOS_DIR, "Contas a Receber", f"Receber_{aba}_comprov_{comprov_file.name}")
+            with open(p, "wb") as fc:
+                fc.write(comprov_file.getbuffer())
+            record["comprovante"] = p
+
+        add_record(EXCEL_RECEBER, aba, record)
+        st.success("Nova conta adicionada com sucesso!")
+
+        if record.get("boleto"):
+            with open(record["boleto"], "rb") as f:
+                st.download_button(
+                    label="📥 Baixar Boleto",
+                    data=f.read(),
+                    file_name=os.path.basename(record["boleto"]),
+                    mime="application/octet-stream",
+                    key=f"dl_boleto_{aba}"
                 )
-                with open(p, "wb") as fb:
-                    fb.write(boleto_file.getbuffer())
-                record["boleto"] = p
-            if comprov_file:
-                p = os.path.join(
-                    ANEXOS_DIR,
-                    "Contas a Receber",
-                    f"Receber_{aba}_comprov_{comprov_file.name}"
+        if record.get("comprovante"):
+            with open(record["comprovante"], "rb") as f:
+                st.download_button(
+                    label="📥 Baixar Comprovante",
+                    data=f.read(),
+                    file_name=os.path.basename(record["comprovante"]),
+                    mime="application/octet-stream",
+                    key=f"dl_comprov_{aba}"
                 )
-                with open(p, "wb") as fc:
-                    fc.write(comprov_file.getbuffer())
-                record["comprovante"] = p
 
-            add_record(EXCEL_RECEBER, aba, record)
-            st.success("Nova conta adicionada com sucesso!")
-
-            if record.get("boleto"):
-                with open(record["boleto"], "rb") as f:
-                    st.download_button(
-                        label="📥 Baixar Boleto",
-                        data=f.read(),
-                        file_name=os.path.basename(record["boleto"]),
-                        mime="application/octet-stream",
-                        key=f"dl_boleto_{aba}"
-                    )
-            if record.get("comprovante"):
-                with open(record["comprovante"], "rb") as f:
-                    st.download_button(
-                        label="📥 Baixar Comprovante",
-                        data=f.read(),
-                        file_name=os.path.basename(record["comprovante"]),
-                        mime="application/octet-stream",
-                        key=f"dl_comprov_{aba}"
-                    )
-
-            # Recarrega e exibe o DataFrame atualizado
-            df = load_data(EXCEL_RECEBER, aba)
-            # define quais colunas mostrar, verificando quais existem de fato
-            cols_show      = ["data_nf", "fornecedor", "valor", "vencimento", "estado", "status_pagamento"]
-            cols_to_display = [c for c in cols_show if c in df.columns]
-            table_placeholder_r.dataframe(df[cols_to_display], height=250)
+        # Recarrega e atualiza a visualização
+        df = load_data(EXCEL_RECEBER, aba)
+        cols_show = ["data_nf", "fornecedor", "valor", "vencimento", "estado", "status_pagamento"]
+        cols_to_display = [c for c in cols_show if c in df.columns]
+        table_placeholder_r.dataframe(df[cols_to_display], height=250)
 
     st.markdown("---")
     st.subheader("💾 Exportar Aba Atual")
