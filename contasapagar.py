@@ -52,152 +52,158 @@ for pasta in ["Contas a Pagar", "Contas a Receber"]:
     os.makedirs(os.path.join(ANEXOS_DIR, pasta), exist_ok=True)
 
 
-
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
 
-    html, body, [class*="css"] {
-        font-family: 'Inter', sans-serif;
-    }
+html, body, [class*="css"] {
+    font-family: 'Inter', sans-serif;
+    line-height: 1.6;
+}
 
-    /* ------------------------- Cabeçalho ------------------------- */
-    .header {
-        background: linear-gradient(135deg, #3c3b92, #6051db);
-        color: white;
-        padding: 1.5rem;
-        border-radius: 14px;
-        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
-        margin-bottom: 2rem;
-    }
+/* ----------------- Cabeçalho ----------------- */
+.header {
+    background: linear-gradient(135deg, #4a00e0, #8e2de2);
+    color: white;
+    padding: 2rem;
+    border-radius: 16px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    margin-bottom: 2rem;
+    text-align: center;
+}
 
-    /* ------------------------- Cards de Métricas ------------------------- */
-    .metric-card {
-        border-radius: 14px;
-        padding: 1.5rem;
-        border-left: 4px solid #6051db;
-        transition: transform 0.25s ease;
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
-    }
+/* ----------------- Cards de Métricas ----------------- */
+.metric-card {
+    border-radius: 16px;
+    padding: 1.5rem;
+    border-left: 5px solid #8e2de2;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
+    margin-bottom: 1rem;
+}
 
-    .metric-card:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 8px 18px rgba(0, 0, 0, 0.1);
-    }
+.metric-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+}
 
-    .metric-value {
-        font-size: 2.4rem;
-        font-weight: 600;
-        margin-bottom: 0.25rem;
-    }
+.metric-value {
+    font-size: 2.5rem;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
 
-    .metric-label {
-        font-size: 0.85rem;
-        text-transform: uppercase;
-        letter-spacing: 0.7px;
-    }
+.metric-label {
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
 
-    /* Tema Claro */
-    .stApp:not([data-theme="dark"]) .metric-card {
-        background: #f8f9fc;
-    }
+/* Tema Claro */
+.stApp:not([data-theme="dark"]) .metric-card {
+    background: #f9fafe;
+}
 
-    .stApp:not([data-theme="dark"]) .metric-value {
-        color: #2c3e50;
-    }
+.stApp:not([data-theme="dark"]) .metric-value {
+    color: #2c3e50;
+}
 
-    .stApp:not([data-theme="dark"]) .metric-label {
-        color: #7b8a97;
-    }
+.stApp:not([data-theme="dark"]) .metric-label {
+    color: #7f8c8d;
+}
 
-    /* Tema Escuro */
-    .stApp[data-theme="dark"] .metric-card {
-        background: #20212b;
-    }
+/* Tema Escuro */
+.stApp[data-theme="dark"] .metric-card {
+    background: #23242b;
+}
 
-    .stApp[data-theme="dark"]) .metric-value {
-        color: #f0f2f5;
-    }
+.stApp[data-theme="dark"] .metric-value {
+    color: #ffffff;
+}
 
-    .stApp[data-theme="dark"] .metric-label {
-        color: #b0b3bd;
-    }
+.stApp[data-theme="dark"] .metric-label {
+    color: #b0b3bd;
+}
 
-    /* ------------------------- Tabs ------------------------- */
-    .stTabs [role="tablist"] {
-        gap: 10px;
-    }
+/* ----------------- Tabs ----------------- */
+.stTabs [role="tablist"] {
+    gap: 10px;
+    margin-bottom: 1rem;
+}
 
-    .stTabs [role="tab"] {
-        padding: 10px 20px;
-        border-radius: 10px 10px 0 0;
-        font-weight: 500;
-        transition: all 0.2s ease-in-out;
-        border: none;
-    }
+.stTabs [role="tab"] {
+    padding: 10px 20px;
+    border-radius: 10px 10px 0 0;
+    font-weight: 500;
+    transition: all 0.3s ease-in-out;
+    border: none;
+}
 
-    .stApp:not([data-theme="dark"]) .stTabs [role="tab"] {
-        background: #e0e3ec;
-        color: #2c3e50;
-    }
+.stApp:not([data-theme="dark"]) .stTabs [role="tab"] {
+    background: #e0e3ec;
+    color: #34495e;
+}
 
-    .stApp[data-theme="dark"] .stTabs [role="tab"] {
-        background: #2a2b38;
-        color: #ccc;
-    }
+.stApp[data-theme="dark"] .stTabs [role="tab"] {
+    background: #2b2d3a;
+    color: #bbb;
+}
 
-    .stTabs [role="tab"][aria-selected="true"] {
-        background: #6051db !important;
-        color: #fff !important;
-    }
+.stTabs [role="tab"][aria-selected="true"] {
+    background: #8e2de2 !important;
+    color: white !important;
+}
 
-    /* ------------------------- Gráfico Container ------------------------- */
-    .chart-container {
-        border-radius: 14px;
-        padding: 1.5rem;
-        margin-bottom: 2rem;
-    }
+/* ----------------- Gráfico Container ----------------- */
+.chart-container {
+    border-radius: 16px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    transition: box-shadow 0.3s ease;
+}
 
-    .stApp:not([data-theme="dark"]) .chart-container {
-        background: #ffffff;
-        box-shadow: 0 1px 6px rgba(0, 0, 0, 0.04);
-    }
+.stApp:not([data-theme="dark"]) .chart-container {
+    background: #ffffff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
 
-    .stApp[data-theme="dark"] .chart-container {
-        background: #1d1e26;
-        box-shadow: 0 1px 10px rgba(0, 0, 0, 0.2);
-    }
+.stApp[data-theme="dark"] .chart-container {
+    background: #1e1f26;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
+}
 
-    /* ------------------------- Botões ------------------------- */
-    .stButton > button, .stDownloadButton > button {
-        border-radius: 8px;
-        padding: 10px 20px;
-        font-weight: 500;
-        transition: all 0.25s ease;
-        border: none;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
+/* ----------------- Botões ----------------- */
+.stButton > button,
+.stDownloadButton > button {
+    border-radius: 10px;
+    padding: 10px 20px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    border: none;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    cursor: pointer;
+}
 
-    .stApp:not([data-theme="dark"]) .stButton > button,
-    .stApp:not([data-theme="dark"]) .stDownloadButton > button {
-        background-color: #4e54c8;
-        color: white;
-    }
+.stApp:not([data-theme="dark"]) .stButton > button,
+.stApp:not([data-theme="dark"]) .stDownloadButton > button {
+    background-color: #4a00e0;
+    color: white;
+}
 
-    .stApp[data-theme="dark"] .stButton > button,
-    .stApp[data-theme="dark"] .stDownloadButton > button {
-        background-color: #7a7ef7;
-        color: white;
-    }
+.stApp[data-theme="dark"] .stButton > button,
+.stApp[data-theme="dark"] .stDownloadButton > button {
+    background-color: #9c6df2;
+    color: white;
+}
 
-    .stButton > button:hover,
-    .stDownloadButton > button:hover {
-        filter: brightness(0.9);
-        transform: scale(1.02);
-    }
-
+.stButton > button:hover,
+.stDownloadButton > button:hover {
+    filter: brightness(0.95);
+    transform: scale(1.02);
+}
 </style>
 """, unsafe_allow_html=True)
+
 
 def get_existing_sheets(excel_path: str) -> list[str]:
     try:
