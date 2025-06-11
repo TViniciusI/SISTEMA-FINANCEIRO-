@@ -97,11 +97,13 @@ def load_data(excel_path: str, sheet_name: str) -> pd.DataFrame:
         # Renomeia colunas conforme mapeamento
         rename_map = {}
         for col in df.columns:
-            col_lower = str(col).strip().lower()
+            col_normalizado = str(col).strip().lower()
             for target, aliases in col_mapping.items():
-                if any(alias.lower() in col_lower for alias in aliases):
-                    rename_map[col] = target
-                    break
+                for alias in aliases:
+                    if alias.lower().strip() == col_normalizado:
+                        rename_map[col] = target
+                        break
+
         
         df = df.rename(columns=rename_map)
         
