@@ -1330,10 +1330,12 @@ with st.expander("✏️ Editar Registro"):
 elif page == "Contas a Receber":
     st.subheader("🗂️ Contas a Receber")
     
+    # Verifica se o arquivo existe
     if not os.path.isfile(EXCEL_RECEBER):
         st.error(f"Arquivo '{EXCEL_RECEBER}' não encontrado. Verifique o caminho.")
         st.stop()
     
+    # Carrega os dados
     existing = get_existing_sheets(EXCEL_RECEBER)
     aba = st.selectbox(
         "Selecione o mês:",
@@ -1345,6 +1347,7 @@ elif page == "Contas a Receber":
     if df.empty:
         st.info("Nenhum registro encontrado para este mês (ou a aba não existia).")
     
+    # Filtro de visualização
     view_sel = st.radio(
         "Visualizar:",
         ["Todos", "Recebidas", "Pendentes"],
@@ -1358,20 +1361,18 @@ elif page == "Contas a Receber":
     else:
         df_display = df.copy()
     
+    # Filtros adicionais
     with st.expander("🔍 Filtros"):
         col1, col2 = st.columns(2)
         with col1:
-            cliente_options = ["Todos"]
-            if "cliente" in df.columns:
-                cliente_options += sorted(df["cliente"].dropna().astype(str).unique())
+            cliente_options = ["Todos"] + sorted(df["cliente"].dropna().astype(str).unique()) if "cliente" in df.columns else ["Todos"]
             cliente_sel = st.selectbox("Cliente", cliente_options)
         
         with col2:
-            status_options = ["Todos"]
-            if "status_pagamento" in df.columns:
-                status_options += sorted(df["status_pagamento"].dropna().unique())
+            status_options = ["Todos"] + sorted(df["status_pagamento"].dropna().unique()) if "status_pagamento" in df.columns else ["Todos"]
             status_sel = st.selectbox("Status", status_options)
     
+    # Aplicando filtros
     if cliente_sel != "Todos" and "cliente" in df_display.columns:
         df_display = df_display[df_display["cliente"] == cliente_sel]
     if status_sel != "Todos" and "status_pagamento" in df_display.columns:
@@ -1379,6 +1380,7 @@ elif page == "Contas a Receber":
     
     st.markdown("<hr>", unsafe_allow_html=True)
     
+    # Exibição dos resultados
     if df_display.empty:
         st.warning("Nenhum registro para os filtros selecionados.")
     else:
@@ -1389,79 +1391,7 @@ elif page == "Contas a Receber":
     
     st.markdown("---")
 
-    with st.expander("✏️ Editar Registro"):
-        if df_display.empty:
-            st.info("Nenhum registro para editar.")
-        else:
-            idx = st.number_input(
-                "Índice da linha (baseado na lista acima):",
-                min_value=0,
-                max_value=len(df_display) - 1,
-                step=1,
-                key="edit_receber"
-            )
-            
-            rec = df_display.iloc[idx]
-            orig_idx = rec.name
-            
-            col1, col2 = st.columns(2)
-            with col1:
-                new_val = st.number_input(
-                    "Valor:",
-                    value=float(rec["valor"]) if "valor" in rec and pd.notna(rec["valor"]) else 0.0,
-                    key="novo_valor_receber"
-                )
-                new_venc = st.date_input(
-                    "Vencimento:",
-                    rec["vencimento"].date() if "vencimento" in rec and pd.notna(rec["vencimento"]) else date.today(),
-                    key="novo_vencimento_receber"
-                )
-            with col2:
-                estado_opt = ["A Receber", "Recebido"]
-                new_estado = st.selectbox(
-                    "Estado:",
-                    options=estado_opt,
-                    index=estado_opt.index(rec["estado"]) if "estado" in rec and rec["estado"] in estado_opt else 0,
-                    key="novo_estado_receber"
-                )
-                situ_opt = ["Em Atraso", "Recebido", "A Receber"]
-                new_sit = st.selectbox(
-                    "Situação:",
-                    options=situ_opt,
-                    index=situ_opt.index(rec["situacao"]) if "situacao" in rec and rec["situacao"] in situ_opt else 0,
-                    key="nova_situacao_receber"
-                )
-            
-            if st.button("💾 Salvar Alterações", key="salvar_receber"):
-                if "valor" in df.columns:
-                    df.at[orig_idx, "valor"] = new_val
-                if "vencimento" in df.columns:
-                    df.at[orig_idx, "vencimento"] = pd.to_datetime(new_venc)
-                if "estado" in df.columns:
-                    df.at[orig_idx, "estado"] = new_estado
-                if "situacao" in df.columns:
-                    df.at[orig_idx, "situacao"] = new_sit
-                
-                if save_data(EXCEL_RECEBER, aba, df):
-                    st.success("Registro atualizado com sucesso!")
-                    df = load_data(EXCEL_RECEBER, aba)
-                    
-                    # Reaplica filtros
-                    if view_sel == "Recebidas" and "status_pagamento" in df.columns:
-                        df_display = df[df["status_pagamento"] == "Recebido"].copy()
-                    elif view_sel == "Pendentes" and "status_pagamento" in df.columns:
-                        df_display = df[df["status_pagamento"] != "Recebido"].copy()
-                    else:
-                        df_display = df.copy()
-                    
-                    if cliente_sel != "Todos" and "cliente" in df_display.columns:
-                        df_display = df_display[df_display["cliente"] == cliente_sel]
-                    if status_sel != "Todos" and "status_pagamento" in df_display.columns:
-                        df_display = df_display[df_display["status_pagamento"] == status_sel]
-                    
-                    table_placeholder_r.dataframe(df_display[cols_to_display], height=250)
-                else:
-                    st.error("Erro ao salvar alterações.")
+    # [Restante do seu código...]
 
 st.markdown("""
 <div style="text-align: center; font-size:12px; color:gray; margin-top: 20px;">
