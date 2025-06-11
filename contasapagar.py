@@ -596,14 +596,6 @@ if page == "Dashboard":
                     if st.button("Gerar Relatório (PDF)", key="btn_receber_pdf", help="Em desenvolvimento - em breve disponível"):
                         st.info("Funcionalidade em desenvolvimento. Em breve você poderá gerar relatórios em PDF.")
     
-    # Rodapé
-    st.markdown("---")
-    st.markdown("""
-    <div style="text-align: center; color: #7f8c8d; font-size: 12px;">
-        Painel Financeiro • Atualizado em {date} • Versão 2.0
-    </div>
-    """.format(date=datetime.now().strftime("%d/%m/%Y %H:%M")), unsafe_allow_html=True)
-
 elif page == "Contas a Pagar":
     st.subheader("🗂️ Contas a Pagar")
     if not os.path.isfile(EXCEL_PAGAR):
