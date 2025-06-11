@@ -6,6 +6,14 @@ from datetime import datetime, date
 import os
 from openpyxl import load_workbook
 
+
+# Configuração da página
+st.set_page_config(
+    page_title="💼 Sistema Financeiro 2025",
+    page_icon="💰",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 VALID_USERS = {
     "Vinicius": "vinicius4223",
     "Flavio": "1234",
@@ -46,14 +54,6 @@ FULL_MONTHS = [f"{i:02d}" for i in range(1, 13)]
 for pasta in ["Contas a Pagar", "Contas a Receber"]:
     os.makedirs(os.path.join(ANEXOS_DIR, pasta), exist_ok=True)
 
-
-# Configuração da página
-st.set_page_config(
-    page_title="💼 Sistema Financeiro 2025",
-    page_icon="💰",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
 
 st.markdown("""
 <style>
