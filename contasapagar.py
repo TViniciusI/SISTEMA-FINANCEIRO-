@@ -1352,7 +1352,7 @@ elif page == "Contas a Receber":
     if df_display.empty:
         st.warning("Nenhum registro para os filtros selecionados.")
     else:
-        cols_show = ["data_nf", "fornecedor", "valor", "vencimento", "estado", "status_pagamento"]
+        cols_show = ["data_nf", "cliente", "valor", "vencimento", "estado", "status_pagamento"]
         cols_to_display = [c for c in cols_show if c in df_display.columns]
         table_placeholder_r = st.empty()
         table_placeholder_r.dataframe(df_display[cols_to_display], height=250)
