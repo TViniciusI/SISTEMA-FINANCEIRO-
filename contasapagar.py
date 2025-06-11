@@ -474,15 +474,6 @@ st.markdown("---")
 
 # Dashboard Modernizado
 if page == "Dashboard":
-    # Cabeçalho moderno
-    st.markdown("""
-    <div class="header">
-        <h1 style="color: white; margin: 0;">💼 Sistema Financeiro 2025</h1>
-        <p style="color: rgba(255, 255, 255, 0.8); margin: 0.5rem 0 0;">Dashboard avançado com estatísticas e gráficos interativos</p>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # Verificação dos arquivos
     if not os.path.isfile(EXCEL_PAGAR):
         st.error(f"Arquivo '{EXCEL_PAGAR}' não encontrado. Verifique o caminho.")
     if not os.path.isfile(EXCEL_RECEBER):
