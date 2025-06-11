@@ -758,7 +758,6 @@ def display_receber():
         df_display = df_display[df_display["fornecedor"] == cliente]
     if status != "Todos":
         df_display = df_display[df_display["status_pagamento"] == status]
-    
     # Exibe tabela
     st.markdown("---")
     st.subheader("📋 Lançamentos")
