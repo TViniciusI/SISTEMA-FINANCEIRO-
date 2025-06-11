@@ -1333,7 +1333,7 @@ elif page == "Contas a Receber":
         col1, col2 = st.columns(2)
         with col1:
             forn = st.selectbox(
-                "Fornecedor",
+                "Cliente",
                 ["Todos"] + sorted(df["fornecedor"].dropna().astype(str).unique())
             )
         with col2:
