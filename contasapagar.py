@@ -217,7 +217,7 @@ def get_existing_sheets(excel_path: str) -> list[str]:
 
 def load_data(excel_path: str, sheet_name: str) -> pd.DataFrame:
     cols = [
-        "data_nf", "forma_pagamento", "fornecedor", "os",
+        "data_nf", "forma_pagamento", "fornecedor","cliente", "os",
         "vencimento", "valor", "estado", "situacao", "boleto", "comprovante"
     ]
     
@@ -1334,7 +1334,7 @@ elif page == "Contas a Receber":
         with col1:
             forn = st.selectbox(
                 "Fornecedor",
-                ["Todos"] + sorted(df["fornecedor"].dropna().astype(str).unique())
+                ["Todos"] + sorted(df["cliente"].dropna().astype(str).unique())
             )
         with col2:
             status_sel = st.selectbox(
@@ -1343,7 +1343,7 @@ elif page == "Contas a Receber":
             )
     
     if forn != "Todos":
-        df_display = df_display[df_display["fornecedor"] == forn]
+        df_display = df_display[df_display["cliente"] == forn]
     if status_sel != "Todos":
         df_display = df_display[df_display["status_pagamento"] == status_sel]
     
@@ -1352,7 +1352,7 @@ elif page == "Contas a Receber":
     if df_display.empty:
         st.warning("Nenhum registro para os filtros selecionados.")
     else:
-        cols_show = ["data_nf", "fornecedor", "valor", "vencimento", "estado", "status_pagamento"]
+        cols_show = ["data_nf", "cliente", "valor", "vencimento", "estado", "status_pagamento"]
         cols_to_display = [c for c in cols_show if c in df_display.columns]
         table_placeholder_r = st.empty()
         table_placeholder_r.dataframe(df_display[cols_to_display], height=250)
@@ -1421,7 +1421,7 @@ elif page == "Contas a Receber":
                         df_display = df.copy()
                     
                     if forn != "Todos":
-                        df_display = df_display[df_display["fornecedor"] == forn]
+                        df_display = df_display[df_display["cliente"] == forn]
                     if status_sel != "Todos":
                         df_display = df_display[df_display["status_pagamento"] == status_sel]
                     
@@ -1462,7 +1462,7 @@ elif page == "Contas a Receber":
                         df_display = df.copy()
                     
                     if forn != "Todos":
-                        df_display = df_display[df_display["fornecedor"] == forn]
+                        df_display = df_display[df_display["cliente"] == forn]
                     if status_sel != "Todos":
                         df_display = df_display[df_display["status_pagamento"] == status_sel]
                     
@@ -1505,7 +1505,7 @@ elif page == "Contas a Receber":
         with coln1:
             data_nf = st.date_input("Data N/F:", value=date.today(), key="nova_data_nf_receber")
             forma_pag = st.text_input("Descrição:", key="nova_descricao_receber")
-            forn_new = st.text_input("Fornecedor:", key="novo_fornecedor_receber")
+            forn_new = st.text_input("Cliente:", key="novo_cliente_receber")
         with coln2:
             os_new = st.text_input("Documento/OS:", key="novo_os_receber")
             venc_new = st.date_input("Data de Vencimento:", value=date.today(), key="novo_venc_receber")
@@ -1523,7 +1523,7 @@ elif page == "Contas a Receber":
             record = {
                 "data_nf": data_nf,
                 "forma_pagamento": forma_pag,
-                "fornecedor": forn_new,
+                "cliente": forn_new,
                 "os": os_new,
                 "vencimento": venc_new,
                 "valor": valor_new,
