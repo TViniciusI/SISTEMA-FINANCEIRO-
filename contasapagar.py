@@ -1245,6 +1245,7 @@ if page == "Contas a Receber":
             status_sel = st.selectbox(
                 "Status",
                 ["Todos"] + sorted(df["status_pagamento"].dropna().unique())
+            )  # Added the missing parenthesis here
     
     # Aplica filtros selecionados
     if forn != "Todos":
