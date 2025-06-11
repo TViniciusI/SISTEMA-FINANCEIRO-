@@ -1189,8 +1189,9 @@ elif page == "Contas a Receber":
     except Exception as e:
         st.error(f"Erro ao preparar download: {e}")
     st.markdown("---")
-    
+st.markdown("""
 <div style="text-align: center; font-size:12px; color:gray; margin-top: 20px;">
     <p>© 2025 Desenvolvido por Vinicius Magalhães</p>
 </div>
 """, unsafe_allow_html=True)
+
