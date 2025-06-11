@@ -509,19 +509,16 @@ def display_pagar():
     else:
         df_display = df.copy()
     
-   with st.expander("🔍 Filtros Avançados"):
+with st.expander("🔍 Filtros Avançados"):
     col1, col2 = st.columns(2)
     with col1:
         fornecedor = st.selectbox(
             "Fornecedor",
             ["Todos"] + sorted(df["fornecedor"].dropna().unique().tolist())
-        )  # <-- FECHANDO O PARÊNTESE AQUI
     with col2:
         status = st.selectbox(
             "Status",
-            ["Todos"] + sorted(df["status_pagamento"].dropna().unique().tolist())
-        )
-
+            ["Todos"] + sorted(df["status_pagamento"].dropna().unique().tolist()))
     # Exibe tabela
     st.markdown("---")
     st.subheader("📋 Lançamentos")
