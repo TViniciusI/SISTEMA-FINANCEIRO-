@@ -890,7 +890,7 @@ if page == "Dashboard":
                     orientation="h",
                     color="contagem",
                     color_continuous_scale="Blues",
-                    labels={"total": "Valor Total (R$)", "cliente": "", "contagem": "Nº Contas"},
+                    labels={"total": "Valor Total (R$)", "fornecedor": "", "contagem": "Nº Contas"},
                     hover_data={"contagem": True}
                 )
                 fig_clientes.update_layout(
@@ -946,7 +946,7 @@ elif page == "Contas a Pagar":
         colf1, colf2 = st.columns(2)
         with colf1:
             fornec_list = df["fornecedor"].dropna().astype(str).unique().tolist()
-            forn = st.selectbox("Clientes", ["Todos"] + sorted(fornec_list))
+            forn = st.selectbox("Fornecedor", ["Todos"] + sorted(fornec_list))
         with colf2:
             est_list = df["estado"].dropna().astype(str).unique().tolist()
             status_sel = st.selectbox("Estado/Status", ["Todos"] + sorted(est_list))
@@ -961,7 +961,7 @@ elif page == "Contas a Pagar":
     if df_display.empty:
         st.warning("Nenhum registro para os filtros/visualização selecionados.")
     else:
-        cols_esperadas = ["data_nf", "cliente", "valor", "vencimento", "estado", "status_pagamento"]
+        cols_esperadas = ["data_nf", "fornecedor", "valor", "vencimento", "estado", "status_pagamento"]
         cols_para_exibir = [c for c in cols_esperadas if c in df_display.columns]
         st.markdown("#### 📋 Lista de Lançamentos")
         table_placeholder = st.empty()
@@ -1084,7 +1084,7 @@ elif page == "Contas a Pagar":
                     field_map = {
                         "data_nf": ["data_nf", "data documento", "data da nota fiscal"],
                         "forma_pagamento": ["forma_pagamento", "descrição"],
-                        "cliente": ["fornecedor"],
+                        "fornecedor": ["fornecedor"],
                         "os": ["os", "documento"],
                         "vencimento": ["vencimento"],
                         "valor": ["valor"],
@@ -1333,8 +1333,8 @@ elif page == "Contas a Receber":
         col1, col2 = st.columns(2)
         with col1:
             forn = st.selectbox(
-                "Cliente",
-                ["Todos"] + sorted(df["cliente"].dropna().astype(str).unique())
+                "Fornecedor",
+                ["Todos"] + sorted(df["fornecedor"].dropna().astype(str).unique())
             )
         with col2:
             status_sel = st.selectbox(
