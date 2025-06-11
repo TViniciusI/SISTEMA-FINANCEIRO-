@@ -217,7 +217,7 @@ def get_existing_sheets(excel_path: str) -> list[str]:
 
 def load_data(excel_path: str, sheet_name: str) -> pd.DataFrame:
     cols = [
-        "data_nf", "forma_pagamento", "fornecedor","cliente", "os",
+        "data_nf", "forma_pagamento", "fornecedor", "os",
         "vencimento", "valor", "estado", "situacao", "boleto", "comprovante"
     ]
     
@@ -945,141 +945,116 @@ elif page == "Contas a Pagar":
     with st.expander("🔍 Filtros"):
         colf1, colf2 = st.columns(2)
         with colf1:
-            fornecedor_options = ["Todos"]
-            if "fornecedor" in df.columns:
-                fornecedor_options += sorted(df["fornecedor"].dropna().astype(str).unique().tolist())
-            forn = st.selectbox("Fornecedor", fornecedor_options)
-        
+            fornec_list = df["fornecedor"].dropna().astype(str).unique().tolist()
+            forn = st.selectbox("Fornecedor", ["Todos"] + sorted(fornec_list))
         with colf2:
-            estado_options = ["Todos"]
-            if "estado" in df.columns:
-                estado_options += sorted(df["estado"].dropna().astype(str).unique().tolist())
-            status_sel = st.selectbox("Estado/Status", estado_options)
-
-        # Aplicando filtros DENTRO do expander
-        if forn != "Todos" and "fornecedor" in df_display.columns:
-            df_display = df_display[df_display["fornecedor"] == forn]
-        if status_sel != "Todos" and "estado" in df_display.columns:
-            df_display = df_display[df_display["estado"] == status_sel]
-
-        st.markdown("<hr style='border:1px solid #ddd;'>", unsafe_allow_html=True)
-
+            est_list = df["estado"].dropna().astype(str).unique().tolist()
+            status_sel = st.selectbox("Estado/Status", ["Todos"] + sorted(est_list))
+    
+    if forn != "Todos":
+        df_display = df_display[df_display["fornecedor"] == forn]
+    if status_sel != "Todos":
+        df_display = df_display[df_display["estado"] == status_sel]
+    
+    st.markdown("<hr style='border:1px solid #ddd;'>", unsafe_allow_html=True)
+    
     if df_display.empty:
         st.warning("Nenhum registro para os filtros/visualização selecionados.")
     else:
         cols_esperadas = ["data_nf", "fornecedor", "valor", "vencimento", "estado", "status_pagamento"]
         cols_para_exibir = [c for c in cols_esperadas if c in df_display.columns]
-        
         st.markdown("#### 📋 Lista de Lançamentos")
         table_placeholder = st.empty()
-        
-        if cols_para_exibir:
-            table_placeholder.dataframe(df_display[cols_para_exibir], height=250)
-        else:
-            st.warning("Nenhuma coluna disponível para exibição com os filtros atuais.")
-
+        table_placeholder.dataframe(df_display[cols_para_exibir], height=250)
+    
     st.markdown("---")
 
-with st.expander("✏️ Editar Registro"):
-    if not df_display.empty:
-        idx = st.number_input(
-            "Índice da linha (baseado na lista acima):",
-            min_value=0,
-            max_value=len(df_display) - 1,
-            step=1,
-            key="edit_pagar"
-        )
-        
-        rec = df_display.iloc[idx]
-        
-        # Encontra o índice original no DataFrame completo com verificações seguras
-        orig_idx_candidates = df.index
-        if all(col in df.columns for col in ["fornecedor", "valor", "vencimento"]):
-            mask = (
+    with st.expander("✏️ Editar Registro"):
+        if not df_display.empty:
+            idx = st.number_input(
+                "Índice da linha (baseado na lista acima):",
+                min_value=0,
+                max_value=len(df_display) - 1,
+                step=1,
+                key="edit_pagar"
+            )
+            
+            rec = df_display.iloc[idx]
+            orig_idx_candidates = df[
                 (df["fornecedor"] == rec["fornecedor"]) &
                 (df["valor"] == rec["valor"]) &
                 (df["vencimento"] == rec["vencimento"])
-            )
-            orig_idx_candidates = df[mask].index
-        
-        orig_idx = orig_idx_candidates[0] if len(orig_idx_candidates) > 0 else rec.name
+            ].index
+            orig_idx = orig_idx_candidates[0] if len(orig_idx_candidates) > 0 else rec.name
 
-        colv1, colv2 = st.columns(2)
-        with colv1:
-            new_val = st.number_input(
-                "Valor:",
-                value=float(rec["valor"]) if "valor" in rec and pd.notna(rec["valor"]) else 0.0,
-                key="novo_valor_pagar"
-            )
-            
-            default_dt = (
-                rec["vencimento"].date() 
-                if "vencimento" in rec and pd.notna(rec["vencimento"]) 
-                else date.today()
-            )
-            new_venc = st.date_input(
-                "Vencimento:",
-                value=default_dt,
-                key="novo_vencimento_pagar"
-            )
-        
-        with colv2:
-            estado_opt = ["Em Aberto", "Pago"]
-            try:
-                default_idx = estado_opt.index(str(rec["estado"])) if "estado" in rec else 0
-            except ValueError:
-                default_idx = 0
-            new_estado = st.selectbox(
-                "Estado:",
-                options=estado_opt,
-                index=default_idx,
-                key="novo_estado_pagar"
-            )
+            colv1, colv2 = st.columns(2)
+            with colv1:
+                new_val = st.number_input(
+                    "Valor:",
+                    value=float(rec["valor"]),
+                    key="novo_valor_pagar"
+                )
+                default_dt = (
+                    rec["vencimento"].date()
+                    if pd.notna(rec["vencimento"])
+                    else date.today()
+                )
+                new_venc = st.date_input(
+                    "Vencimento:",
+                    value=default_dt,
+                    key="novo_vencimento_pagar"
+                )
+            with colv2:
+                estado_opt = ["Em Aberto", "Pago"]
+                try:
+                    default_idx = estado_opt.index(str(rec["estado"]))
+                except ValueError:
+                    default_idx = 0
+                new_estado = st.selectbox(
+                    "Estado:",
+                    options=estado_opt,
+                    index=default_idx,
+                    key="novo_estado_pagar"
+                )
 
-            situ_opt = ["Em Atraso", "Pago", "Em Aberto"]
-            try:
-                sit_idx = situ_opt.index(str(rec["situacao"])) if "situacao" in rec else 0
-            except ValueError:
-                sit_idx = 0
-            new_sit = st.selectbox(
-                "Situação:",
-                options=situ_opt,
-                index=sit_idx,
-                key="nova_situacao_pagar"
-            )
+                situ_opt = ["Em Atraso", "Pago", "Em Aberto"]
+                try:
+                    sit_idx = situ_opt.index(str(rec["situacao"]))
+                except ValueError:
+                    sit_idx = 0
+                new_sit = st.selectbox(
+                    "Situação:",
+                    options=situ_opt,
+                    index=sit_idx,
+                    key="nova_situacao_pagar"
+                )
 
-        if st.button("💾 Salvar Alterações", key="salvar_pagar"):
-            # Atualiza os valores com verificações
-            if "valor" in df.columns:
+            if st.button("💾 Salvar Alterações", key="salvar_pagar"):
                 df.at[orig_idx, "valor"] = new_val
-            if "vencimento" in df.columns:
                 df.at[orig_idx, "vencimento"] = pd.to_datetime(new_venc)
-            if "estado" in df.columns:
                 df.at[orig_idx, "estado"] = new_estado
-            if "situacao" in df.columns:
                 df.at[orig_idx, "situacao"] = new_sit
-            
-            if save_data(EXCEL_PAGAR, aba, df):
-                st.success("Registro atualizado com sucesso!")
-                df = load_data(EXCEL_PAGAR, aba)
                 
-                # Reaplica filtros com verificações
-                if view_sel == "Pagas" and "status_pagamento" in df.columns:
-                    df_display = df[df["status_pagamento"] == "Pago"].copy()
-                elif view_sel == "Pendentes" and "status_pagamento" in df.columns:
-                    df_display = df[df["status_pagamento"] != "Pago"].copy()
-                else:
-                    df_display = df.copy()
-                
-                if forn != "Todos" and "fornecedor" in df_display.columns:
-                    df_display = df_display[df_display["fornecedor"] == forn]
-                if status_sel != "Todos" and "estado" in df_display.columns:
-                    df_display = df_display[df_display["estado"] == status_sel]
-                
-                if not df_display.empty and cols_para_exibir:
+                if save_data(EXCEL_PAGAR, aba, df):
+                    st.success("Registro atualizado com sucesso!")
+                    df = load_data(EXCEL_PAGAR, aba)
+                    
+                    # Reaplica filtros
+                    if view_sel == "Pagas":
+                        df_display = df[df["status_pagamento"] == "Pago"].copy()
+                    elif view_sel == "Pendentes":
+                        df_display = df[df["status_pagamento"] != "Pago"].copy()
+                    else:
+                        df_display = df.copy()
+                    
+                    if forn != "Todos":
+                        df_display = df_display[df_display["fornecedor"] == forn]
+                    if status_sel != "Todos":
+                        df_display = df_display[df_display["estado"] == status_sel]
+                    
                     table_placeholder.dataframe(df_display[cols_para_exibir], height=250)
-            else:
-                st.error("Erro ao salvar alterações.")
+                else:
+                    st.error("Erro ao salvar alterações.")
 
     with st.expander("🗑️ Remover Registro"):
         if not df_display.empty:
@@ -1357,9 +1332,9 @@ elif page == "Contas a Receber":
     with st.expander("🔍 Filtros"):
         col1, col2 = st.columns(2)
         with col1:
-            cliente = st.selectbox(
-                "Cliente",
-                ["Todos"] + sorted(df["cliente"].dropna().astype(str).unique())
+            forn = st.selectbox(
+                "Fornecedor",
+                ["Todos"] + sorted(df["fornecedor"].dropna().astype(str).unique())
             )
         with col2:
             status_sel = st.selectbox(
@@ -1367,8 +1342,8 @@ elif page == "Contas a Receber":
                 ["Todos"] + sorted(df["status_pagamento"].dropna().unique())
             )
     
-    if cliente != "Todos":
-        df_display = df_display[df_display["cliente"] == cliente]
+    if forn != "Todos":
+        df_display = df_display[df_display["fornecedor"] == forn]
     if status_sel != "Todos":
         df_display = df_display[df_display["status_pagamento"] == status_sel]
     
@@ -1377,7 +1352,7 @@ elif page == "Contas a Receber":
     if df_display.empty:
         st.warning("Nenhum registro para os filtros selecionados.")
     else:
-        cols_show = ["data_nf", "cliente", "valor", "vencimento", "estado", "status_pagamento"]
+        cols_show = ["data_nf", "fornecedor", "valor", "vencimento", "estado", "status_pagamento"]
         cols_to_display = [c for c in cols_show if c in df_display.columns]
         table_placeholder_r = st.empty()
         table_placeholder_r.dataframe(df_display[cols_to_display], height=250)
@@ -1445,8 +1420,8 @@ elif page == "Contas a Receber":
                     else:
                         df_display = df.copy()
                     
-                    if cliente != "Todos":
-                        df_display = df_display[df_display["cliente"] == cliente]
+                    if forn != "Todos":
+                        df_display = df_display[df_display["fornecedor"] == forn]
                     if status_sel != "Todos":
                         df_display = df_display[df_display["status_pagamento"] == status_sel]
                     
@@ -1486,8 +1461,8 @@ elif page == "Contas a Receber":
                     else:
                         df_display = df.copy()
                     
-                    if cliente != "Todos":
-                        df_display = df_display[df_display["cliente"] == cliente]
+                    if forn != "Todos":
+                        df_display = df_display[df_display["fornecedor"] == forn]
                     if status_sel != "Todos":
                         df_display = df_display[df_display["status_pagamento"] == status_sel]
                     
@@ -1530,7 +1505,7 @@ elif page == "Contas a Receber":
         with coln1:
             data_nf = st.date_input("Data N/F:", value=date.today(), key="nova_data_nf_receber")
             forma_pag = st.text_input("Descrição:", key="nova_descricao_receber")
-            cliente_new = st.text_input("Cliente:", key="novo_cliente_receber")
+            forn_new = st.text_input("Fornecedor:", key="novo_fornecedor_receber")
         with coln2:
             os_new = st.text_input("Documento/OS:", key="novo_os_receber")
             venc_new = st.date_input("Data de Vencimento:", value=date.today(), key="novo_venc_receber")
@@ -1548,7 +1523,7 @@ elif page == "Contas a Receber":
             record = {
                 "data_nf": data_nf,
                 "forma_pagamento": forma_pag,
-                "cliente": cliente_new,
+                "fornecedor": forn_new,
                 "os": os_new,
                 "vencimento": venc_new,
                 "valor": valor_new,
@@ -1622,3 +1597,9 @@ elif page == "Contas a Receber":
             )
     except Exception as e:
         st.error(f"Erro ao preparar download: {e}")
+
+st.markdown("""
+<div style="text-align: center; font-size:12px; color:gray; margin-top: 20px;">
+    <p>© 2025 Desenvolvido por Vinicius Magalhães</p>
+</div>
+""", unsafe_allow_html=True)
