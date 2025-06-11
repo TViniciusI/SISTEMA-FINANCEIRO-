@@ -968,7 +968,7 @@ elif page == "Contas a Receber":
 # 🗑️ Remover Registro (Contas a Receber)
 with st.expander("🗑️ Remover Registro"):
     if not df_display.empty:
-        idx_rem_r = st.number_input(
+        idx_rem = st.number_input(
             "Índice da linha para remover:",
             min_value=0,
             max_value=len(df_display) - 1,
@@ -977,77 +977,61 @@ with st.expander("🗑️ Remover Registro"):
         )
 
         if st.button("Remover", key="btn_remover_receber"):
-            try:
-                rec_rem = df_display.iloc[idx_rem_r]
+            rec_rem = df_display.iloc[idx_rem]
+            orig_idx = rec_rem.name
 
-                # CUIDADO: comparar datas e floats exige normalização
-                venc_fmt = pd.to_datetime(rec_rem["vencimento"]).date()
-                valor_fmt = float(rec_rem["valor"])
+            from openpyxl import load_workbook
+            wb = load_workbook(EXCEL_RECEBER)
+            ws = wb[aba]
+            header_row = 8
+            excel_row = header_row + 1 + orig_idx
 
-                # buscar no df original
-                match = df[
-                    (df["fornecedor"] == rec_rem["fornecedor"]) &
-                    (pd.to_datetime(df["vencimento"]).dt.date == venc_fmt) &
-                    (df["valor"].astype(float) == valor_fmt)
-                ]
+            headers = [
+                str(ws.cell(row=header_row, column=col).value).strip().lower()
+                for col in range(2, ws.max_column + 1)
+            ]
+            field_map = {
+                "data_nf": ["data_nf", "data documento", "data da nota fiscal"],
+                "forma_pagamento": ["forma_pagamento", "descrição"],
+                "fornecedor": ["fornecedor"],
+                "os": ["os", "documento"],
+                "vencimento": ["vencimento"],
+                "valor": ["valor"],
+                "estado": ["estado"],
+                "boleto": ["boleto"],
+                "comprovante": ["comprovante"]
+            }
 
-                if match.empty:
-                    st.error("❌ Registro original não encontrado. Talvez o filtro ou tipo esteja divergente.")
-                else:
-                    orig_idx = match.index[0]
+            cols_to_clear = []
+            for key, names in field_map.items():
+                for i, h in enumerate(headers):
+                    if h in names:
+                        cols_to_clear.append(i + 2)
+                        break
 
-                    wb = load_workbook(EXCEL_RECEBER)
-                    ws = wb[aba]
-                    header_row = 8
-                    excel_row = header_row + 1 + orig_idx
+            for col in cols_to_clear:
+                ws.cell(row=excel_row, column=col, value=None)
 
-                    headers = [
-                        str(ws.cell(row=header_row, column=col).value).strip().lower()
-                        for col in range(2, ws.max_column + 1)
-                    ]
-                    field_map = {
-                        "data_nf": ["data_nf", "data documento", "data da nota fiscal"],
-                        "forma_pagamento": ["forma_pagamento", "descrição"],
-                        "fornecedor": ["fornecedor"],
-                        "os": ["os", "documento"],
-                        "vencimento": ["vencimento"],
-                        "valor": ["valor"],
-                        "estado": ["estado"],
-                        "boleto": ["boleto"],
-                        "comprovante": ["comprovante"]
-                    }
+            wb.save(EXCEL_RECEBER)
+            st.success("Registro removido com sucesso!")
 
-                    cols_to_clear = []
-                    for key, names in field_map.items():
-                        for i, h in enumerate(headers):
-                            if h in names:
-                                cols_to_clear.append(i + 2)
-                                break
+            # recarrega e atualiza a tabela
+            df = load_data(EXCEL_RECEBER, aba)
+            if view_sel == "Recebidas":
+                df_display = df[df["status_pagamento"] == "Recebido"].copy()
+            elif view_sel == "Pendentes":
+                df_display = df[df["status_pagamento"] != "Recebido"].copy()
+            else:
+                df_display = df.copy()
+            if forn != "Todos":
+                df_display = df_display[df_display["fornecedor"] == forn]
+            if status_sel != "Todos":
+                df_display = df_display[df_display["status_pagamento"] == status_sel]
 
-                    for col in cols_to_clear:
-                        ws.cell(row=excel_row, column=col, value=None)
+            cols_show = ["data_nf", "fornecedor", "valor", "vencimento", "estado", "status_pagamento"]
+            cols_to_display = [c for c in cols_show if c in df_display.columns]
+            table_placeholder_r.dataframe(df_display[cols_to_display], height=250)
 
-                    wb.save(EXCEL_RECEBER)
-                    st.success("✅ Registro removido com sucesso!")
-
-                    # Recarrega e reaplica filtros
-                    df = load_data(EXCEL_RECEBER, aba)
-                    if view_sel == "Recebidas":
-                        df_display = df[df["status_pagamento"] == "Recebido"].copy()
-                    elif view_sel == "Pendentes":
-                        df_display = df[df["status_pagamento"] != "Recebido"].copy()
-                    else:
-                        df_display = df.copy()
-                    if forn != "Todos":
-                        df_display = df_display[df_display["fornecedor"] == forn]
-                    if status_sel != "Todos":
-                        df_display = df_display[df_display["status_pagamento"] == status_sel]
-
-                    cols_show = ["data_nf", "fornecedor", "valor", "vencimento", "estado", "status_pagamento"]
-                    cols_to_display = [c for c in cols_show if c in df_display.columns]
-                    table_placeholder_r.dataframe(df_display[cols_to_display], height=250)
-            except Exception as e:
-                st.error(f"Erro ao remover: {e}")
 
 
 # 📎 Anexar Documentos (Contas a Receber)
