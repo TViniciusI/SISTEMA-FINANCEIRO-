@@ -103,11 +103,9 @@ html, body, [class*="css"] {
 .stApp:not([data-theme="dark"]) .metric-card {
     background: #f9fafe;
 }
-
 .stApp:not([data-theme="dark"]) .metric-value {
     color: #2c3e50;
 }
-
 .stApp:not([data-theme="dark"]) .metric-label {
     color: #7f8c8d;
 }
@@ -116,11 +114,9 @@ html, body, [class*="css"] {
 .stApp[data-theme="dark"] .metric-card {
     background: #23242b;
 }
-
 .stApp[data-theme="dark"] .metric-value {
     color: #ffffff;
 }
-
 .stApp[data-theme="dark"] .metric-label {
     color: #b0b3bd;
 }
@@ -130,7 +126,6 @@ html, body, [class*="css"] {
     gap: 10px;
     margin-bottom: 1rem;
 }
-
 .stTabs [role="tab"] {
     padding: 10px 20px;
     border-radius: 10px 10px 0 0;
@@ -138,17 +133,14 @@ html, body, [class*="css"] {
     transition: all 0.3s ease-in-out;
     border: none;
 }
-
 .stApp:not([data-theme="dark"]) .stTabs [role="tab"] {
     background: #e0e3ec;
     color: #34495e;
 }
-
 .stApp[data-theme="dark"] .stTabs [role="tab"] {
     background: #2b2d3a;
     color: #bbb;
 }
-
 .stTabs [role="tab"][aria-selected="true"] {
     background: #8e2de2 !important;
     color: white !important;
@@ -161,12 +153,10 @@ html, body, [class*="css"] {
     margin-bottom: 2rem;
     transition: box-shadow 0.3s ease;
 }
-
 .stApp:not([data-theme="dark"]) .chart-container {
     background: #ffffff;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
-
 .stApp[data-theme="dark"] .chart-container {
     background: #1e1f26;
     box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
@@ -183,23 +173,72 @@ html, body, [class*="css"] {
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     cursor: pointer;
 }
-
 .stApp:not([data-theme="dark"]) .stButton > button,
 .stApp:not([data-theme="dark"]) .stDownloadButton > button {
     background-color: #4a00e0;
     color: white;
 }
-
 .stApp[data-theme="dark"] .stButton > button,
 .stApp[data-theme="dark"] .stDownloadButton > button {
     background-color: #9c6df2;
     color: white;
 }
-
 .stButton > button:hover,
 .stDownloadButton > button:hover {
     filter: brightness(0.95);
     transform: scale(1.02);
+}
+
+/* ----------------- Inputs ----------------- */
+input, select, textarea, .stTextInput > div > input {
+    border-radius: 8px !important;
+    padding: 0.5rem !important;
+    font-size: 0.95rem !important;
+    border: 1px solid #ccc !important;
+}
+
+.stApp[data-theme="dark"] input,
+.stApp[data-theme="dark"] select,
+.stApp[data-theme="dark"] textarea {
+    background-color: #2b2d3a !important;
+    color: white !important;
+    border: 1px solid #444 !important;
+}
+
+/* ----------------- File Uploader ----------------- */
+section[data-testid="stFileUploader"] div[role="button"] {
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    background-color: #8e2de2;
+    color: white;
+    border: none;
+    font-weight: 500;
+}
+section[data-testid="stFileUploader"] div[role="button"]:hover {
+    background-color: #762bd0;
+}
+
+/* ----------------- DataFrame ----------------- */
+.css-1d391kg, .stDataFrame, .stTable {
+    border-radius: 10px !important;
+    overflow: hidden;
+}
+thead tr th {
+    background-color: #8e2de2 !important;
+    color: white !important;
+    font-weight: 600;
+    padding: 0.5rem;
+}
+tbody tr td {
+    padding: 0.4rem;
+}
+.stApp[data-theme="dark"] .stDataFrame tbody tr td {
+    background-color: #1f2028 !important;
+    color: #e0e0e0 !important;
+}
+.stApp:not([data-theme="dark"]) .stDataFrame tbody tr td {
+    background-color: #ffffff !important;
+    color: #2c3e50 !important;
 }
 </style>
 """, unsafe_allow_html=True)
