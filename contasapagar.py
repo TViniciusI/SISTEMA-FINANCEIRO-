@@ -6,6 +6,11 @@ from datetime import datetime, date
 import os
 from openpyxl import load_workbook
 
+EXCEL_PAGAR = "Contas a pagar 2025.xlsx"
+EXCEL_RECEBER = "Contas a receber 2025.xlsx"
+ANEXOS_DIR = "anexos"  # Pasta para armazenar os anexos
+FULL_MONTHS = [f"{i:02d}" for i in range(1, 13)]  # Lista de meses ['01', '02', ..., '12']
+
 # Configuração da página
 st.set_page_config(
     page_title="💼 Sistema Financeiro 2025",
