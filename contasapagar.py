@@ -34,97 +34,101 @@ st.markdown("""
         font-family: 'Inter', sans-serif;
     }
 
-    /* Cabeçalho */
+    /* ------------------------- Cabeçalho ------------------------- */
     .header {
-        background: linear-gradient(135deg, #4e54c8, #8f94fb);
+        background: linear-gradient(135deg, #3c3b92, #6051db);
         color: white;
         padding: 1.5rem;
-        border-radius: 12px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-        margin-bottom: 1.5rem;
+        border-radius: 14px;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+        margin-bottom: 2rem;
     }
 
-    /* Cards de métricas */
+    /* ------------------------- Cards de Métricas ------------------------- */
     .metric-card {
-        border-radius: 12px;
+        border-radius: 14px;
         padding: 1.5rem;
-        border-left: 4px solid #4e54c8;
-        transition: transform 0.3s ease;
+        border-left: 4px solid #6051db;
+        transition: transform 0.25s ease;
         box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
     }
 
     .metric-card:hover {
         transform: translateY(-4px);
-        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.08);
-    }
-
-    /* Tema claro */
-    .stApp:not([data-theme="dark"]) .metric-card {
-        background: #f9fafe;
-    }
-    .stApp:not([data-theme="dark"]) .metric-value {
-        color: #2e3a59;
-    }
-    .stApp:not([data-theme="dark"]) .metric-label {
-        color: #7b8a97;
-    }
-
-    /* Tema escuro */
-    .stApp[data-theme="dark"] .metric-card {
-        background: #1e1e26;
-    }
-    .stApp[data-theme="dark"] .metric-value {
-        color: #ffffff;
-    }
-    .stApp[data-theme="dark"] .metric-label {
-        color: #c2c7cf;
+        box-shadow: 0 8px 18px rgba(0, 0, 0, 0.1);
     }
 
     .metric-value {
-        font-size: 2.2rem;
+        font-size: 2.4rem;
         font-weight: 600;
+        margin-bottom: 0.25rem;
     }
 
     .metric-label {
         font-size: 0.85rem;
         text-transform: uppercase;
-        letter-spacing: 0.8px;
-        margin-top: 0.5rem;
+        letter-spacing: 0.7px;
     }
 
-    /* Tabs */
+    /* Tema Claro */
+    .stApp:not([data-theme="dark"]) .metric-card {
+        background: #f8f9fc;
+    }
+
+    .stApp:not([data-theme="dark"]) .metric-value {
+        color: #2c3e50;
+    }
+
+    .stApp:not([data-theme="dark"]) .metric-label {
+        color: #7b8a97;
+    }
+
+    /* Tema Escuro */
+    .stApp[data-theme="dark"] .metric-card {
+        background: #20212b;
+    }
+
+    .stApp[data-theme="dark"]) .metric-value {
+        color: #f0f2f5;
+    }
+
+    .stApp[data-theme="dark"] .metric-label {
+        color: #b0b3bd;
+    }
+
+    /* ------------------------- Tabs ------------------------- */
     .stTabs [role="tablist"] {
-        gap: 8px;
+        gap: 10px;
     }
 
     .stTabs [role="tab"] {
-        padding: 10px 18px;
+        padding: 10px 20px;
         border-radius: 10px 10px 0 0;
-        border: none;
         font-weight: 500;
-        transition: all 0.3s ease;
+        transition: all 0.2s ease-in-out;
+        border: none;
     }
 
     .stApp:not([data-theme="dark"]) .stTabs [role="tab"] {
-        background: #eaeef5;
-        color: #5a5f73;
+        background: #e0e3ec;
+        color: #2c3e50;
     }
 
     .stApp[data-theme="dark"] .stTabs [role="tab"] {
-        background: #2c2f36;
-        color: #aaa;
+        background: #2a2b38;
+        color: #ccc;
     }
 
     .stTabs [role="tab"][aria-selected="true"] {
-        background: #4e54c8 !important;
-        color: white !important;
+        background: #6051db !important;
+        color: #fff !important;
     }
 
-    /* Gráfico container */
+    /* ------------------------- Gráfico Container ------------------------- */
     .chart-container {
-        border-radius: 12px;
+        border-radius: 14px;
         padding: 1.5rem;
-        margin-bottom: 1.5rem;
+        margin-bottom: 2rem;
     }
 
     .stApp:not([data-theme="dark"]) .chart-container {
@@ -133,17 +137,18 @@ st.markdown("""
     }
 
     .stApp[data-theme="dark"] .chart-container {
-        background: #1a1a1f;
-        box-shadow: 0 1px 6px rgba(0, 0, 0, 0.1);
+        background: #1d1e26;
+        box-shadow: 0 1px 10px rgba(0, 0, 0, 0.2);
     }
 
-    /* Botões gerais */
+    /* ------------------------- Botões ------------------------- */
     .stButton > button, .stDownloadButton > button {
         border-radius: 8px;
-        padding: 8px 18px;
+        padding: 10px 20px;
         font-weight: 500;
-        transition: all 0.3s ease;
+        transition: all 0.25s ease;
         border: none;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
 
     .stApp:not([data-theme="dark"]) .stButton > button,
@@ -154,18 +159,18 @@ st.markdown("""
 
     .stApp[data-theme="dark"] .stButton > button,
     .stApp[data-theme="dark"] .stDownloadButton > button {
-        background-color: #6c70f8;
+        background-color: #7a7ef7;
         color: white;
     }
 
     .stButton > button:hover,
     .stDownloadButton > button:hover {
         filter: brightness(0.9);
+        transform: scale(1.02);
     }
 
 </style>
 """, unsafe_allow_html=True)
-
 
 def get_existing_sheets(excel_path: str) -> list[str]:
     try:
