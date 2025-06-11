@@ -946,7 +946,7 @@ elif page == "Contas a Pagar":
         colf1, colf2 = st.columns(2)
         with colf1:
             fornec_list = df["fornecedor"].dropna().astype(str).unique().tolist()
-            forn = st.selectbox("Fornecedor", ["Todos"] + sorted(fornec_list))
+            forn = st.selectbox("Clientes", ["Todos"] + sorted(fornec_list))
         with colf2:
             est_list = df["estado"].dropna().astype(str).unique().tolist()
             status_sel = st.selectbox("Estado/Status", ["Todos"] + sorted(est_list))
@@ -1084,7 +1084,7 @@ elif page == "Contas a Pagar":
                     field_map = {
                         "data_nf": ["data_nf", "data documento", "data da nota fiscal"],
                         "forma_pagamento": ["forma_pagamento", "descrição"],
-                        "fornecedor": ["fornecedor"],
+                        "cliente": ["fornecedor"],
                         "os": ["os", "documento"],
                         "vencimento": ["vencimento"],
                         "valor": ["valor"],
