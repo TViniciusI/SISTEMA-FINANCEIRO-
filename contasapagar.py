@@ -942,47 +942,43 @@ elif page == "Contas a Pagar":
     else:
         df_display = df.copy()
     
-with st.expander("🔍 Filtros"):
-    colf1, colf2 = st.columns(2)
-    with colf1:
-        # Filtro por fornecedor com verificação segura
-        fornecedor_options = ["Todos"]
-        if "fornecedor" in df.columns:
-            fornecedor_options += sorted(df["fornecedor"].dropna().astype(str).unique().tolist())
-        forn = st.selectbox("Fornecedor", fornecedor_options)
-    
-    with colf2:
-        # Filtro por estado com verificação segura
-        estado_options = ["Todos"]
-        if "estado" in df.columns:
-            estado_options += sorted(df["estado"].dropna().astype(str).unique().tolist())
-        status_sel = st.selectbox("Estado/Status", estado_options)
+    with st.expander("🔍 Filtros"):
+        colf1, colf2 = st.columns(2)
+        with colf1:
+            fornecedor_options = ["Todos"]
+            if "fornecedor" in df.columns:
+                fornecedor_options += sorted(df["fornecedor"].dropna().astype(str).unique().tolist())
+            forn = st.selectbox("Fornecedor", fornecedor_options)
+        
+        with colf2:
+            estado_options = ["Todos"]
+            if "estado" in df.columns:
+                estado_options += sorted(df["estado"].dropna().astype(str).unique().tolist())
+            status_sel = st.selectbox("Estado/Status", estado_options)
 
-# Aplicando filtros com verificações adicionais
-if forn != "Todos" and "fornecedor" in df_display.columns:
-    df_display = df_display[df_display["fornecedor"] == forn]
-if status_sel != "Todos" and "estado" in df_display.columns:
-    df_display = df_display[df_display["estado"] == status_sel]
+    # Aplicando filtros com verificações adicionais
+    if forn != "Todos" and "fornecedor" in df_display.columns:
+        df_display = df_display[df_display["fornecedor"] == forn]
+    if status_sel != "Todos" and "estado" in df_display.columns:
+        df_display = df_display[df_display["estado"] == status_sel]
 
-st.markdown("<hr style='border:1px solid #ddd;'>", unsafe_allow_html=True)
+    st.markdown("<hr style='border:1px solid #ddd;'>", unsafe_allow_html=True)
 
-if df_display.empty:
-    st.warning("Nenhum registro para os filtros/visualização selecionados.")
-else:
-    # Colunas esperadas com verificação de existência
-    cols_esperadas = ["data_nf", "fornecedor", "valor", "vencimento", "estado", "status_pagamento"]
-    cols_para_exibir = [c for c in cols_esperadas if c in df_display.columns]
-    
-    st.markdown("#### 📋 Lista de Lançamentos")
-    table_placeholder = st.empty()
-    
-    # Verifica se há colunas para exibir
-    if cols_para_exibir:
-        table_placeholder.dataframe(df_display[cols_para_exibir], height=250)
+    if df_display.empty:
+        st.warning("Nenhum registro para os filtros/visualização selecionados.")
     else:
-        st.warning("Nenhuma coluna disponível para exibição com os filtros atuais.")
+        cols_esperadas = ["data_nf", "fornecedor", "valor", "vencimento", "estado", "status_pagamento"]
+        cols_para_exibir = [c for c in cols_esperadas if c in df_display.columns]
+        
+        st.markdown("#### 📋 Lista de Lançamentos")
+        table_placeholder = st.empty()
+        
+        if cols_para_exibir:
+            table_placeholder.dataframe(df_display[cols_para_exibir], height=250)
+        else:
+            st.warning("Nenhuma coluna disponível para exibição com os filtros atuais.")
 
-st.markdown("---")
+    st.markdown("---")
 
 with st.expander("✏️ Editar Registro"):
     if not df_display.empty:
