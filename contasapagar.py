@@ -6,6 +6,18 @@ from datetime import datetime, date
 import os
 from openpyxl import load_workbook
 
+
+# Constantes no início do arquivo (após as imports)
+EXCEL_PAGAR = "Contas a pagar 2025.xlsx"
+EXCEL_RECEBER = "Contas a receber 2025.xlsx"
+ANEXOS_DIR = "anexos"  # Esta linha estava faltando
+FULL_MONTHS = [f"{i:02d}" for i in range(1, 13)]
+
+# Garante pastas de anexos (esta parte deve vir DEPOIS de definir ANEXOS_DIR)
+for pasta in ["Contas a Pagar", "Contas a Receber"]:
+    os.makedirs(os.path.join(ANEXOS_DIR, pasta), exist_ok=True)
+
+
 # Configuração da página
 st.set_page_config(
     page_title="💼 Sistema Financeiro 2025",
