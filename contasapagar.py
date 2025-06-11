@@ -551,45 +551,52 @@ elif page == "Contas a Pagar":
                     df_display[cols_para_exibir],
                     height=250
                 )
-    # 🔄 Carrega os dados atualizados
-    df = load_data(EXCEL_RECEBER, aba)
-    
-    # Aplica os filtros ativos do usuário
-    if view_sel == "Recebidas":
-        df_display = df[df["status_pagamento"] == "Recebido"].copy()
-    elif view_sel == "Pendentes":
-        df_display = df[df["status_pagamento"] != "Recebido"].copy()
-    else:
-        df_display = df.copy()
-    
-    if forn != "Todos":
-        df_display = df_display[df_display["fornecedor"] == forn]
-    if status_sel != "Todos":
-        df_display = df_display[df_display["status_pagamento"] == status_sel]
+# 🔄 Carrega os dados atualizados
+df = load_data(EXCEL_PAGAR, aba)
 
-     # 🗑️ Remover Registro (Contas a Pagar)
-    with st.expander("🗑️ Remover Registro"):
-        if not df_display.empty:
-            idx_rem = st.number_input(
-                "Índice da linha para remover:",
-                min_value=0,
-                max_value=len(df_display) - 1,
-                step=1,
-                key="remover_pagar"
-            )
-            if st.button("", key="btn__pagar"):
-                # pega o índice original no DataFrame
-                rec_rem = df_display.iloc[idx_rem]
-                orig_idx = rec_rem.name
+# Aplica os filtros ativos do usuário
+if view_sel == "Pagas":
+    df_display = df[df["status_pagamento"] == "Pago"].copy()
+elif view_sel == "Pendentes":
+    df_display = df[df["status_pagamento"] != "Pago"].copy()
+else:
+    df_display = df.copy()
 
-                # abre o Excel e limpa a linha
+if forn != "Todos":
+    df_display = df_display[df_display["fornecedor"] == forn]
+if status_sel != "Todos":
+    df_display = df_display[df_display["estado"] == status_sel]
+
+# 🗑️ Remover Registro (Contas a Pagar)
+with st.expander("🗑️ Remover Registro"):
+    if not df_display.empty:
+        idx_rem = st.number_input(
+            "Índice da linha para remover:",
+            min_value=0,
+            max_value=len(df_display) - 1,
+            step=1,
+            key="remover_pagar"
+        )
+
+        if st.button("Remover", key="btn__pagar"):
+            rec_rem = df_display.iloc[idx_rem]
+
+            # Garante que o índice original no DataFrame completo seja localizado
+            orig_idx_candidates = df[
+                (df["fornecedor"] == rec_rem["fornecedor"]) &
+                (df["valor"] == rec_rem["valor"]) &
+                (df["vencimento"] == rec_rem["vencimento"])
+            ].index
+            orig_idx = orig_idx_candidates[0] if len(orig_idx_candidates) > 0 else rec_rem.name
+
+            try:
                 from openpyxl import load_workbook
                 wb = load_workbook(EXCEL_PAGAR)
                 ws = wb[aba]
                 header_row = 8
                 excel_row = header_row + 1 + orig_idx
 
-                # mapeia onde estão as colunas importantes
+                # Mapeia as colunas do Excel
                 headers = [
                     str(ws.cell(row=header_row, column=col).value).strip().lower()
                     for col in range(2, ws.max_column + 1)
@@ -605,22 +612,22 @@ elif page == "Contas a Pagar":
                     "boleto": ["boleto"],
                     "comprovante": ["comprovante"]
                 }
-                # identifica as colunas no Excel
+
                 cols_to_clear = []
                 for key, names in field_map.items():
                     for i, h in enumerate(headers):
                         if h in names:
-                            cols_to_clear.append(i + 2)  # +2 porque headers começa em col 2
+                            cols_to_clear.append(i + 2)
                             break
 
-                # limpa cada célula dessa linha
+                # Limpa cada célula correspondente
                 for col in cols_to_clear:
                     ws.cell(row=excel_row, column=col, value=None)
 
                 wb.save(EXCEL_PAGAR)
-                st.success("Registro removido (conteúdo limpo) com sucesso!")
+                st.success("✅ Registro removido com sucesso!")
 
-                # recarrega e atualiza a tabela
+                # Recarrega e reaplica os filtros
                 df = load_data(EXCEL_PAGAR, aba)
                 if view_sel == "Pagas":
                     df_display = df[df["status_pagamento"] == "Pago"].copy()
@@ -630,10 +637,15 @@ elif page == "Contas a Pagar":
                     df_display = df.copy()
                 if forn != "Todos":
                     df_display = df_display[df_display["fornecedor"] == forn]
+                if status_sel != "Todos":
+                    df_display = df_display[df_display["estado"] == status_sel]
 
-                cols_show       = ["data_nf","fornecedor","valor","vencimento","estado","status_pagamento"]
+                cols_show = ["data_nf", "fornecedor", "valor", "vencimento", "estado", "status_pagamento"]
                 cols_to_display = [c for c in cols_show if c in df_display.columns]
                 table_placeholder.dataframe(df_display[cols_to_display], height=250)
+
+            except Exception as e:
+                st.error(f"Erro ao remover registro: {e}")
 
 
     st.markdown("---")
