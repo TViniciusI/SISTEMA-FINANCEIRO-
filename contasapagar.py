@@ -423,7 +423,7 @@ if page == "Dashboard":
                     st.download_button("Download Excel (Receber)", f.read(), EXCEL_RECEBER)
 
     
-elif page == "Contas a Pagar":
+if page == "Contas a Pagar":
     st.subheader("🗂️ Contas a Pagar")
     if not os.path.isfile(EXCEL_PAGAR):
         st.error(f"Arquivo '{EXCEL_PAGAR}' não encontrado. Verifique o caminho.")
