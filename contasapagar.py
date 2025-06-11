@@ -932,12 +932,16 @@ elif page == "Contas a Receber":
 # 🗑️ Remover Registro (Contas a Receber)
 with st.expander("🗑️ Remover Registro"):
     if sheets_r:
+        # Seleciona o mês (aba do Excel)
         aba = st.selectbox("Selecione o mês:", sheets_r, key="remover_receber_mes")
+
+        # Filtro de status
+        view_sel = st.radio("Filtrar por status de pagamento:", ["Todos", "Recebidas", "Pendentes"], key="filtro_remover_receber")
 
         # Carrega os dados da aba selecionada
         df = load_data(EXCEL_RECEBER, aba)
 
-        # Aplica os filtros do usuário
+        # Aplica os filtros
         if view_sel == "Recebidas":
             df_display = df[df["status_pagamento"] == "Recebido"].copy()
         elif view_sel == "Pendentes":
@@ -968,10 +972,10 @@ with st.expander("🗑️ Remover Registro"):
                     wb = load_workbook(EXCEL_RECEBER)
                     ws = wb[aba]
 
-                    header_row = 8  # linha do cabeçalho
-                    excel_row = header_row + 1 + orig_idx
+                    header_row = 8  # Linha do cabeçalho
+                    excel_row = header_row + 1 + orig_idx  # Linha real no Excel
 
-                    # Mapeia as colunas importantes para apagar
+                    # Mapeia os cabeçalhos
                     headers = [
                         str(ws.cell(row=header_row, column=col).value).strip().lower()
                         for col in range(2, ws.max_column + 1)
@@ -1001,7 +1005,7 @@ with st.expander("🗑️ Remover Registro"):
                     wb.save(EXCEL_RECEBER)
                     st.success("Registro removido com sucesso!")
 
-                    # Recarrega e atualiza a tabela
+                    # Recarrega os dados atualizados
                     df = load_data(EXCEL_RECEBER, aba)
                     if view_sel == "Recebidas":
                         df_display = df[df["status_pagamento"] == "Recebido"].copy()
@@ -1015,6 +1019,7 @@ with st.expander("🗑️ Remover Registro"):
                     if status_sel != "Todos":
                         df_display = df_display[df_display["status_pagamento"] == status_sel]
 
+                    # Atualiza a tabela exibida
                     cols_show = ["data_nf", "fornecedor", "valor", "vencimento", "estado", "status_pagamento"]
                     cols_to_display = [c for c in cols_show if c in df_display.columns]
                     table_placeholder_r.dataframe(df_display[cols_to_display], height=250)
