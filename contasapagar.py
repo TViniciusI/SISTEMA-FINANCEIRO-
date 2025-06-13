@@ -495,16 +495,6 @@ st.markdown("""
 """, unsafe_allow_html=True)
 st.markdown("---")
 
-# Menu de navegação na sidebar
-with st.sidebar:
-    st.title("Menu")
-    page = st.radio(
-        "Selecione a página:",
-        ["Dashboard", "Contas a Pagar", "Contas a Receber"],
-        index=0  # Página inicial padrão
-    )
-    st.markdown("---")
-    st.markdown(f"🟢 Logado como: **{st.session_state.username}**")
 # Dashboard Modernizado
 if page == "Dashboard":
     if not os.path.isfile(EXCEL_PAGAR):
@@ -952,21 +942,6 @@ if page == "Dashboard":
 elif page == "Contas a Pagar":
     st.subheader("🗂️ Contas a Pagar")
     
-    # Adicione esta função no início do seu código (com as outras funções)
-    def remove_row(index):
-        if "lista_lancamentos" in st.session_state:
-            try:
-                # Remove o item pelo índice
-                del st.session_state.lista_lancamentos[index]
-                st.rerun()  # Atualiza a interface
-            except IndexError:
-                st.error("Índice inválido")
-        else:
-            st.error("Nenhum dado temporário para remover")
-    
-    # Registra a função para ser chamada pelo JavaScript
-    st.session_state['remove_row'] = remove_row
-
     if not os.path.isfile(EXCEL_PAGAR):
         st.error(f"Arquivo '{EXCEL_PAGAR}' não encontrado. Verifique o caminho.")
         st.stop()
@@ -987,122 +962,55 @@ elif page == "Contas a Pagar":
     else:
         df_display = df.copy()
     
-    # Adiciona lançamentos pendentes (temporários)
-    if "lista_lancamentos" not in st.session_state:
-        st.session_state.lista_lancamentos = []
+# Carrega dados do Excel
+df = load_data(EXCEL_PAGAR, aba)
+
+# Adiciona lançamentos pendentes (temporários)
+if "lista_lancamentos" in st.session_state:
+    df_temp = pd.DataFrame(st.session_state.lista_lancamentos)
+    df = pd.concat([df, df_temp], ignore_index=True)
+
+df_display = df.copy()
+
+# 🔍 Filtros
+with st.expander("🔍 Filtros"):
+    colf1, colf2 = st.columns(2)
+    with colf1:
+        fornec_list = df["fornecedor"].dropna().astype(str).unique().tolist()
+        forn = st.selectbox("Fornecedor", ["Todos"] + sorted(fornec_list))
+    with colf2:
+        est_list = df["estado"].dropna().astype(str).unique().tolist()
+        status_sel = st.selectbox("Estado/Status", ["Todos"] + sorted(est_list))
+
+# Aplica filtros
+if forn != "Todos":
+    df_display = df_display[df_display["fornecedor"] == forn]
+if status_sel != "Todos":
+    df_display = df_display[df_display["estado"] == status_sel]
+
+df = load_data(EXCEL_PAGAR, aba)
+
+# Adiciona lançamentos temporários
+if "lista_lancamentos" in st.session_state:
+    df_temp = pd.DataFrame(st.session_state.lista_lancamentos)
+    df = pd.concat([df, df_temp], ignore_index=True)
+
+df_display = df.copy()
+
+# Exibe resultado
+st.markdown("<hr style='border:1px solid #ddd;'>", unsafe_allow_html=True)
+
+if df_display.empty:
+    st.warning("Nenhum registro para os filtros/visualização selecionados.")
+else:
+    cols_esperadas = ["data_nf", "fornecedor", "valor", "vencimento", "estado", "status_pagamento"]
+    cols_para_exibir = [c for c in cols_esperadas if c in df_display.columns]
+    st.markdown("#### 📋 Lista de Lançamentos")
+    table_placeholder = st.empty()
+    table_placeholder.dataframe(df_display[cols_para_exibir], height=250)
+
     
-    if st.session_state.lista_lancamentos:
-        df_temp = pd.DataFrame(st.session_state.lista_lancamentos)
-        df = pd.concat([df, df_temp], ignore_index=True)
-
-    # 🔍 Filtros
-    with st.expander("🔍 Filtros"):
-        colf1, colf2 = st.columns(2)
-        with colf1:
-            fornec_list = df["fornecedor"].dropna().astype(str).unique().tolist()
-            forn = st.selectbox("Fornecedor", ["Todos"] + sorted(fornec_list))
-        with colf2:
-            est_list = df["estado"].dropna().astype(str).unique().tolist()
-            status_sel = st.selectbox("Estado/Status", ["Todos"] + sorted(est_list))
-
-    # Aplica filtros
-    if forn != "Todos":
-        df_display = df_display[df_display["fornecedor"] == forn]
-    if status_sel != "Todos":
-        df_display = df_display[df_display["estado"] == status_sel]
-
-    # Exibe resultado
-    st.markdown("<hr style='border:1px solid #ddd;'>", unsafe_allow_html=True)
-
-    if df_display.empty:
-        st.warning("Nenhum registro para os filtros/visualização selecionados.")
-    else:
-        cols_esperadas = ["data_nf", "fornecedor", "valor", "vencimento", "estado", "status_pagamento"]
-        cols_para_exibir = [c for c in cols_esperadas if c in df_display.columns]
-        st.markdown("#### 📋 Lista de Lançamentos")
-        
-        # Prepara os dados para exibição
-        df_show = df_display[cols_para_exibir].copy()
-        df_show['Ações'] = ""  # Coluna para os botões
-        
-        # Cria uma tabela HTML com hover effect
-        st.markdown("""
-        <style>
-            .trash-icon {
-                visibility: hidden;
-                color: #ff4b4b;
-                cursor: pointer;
-            }
-            .hover-row:hover .trash-icon {
-                visibility: visible;
-            }
-            .hover-row {
-                transition: background-color 0.2s;
-            }
-            .hover-row:hover {
-                background-color: #f5f5f5;
-            }
-            .stDataFrame table {
-                width: 100%;
-            }
-        </style>
-        """, unsafe_allow_html=True)
-        
-        # Cria um placeholder para a tabela
-        table_placeholder = st.empty()
-        
-        # Gera a tabela HTML
-        def generate_table(df):
-            html = """
-            <table style="width:100%; border-collapse: collapse;">
-                <thead>
-                    <tr style="background-color: #8e2de2; color: white;">
-            """
-            
-            # Cabeçalhos
-            for col in df.columns:
-                if col != 'Ações':
-                    html += f'<th style="padding: 8px; text-align: left;">{col}</th>'
-                else:
-                    html += '<th style="padding: 8px; text-align: center;">Ações</th>'
-            
-            html += "</tr></thead><tbody>"
-            
-            # Linhas
-            for idx, row in df.iterrows():
-                html += f'<tr class="hover-row" style="border-bottom: 1px solid #ddd;">'
-                for col in df.columns:
-                    if col != 'Ações':
-                        value = row[col]
-                        if pd.isna(value):
-                            value = ""
-                        elif isinstance(value, pd.Timestamp):
-                            value = value.strftime('%d/%m/%Y')
-                        html += f'<td style="padding: 8px;">{value}</td>'
-                    else:
-                        html += f"""
-                        <td style="padding: 8px; text-align: center;">
-                            <span class="trash-icon" onclick="removeRow({idx})">🗑️</span>
-                        </td>
-                        """
-                html += "</tr>"
-            
-            html += "</tbody></table>"
-            
-            # JavaScript para remover linha
-            html += """
-            <script>
-                function removeRow(idx) {
-                    if (confirm('Tem certeza que deseja remover este registro?')) {
-                        parent.window.streamlitScriptRunner.run('remove_row', {index: idx});
-                    }
-                }
-            </script>
-            """
-            return html
-        
-        # Mostra a tabela
-        table_placeholder.markdown(generate_table(df_show), unsafe_allow_html=True)
+    st.markdown("---")
 
     with st.expander("✏️ Editar Registro"):
         if not df_display.empty:
@@ -1172,10 +1080,75 @@ elif page == "Contas a Pagar":
                 
                 if save_data(EXCEL_PAGAR, aba, df):
                     st.success("Registro atualizado com sucesso!")
-                    st.rerun()
+                    df = load_data(EXCEL_PAGAR, aba)
+                    
+                    # Reaplica filtros
+                    if view_sel == "Pagas":
+                        df_display = df[df["status_pagamento"] == "Pago"].copy()
+                    elif view_sel == "Pendentes":
+                        df_display = df[df["status_pagamento"] != "Pago"].copy()
+                    else:
+                        df_display = df.copy()
+                    
+                    if forn != "Todos":
+                        df_display = df_display[df_display["fornecedor"] == forn]
+                    if status_sel != "Todos":
+                        df_display = df_display[df_display["estado"] == status_sel]
+                    
+                    table_placeholder.dataframe(df_display[cols_para_exibir], height=250)
                 else:
                     st.error("Erro ao salvar alterações.")
 
+with st.expander("🗑️ Remover Registro"):
+    # Verifica se há lançamentos temporários
+    if "lista_lancamentos" in st.session_state and st.session_state.lista_lancamentos:
+        # Cria DataFrame apenas com os lançamentos temporários
+        df_temp = pd.DataFrame(st.session_state.lista_lancamentos)
+        
+        # Exibe os lançamentos temporários
+        st.dataframe(df_temp, height=150)
+        
+        # Seleção do índice para remover
+        idx_rem = st.number_input(
+            "Índice da linha para remover:",
+            min_value=0,
+            max_value=len(df_temp) - 1,
+            step=1,
+            key="remover_pagar"
+        )
+
+        if st.button("Remover Registro", key="btn_remover_pagar"):
+            try:
+                # Remove o registro da lista temporária
+                registro_removido = st.session_state.lista_lancamentos.pop(idx_rem)
+                st.success(f"Registro removido: {registro_removido['fornecedor']} - R$ {registro_removido['valor']}")
+                
+                # Atualiza o DataFrame principal combinando dados do Excel + temporários restantes
+                df_excel = load_data(EXCEL_PAGAR, aba)
+                
+                if st.session_state.lista_lancamentos:
+                    df_temp_restante = pd.DataFrame(st.session_state.lista_lancamentos)
+                    df_completo = pd.concat([df_excel, df_temp_restante], ignore_index=True)
+                else:
+                    df_completo = df_excel
+                
+                # Reaplica filtros se necessário
+                if forn != "Todos":
+                    df_completo = df_completo[df_completo["fornecedor"] == forn]
+                if status_sel != "Todos":
+                    df_completo = df_completo[df_completo["estado"] == status_sel]
+                
+                # Atualiza a tabela principal
+                table_placeholder.dataframe(df_completo[cols_para_exibir], height=250)
+                
+                # Força atualização imediata
+                st.experimental_rerun()
+                
+            except Exception as e:
+                st.error(f"Falha ao remover registro: {str(e)}")
+    else:
+        st.info("Nenhum lançamento temporário disponível para remoção.")
+        
     with st.expander("📎 Anexar Documentos"):
         if not df_display.empty:
             idx2 = st.number_input(
@@ -1301,7 +1274,31 @@ elif page == "Contas a Pagar":
 
             if add_record(EXCEL_PAGAR, aba, record):
                 st.success("Nova conta adicionada com sucesso!")
-                st.rerun()
+                
+                if record.get("boleto"):
+                    with open(record["boleto"], "rb") as f:
+                        st.download_button(
+                            label="📥 Baixar Boleto",
+                            data=f.read(),
+                            file_name=os.path.basename(record["boleto"]),
+                            mime="application/octet-stream",
+                            key=f"dl_boleto_pagar_{aba}"
+                        )
+                if record.get("comprovante"):
+                    with open(record["comprovante"], "rb") as f:
+                        st.download_button(
+                            label="📥 Baixar Comprovante",
+                            data=f.read(),
+                            file_name=os.path.basename(record["comprovante"]),
+                            mime="application/octet-stream",
+                            key=f"dl_comprov_pagar_{aba}"
+                        )
+
+                # Recarrega dados
+                df = load_data(EXCEL_PAGAR, aba)
+                cols_show = ["data_nf", "fornecedor", "valor", "vencimento", "estado", "status_pagamento"]
+                cols_to_display = [c for c in cols_show if c in df.columns]
+                table_placeholder.dataframe(df[cols_to_display], height=250)
             else:
                 st.error("Erro ao adicionar nova conta.")
 
@@ -1322,7 +1319,7 @@ elif page == "Contas a Pagar":
     except Exception as e:
         st.error(f"Erro ao preparar download: {e}")
     st.markdown("---")
-    
+
 elif page == "Contas a Receber":
     st.subheader("🗂️ Contas a Receber")
     
