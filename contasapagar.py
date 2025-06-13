@@ -1100,54 +1100,63 @@ else:
                     st.error("Erro ao salvar alterações.")
 
 with st.expander("🗑️ Remover Registro"):
-    # Verifica se há lançamentos temporários
-    if "lista_lancamentos" in st.session_state and st.session_state.lista_lancamentos:
-        # Cria DataFrame apenas com os lançamentos temporários
-        df_temp = pd.DataFrame(st.session_state.lista_lancamentos)
+    if not df_display.empty:
+        st.write("Registros disponíveis:")
+        st.dataframe(df_display[['fornecedor', 'valor', 'vencimento', 'status_pagamento']])
         
-        # Exibe os lançamentos temporários
-        st.dataframe(df_temp, height=150)
-        
-        # Seleção do índice para remover
         idx_rem = st.number_input(
-            "Índice da linha para remover:",
+            "Índice da linha para remover (baseado na lista acima):",
             min_value=0,
-            max_value=len(df_temp) - 1,
+            max_value=len(df_display) - 1,
             step=1,
-            key="remover_pagar"
+            key="idx_remover_geral"
         )
 
-        if st.button("Remover Registro", key="btn_remover_pagar"):
+        if st.button("Remover Registro Selecionado", key="btn_remover_geral"):
             try:
-                # Remove o registro da lista temporária
-                registro_removido = st.session_state.lista_lancamentos.pop(idx_rem)
-                st.success(f"Registro removido: {registro_removido['fornecedor']} - R$ {registro_removido['valor']}")
+                # Obtém o registro completo que será removido
+                registro = df_display.iloc[idx_rem]
                 
-                # Atualiza o DataFrame principal combinando dados do Excel + temporários restantes
-                df_excel = load_data(EXCEL_PAGAR, aba)
+                # Carrega o arquivo Excel
+                wb = load_workbook(EXCEL_PAGAR)
+                ws = wb[aba]
                 
-                if st.session_state.lista_lancamentos:
-                    df_temp_restante = pd.DataFrame(st.session_state.lista_lancamentos)
-                    df_completo = pd.concat([df_excel, df_temp_restante], ignore_index=True)
+                # Encontra a linha correspondente no Excel
+                # (assumindo que o DataFrame mantém os índices originais)
+                linha_excel = registro.name + 9  # 8 cabeçalhos + 1 para ajuste
+                
+                # Remove fisicamente a linha do Excel
+                ws.delete_rows(linha_excel)
+                wb.save(EXCEL_PAGAR)
+                
+                st.success(f"Registro removido: {registro['fornecedor']} - R$ {registro['valor']}")
+                
+                # Atualiza os dados exibidos
+                df = load_data(EXCEL_PAGAR, aba)  # Recarrega do arquivo atualizado
+                
+                # Reaplica filtros e visualização
+                if view_sel == "Pagas":
+                    df_display = df[df["status_pagamento"] == "Pago"].copy()
+                elif view_sel == "Pendentes":
+                    df_display = df[df["status_pagamento"] != "Pago"].copy()
                 else:
-                    df_completo = df_excel
+                    df_display = df.copy()
                 
-                # Reaplica filtros se necessário
                 if forn != "Todos":
-                    df_completo = df_completo[df_completo["fornecedor"] == forn]
+                    df_display = df_display[df_display["fornecedor"] == forn]
                 if status_sel != "Todos":
-                    df_completo = df_completo[df_completo["estado"] == status_sel]
+                    df_display = df_display[df_display["estado"] == status_sel]
                 
                 # Atualiza a tabela principal
-                table_placeholder.dataframe(df_completo[cols_para_exibir], height=250)
+                table_placeholder.dataframe(df_display[cols_para_exibir], height=250)
                 
-                # Força atualização imediata
-                st.experimental_rerun()
+                # Força atualização completa
+                st.rerun()
                 
             except Exception as e:
-                st.error(f"Falha ao remover registro: {str(e)}")
+                st.error(f"Erro ao remover registro: {str(e)}")
     else:
-        st.info("Nenhum lançamento temporário disponível para remoção.")
+        st.warning("Nenhum registro disponível para remoção")
         
     with st.expander("📎 Anexar Documentos"):
         if not df_display.empty:
