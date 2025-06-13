@@ -45,8 +45,10 @@ if not st.session_state.logged_in:
 EXCEL_PAGAR = "Contas a pagar 2025.xlsx"
 EXCEL_RECEBER = "Contas a receber 2025.xlsx"
 ANEXOS_DIR = "anexos"  # Esta linha estava faltando
-FULL_MONTHS = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", 
-               "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"]
+FULL_MONTHS = [f"{i:02d}" for i in range(1, 13)]
+mes_atual = f"{date.today().month:02d}"
+default_idx = FULL_MONTHS.index(mes_atual) if mes_atual in FULL_MONTHS else 0
+
 
 # Garante pastas de anexos (esta parte deve vir DEPOIS de definir ANEXOS_DIR)
 for pasta in ["Contas a Pagar", "Contas a Receber"]:
@@ -946,246 +948,155 @@ if page == "Dashboard":
                         st.error(f"Erro ao preparar download: {e}")
 
 
-elif page == "Contas a Pagar":
-    st.subheader("🗂️ Contas a Pagar")
-    
-    # Verificação do arquivo
-    if not os.path.isfile(EXCEL_PAGAR):
-        st.error(f"Arquivo '{EXCEL_PAGAR}' não encontrado. Verifique o caminho.")
-        st.stop()
-    
-    # Seleção do mês
-    existing_sheets = get_existing_sheets(EXCEL_PAGAR)
-    aba = st.selectbox("Selecione o mês:", FULL_MONTHS, index=FULL_MONTHS.index(date.today().strftime("%B")))
-    
-    # Carrega os dados
-    df = load_data(EXCEL_PAGAR, aba)
-    
-    # Adiciona lançamentos temporários se existirem
-    if "lista_lancamentos" in st.session_state and st.session_state.lista_lancamentos:
+st.subheader("🗂️ Contas a Pagar")
+
+if not os.path.isfile(EXCEL_PAGAR):
+    st.error(f"Arquivo '{EXCEL_PAGAR}' não encontrado. Verifique o caminho.")
+    st.stop()
+
+# Seleção do mês/aba
+aba = st.selectbox("Selecione o mês:", FULL_MONTHS, index=default_idx)
+
+# Carrega os dados salvos no Excel
+df = load_data(EXCEL_PAGAR, aba)
+
+# Adiciona lançamentos temporários da sessão
+if "lista_lancamentos" not in st.session_state:
+    st.session_state.lista_lancamentos = []
+df_temp = pd.DataFrame(st.session_state.lista_lancamentos)
+if not df_temp.empty:
+    df = pd.concat([df, df_temp], ignore_index=True)
+
+# Filtro principal
+view_sel = st.radio("Visualizar:", ["Todos", "Pagas", "Pendentes"], horizontal=True)
+
+if view_sel == "Pagas":
+    df_display = df[df["status_pagamento"] == "Pago"].copy()
+elif view_sel == "Pendentes":
+    df_display = df[df["status_pagamento"] != "Pago"].copy()
+else:
+    df_display = df.copy()
+
+df_display = df_display.reset_index(drop=True)
+df_display.insert(0, '#', range(1, len(df_display) + 1))
+
+# Filtros avançados
+with st.expander("🔍 Filtros Avançados", expanded=False):
+    col1, col2 = st.columns(2)
+    with col1:
+        fornecedores = ["Todos"] + sorted(df["fornecedor"].dropna().astype(str).unique().tolist())
+        fornecedor_filtro = st.selectbox("Fornecedor", fornecedores)
+    with col2:
+        status_list = ["Todos"] + sorted(df["status_pagamento"].dropna().astype(str).unique().tolist())
+        status_filtro = st.selectbox("Status", status_list)
+
+if fornecedor_filtro != "Todos":
+    df_display = df_display[df_display["fornecedor"] == fornecedor_filtro]
+if status_filtro != "Todos":
+    df_display = df_display[df_display["status_pagamento"] == status_filtro]
+
+# Exibe a tabela principal
+st.markdown("### 📋 Lançamentos")
+if df_display.empty:
+    st.warning("Nenhum registro encontrado com os filtros selecionados.")
+else:
+    cols_padrao = ['#', 'data_nf', 'fornecedor', 'valor', 'vencimento', 'status_pagamento', 'estado']
+    cols_disponiveis = [c for c in cols_padrao if c in df_display.columns]
+    df_exibicao = df_display[cols_disponiveis].copy()
+    # Formatação
+    if 'valor' in df_exibicao.columns:
+        df_exibicao['valor'] = df_exibicao['valor'].apply(lambda x: f"R$ {float(x):,.2f}")
+    if 'vencimento' in df_exibicao.columns:
+        df_exibicao['vencimento'] = pd.to_datetime(df_exibicao['vencimento']).dt.strftime('%d/%m/%Y')
+    if 'data_nf' in df_exibicao.columns:
+        df_exibicao['data_nf'] = pd.to_datetime(df_exibicao['data_nf']).dt.strftime('%d/%m/%Y')
+    table_placeholder = st.empty()
+    table_placeholder.dataframe(df_exibicao, height=400, use_container_width=True)
+
+# ---- Remover Registro TEMPORÁRIO ----
+with st.expander("🗑️ Remover Registro", expanded=False):
+    if st.session_state.lista_lancamentos:
         df_temp = pd.DataFrame(st.session_state.lista_lancamentos)
-        df = pd.concat([df, df_temp], ignore_index=True)
-    
-    # Filtro principal
-    view_sel = st.radio("Visualizar:", ["Todos", "Pagas", "Pendentes"], horizontal=True)
-    
-    if view_sel == "Pagas":
-        df_display = df[df["status_pagamento"] == "Pago"].copy()
-    elif view_sel == "Pendentes":
-        df_display = df[df["status_pagamento"] != "Pago"].copy()
-    else:
-        df_display = df.copy()
-    
-    # Adiciona numeração das linhas
-    df_display.insert(0, '#', range(1, len(df_display) + 1))
-    
-    # Filtros avançados
-    with st.expander("🔍 Filtros Avançados", expanded=False):
-        col1, col2 = st.columns(2)
-        with col1:
-            fornecedor_filtro = st.selectbox(
-                "Fornecedor",
-                ["Todos"] + sorted(df["fornecedor"].dropna().unique().tolist()))
-        with col2:
-            status_filtro = st.selectbox(
-                "Status",
-                ["Todos"] + sorted(df["status_pagamento"].dropna().unique().tolist()))
-    
-    # Aplica filtros
-    if fornecedor_filtro != "Todos":
-        df_display = df_display[df_display["fornecedor"] == fornecedor_filtro]
-    if status_filtro != "Todos":
-        df_display = df_display[df_display["status_pagamento"] == status_filtro]
-    
-    # Exibe a tabela principal
-    st.markdown("### 📋 Lançamentos")
-    if df_display.empty:
-        st.warning("Nenhum registro encontrado com os filtros selecionados.")
-    else:
-        # Seleciona e formata colunas para exibição
-        cols_padrao = ['#', 'data_nf', 'fornecedor', 'valor', 'vencimento', 'status_pagamento', 'estado']
-        cols_disponiveis = [c for c in cols_padrao if c in df_display.columns]
-        
-        df_exibicao = df_display[cols_disponiveis].copy()
-        
-        # Formatação
-        if 'valor' in df_exibicao.columns:
-            df_exibicao['valor'] = df_exibicao['valor'].apply(lambda x: f"R$ {float(x):,.2f}")
-        if 'vencimento' in df_exibicao.columns:
-            df_exibicao['vencimento'] = pd.to_datetime(df_exibicao['vencimento']).dt.strftime('%d/%m/%Y')
-        if 'data_nf' in df_exibicao.columns:
-            df_exibicao['data_nf'] = pd.to_datetime(df_exibicao['data_nf']).dt.strftime('%d/%m/%Y')
-        
-        st.dataframe(df_exibicao, height=400, use_container_width=True)
-    
-    # Seção de Edição
-    with st.expander("✏️ Editar Registro", expanded=False):
-        if not df_display.empty:
-            idx_edicao = st.number_input(
-                "Número da linha para editar:",
-                min_value=1,
-                max_value=len(df_display),
-                step=1,
-                key="edit_idx_pagar"
-            )
-            
-            registro = df_display[df_display['#'] == idx_edicao].iloc[0]
-            original_idx = df[df['fornecedor'] == registro['fornecedor']].index[0]
-            
-            col1, col2 = st.columns(2)
-            with col1:
-                novo_valor = st.number_input(
-                    "Valor (R$):",
-                    value=float(registro['valor']),
-                    step=0.01,
-                    key="edit_valor_pagar"
-                )
-                novo_vencimento = st.date_input(
-                    "Vencimento:",
-                    value=pd.to_datetime(registro['vencimento']).date(),
-                    key="edit_venc_pagar"
-                )
-            with col2:
-                novo_estado = st.selectbox(
-                    "Estado:",
-                    options=["Em Aberto", "Pago"],
-                    index=0 if registro['estado'] == "Em Aberto" else 1,
-                    key="edit_estado_pagar"
-                )
-                nova_situacao = st.selectbox(
-                    "Situação:",
-                    options=["Em Atraso", "Pago", "Em Aberto"],
-                    index=0 if registro['situacao'] == "Em Atraso" else 1 if registro['situacao'] == "Pago" else 2,
-                    key="edit_situacao_pagar"
-                )
-            
-            if st.button("💾 Salvar Alterações", key="save_edit_pagar"):
-                df.at[original_idx, 'valor'] = novo_valor
-                df.at[original_idx, 'vencimento'] = novo_vencimento
-                df.at[original_idx, 'estado'] = novo_estado
-                df.at[original_idx, 'situacao'] = nova_situacao
-                
-                if save_data(EXCEL_PAGAR, aba, df):
-                    st.success("Registro atualizado com sucesso!")
-                    st.experimental_rerun()
-                else:
-                    st.error("Erro ao salvar alterações.")
-    
-    # Seção para Remover Registros
-    with st.expander("🗑️ Remover Registro", expanded=False):
-        if "lista_lancamentos" in st.session_state and st.session_state.lista_lancamentos:
-            df_temp = pd.DataFrame(st.session_state.lista_lancamentos)
-            df_temp.insert(0, '#', range(1, len(df_temp) + 1))
-            
-            st.dataframe(df_temp, height=150)
-            
-            idx_remocao = st.number_input(
-                "Número da linha para remover:",
-                min_value=1,
-                max_value=len(df_temp),
-                step=1,
-                key="remove_idx_pagar"
-            )
-            
-            if st.button("Remover Registro", key="btn_remove_pagar"):
-                try:
-                    st.session_state.lista_lancamentos.pop(idx_remocao - 1)
-                    st.success("Registro removido com sucesso!")
-                    st.experimental_rerun()
-                except Exception as e:
-                    st.error(f"Erro ao remover registro: {e}")
-    
-    # Seção para Adicionar Novos Registros
-    with st.expander("➕ Adicionar Nova Conta", expanded=False):
-        col1, col2 = st.columns(2)
-        with col1:
-            nova_data_nf = st.date_input("Data N/F:", value=date.today())
-            nova_descricao = st.text_input("Descrição:")
-            novo_fornecedor = st.text_input("Fornecedor:")
-        with col2:
-            novo_os = st.text_input("Documento/OS:")
-            novo_vencimento = st.date_input("Vencimento:", value=date.today())
-            novo_valor = st.number_input("Valor (R$):", min_value=0.01, step=0.01)
-        
-        novo_estado = st.selectbox("Estado:", ["Em Aberto", "Pago"])
-        nova_situacao = st.selectbox("Situação:", ["Em Atraso", "Pago", "Em Aberto"])
-        
-        # Upload de arquivos
-        col_anexo1, col_anexo2 = st.columns(2)
-        with col_anexo1:
-            boleto_file = st.file_uploader("Boleto (opcional):", type=["pdf", "jpg", "png"])
-        with col_anexo2:
-            comprovante_file = st.file_uploader("Comprovante (opcional):", type=["pdf", "jpg", "png"])
-        
-        if st.button("Adicionar Conta", key="btn_add_pagar"):
-            novo_registro = {
-                "data_nf": nova_data_nf,
-                "forma_pagamento": nova_descricao,
-                "fornecedor": novo_fornecedor,
-                "os": novo_os,
-                "vencimento": novo_vencimento,
-                "valor": novo_valor,
-                "estado": novo_estado,
-                "situacao": nova_situacao,
-                "status_pagamento": "Pago" if novo_estado == "Pago" else "Pendente"
-            }
-            
-            # Processa anexos
-            if boleto_file:
-                boleto_path = os.path.join(ANEXOS_DIR, "Contas a Pagar", f"boleto_{uuid.uuid4()}.{boleto_file.name.split('.')[-1]}")
-                with open(boleto_path, "wb") as f:
-                    f.write(boleto_file.getbuffer())
-                novo_registro["boleto"] = boleto_path
-            
-            if comprovante_file:
-                comprovante_path = os.path.join(ANEXOS_DIR, "Contas a Pagar", f"comprovante_{uuid.uuid4()}.{comprovante_file.name.split('.')[-1]}")
-                with open(comprovante_path, "wb") as f:
-                    f.write(comprovante_file.getbuffer())
-                novo_registro["comprovante"] = comprovante_path
-            
-            if add_record(EXCEL_PAGAR, aba, novo_registro):
-                st.success("Conta adicionada com sucesso!")
+        df_temp.insert(0, '#', range(1, len(df_temp) + 1))
+        st.dataframe(df_temp, height=150)
+        idx_remocao = st.number_input(
+            "Número da linha para remover (só da lista temporária):",
+            min_value=1,
+            max_value=len(df_temp),
+            step=1,
+            key="remove_idx_pagar"
+        )
+        if st.button("Remover Registro", key="btn_remove_pagar"):
+            try:
+                st.session_state.lista_lancamentos.pop(idx_remocao - 1)
+                st.success("Registro removido da lista temporária com sucesso!")
                 st.experimental_rerun()
-            else:
-                st.error("Erro ao adicionar nova conta.")
-    
-    # Seção para Anexar Documentos
-    with st.expander("📎 Anexar Documentos", expanded=False):
-        if not df_display.empty:
-            idx_anexo = st.number_input(
-                "Número da linha para anexar:",
-                min_value=1,
-                max_value=len(df_display),
-                step=1,
-                key="anexo_idx_pagar"
-            )
-            
-            registro = df_display[df_display['#'] == idx_anexo].iloc[0]
-            original_idx = df[df['fornecedor'] == registro['fornecedor']].index[0]
-            
-            uploaded_file = st.file_uploader(
-                "Selecione o arquivo (PDF, JPG, PNG):",
-                type=["pdf", "jpg", "png"],
-                key=f"file_upload_pagar_{original_idx}"
-            )
-            
-            if uploaded_file:
-                destino = os.path.join(
-                    ANEXOS_DIR,
-                    "Contas a Pagar",
-                    f"anexo_{aba}_{original_idx}_{uploaded_file.name}"
-                )
-                with open(destino, "wb") as f:
-                    f.write(uploaded_file.getbuffer())
-                st.success(f"Documento salvo em: {destino}")
-                
-                # Atualiza o registro com o caminho do anexo
-                if uploaded_file.type == "application/pdf":
-                    df.at[original_idx, 'boleto'] = destino
-                else:
-                    df.at[original_idx, 'comprovante'] = destino
-                
-                save_data(EXCEL_PAGAR, aba, df)
+            except Exception as e:
+                st.error(f"Erro ao remover registro: {e}")
+    else:
+        st.info("Nenhum lançamento temporário disponível para remoção.")
+
+# ---- Adicionar Nova Conta ----
+with st.expander("➕ Adicionar Nova Conta", expanded=False):
+    col1, col2 = st.columns(2)
+    with col1:
+        nova_data_nf = st.date_input("Data N/F:", value=date.today())
+        nova_descricao = st.text_input("Descrição:")
+        novo_fornecedor = st.text_input("Fornecedor:")
+    with col2:
+        novo_os = st.text_input("Documento/OS:")
+        novo_vencimento = st.date_input("Vencimento:", value=date.today())
+        novo_valor = st.number_input("Valor (R$):", min_value=0.01, step=0.01)
+    novo_estado = st.selectbox("Estado:", ["Em Aberto", "Pago"])
+    nova_situacao = st.selectbox("Situação:", ["Em Atraso", "Pago", "Em Aberto"])
+    col_anexo1, col_anexo2 = st.columns(2)
+    with col_anexo1:
+        boleto_file = st.file_uploader("Boleto (opcional):", type=["pdf", "jpg", "png"])
+    with col_anexo2:
+        comprovante_file = st.file_uploader("Comprovante (opcional):", type=["pdf", "jpg", "png"])
+
+    if st.button("Adicionar Conta", key="btn_add_pagar"):
+        novo_registro = {
+            "data_nf": nova_data_nf,
+            "forma_pagamento": nova_descricao,
+            "fornecedor": novo_fornecedor,
+            "os": novo_os,
+            "vencimento": novo_vencimento,
+            "valor": novo_valor,
+            "estado": novo_estado,
+            "situacao": nova_situacao,
+            "status_pagamento": "Pago" if novo_estado == "Pago" else "Pendente"
+        }
+        # Anexos
+        if boleto_file:
+            boleto_path = os.path.join(ANEXOS_DIR, "Contas a Pagar", f"boleto_{uuid.uuid4()}.{boleto_file.name.split('.')[-1]}")
+            with open(boleto_path, "wb") as f:
+                f.write(boleto_file.getbuffer())
+            novo_registro["boleto"] = boleto_path
+        if comprovante_file:
+            comprovante_path = os.path.join(ANEXOS_DIR, "Contas a Pagar", f"comprovante_{uuid.uuid4()}.{comprovante_file.name.split('.')[-1]}")
+            with open(comprovante_path, "wb") as f:
+                f.write(comprovante_file.getbuffer())
+            novo_registro["comprovante"] = comprovante_path
+
+        # Só salva no Excel se quiser, aqui adiciona TEMPORARIAMENTE
+        st.session_state.lista_lancamentos.append(novo_registro)
+        st.success("Conta adicionada temporariamente! (Salve no Excel para registrar definitivamente)")
+        st.experimental_rerun()
+
+# ---- Salvar no Excel todos lançamentos temporários ----
+if st.session_state.lista_lancamentos:
+    if st.button("💾 Salvar todos lançamentos no Excel"):
+        sucesso = True
+        for reg in st.session_state.lista_lancamentos:
+            if not add_record(EXCEL_PAGAR, aba, reg):
+                sucesso = False
+        if sucesso:
+            st.success("Todos lançamentos salvos no Excel!")
+            st.session_state.lista_lancamentos = []
+            st.experimental_rerun()
+        else:
+            st.error("Erro ao salvar alguns lançamentos no Excel.")
 
 elif page == "Contas a Receber":
     st.subheader("🗂️ Contas a Receber")
