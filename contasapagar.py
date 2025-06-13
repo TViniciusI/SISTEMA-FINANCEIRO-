@@ -1101,6 +1101,7 @@ st.session_state['remove_row'] = remove_row
 
 # Mostra a tabela
 table_placeholder.markdown(generate_table(df_show), unsafe_allow_html=True)
+st.markdown("---")
 
     with st.expander("✏️ Editar Registro"):
         if not df_display.empty:
