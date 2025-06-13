@@ -1093,13 +1093,13 @@ elif page == "Contas a Pagar":
                     st.error("Erro ao salvar alterações.")
 
     with st.expander("🗑️ Remover Registro"):
-    if not df_display.empty:
-        idx_rem = st.number_input(
-            "Índice da linha para remover:",
-            min_value=0,
-            max_value=len(df_display) - 1,
-            step=1,
-            key="remover_pagar"
+        if not df_display.empty:
+            idx_rem = st.number_input(
+                "Índice da linha para remover:",
+                min_value=0,
+                max_value=len(df_display) - 1,
+                step=1,
+                key="remover_pagar"
         )
 
         if st.button("Remover", key="btn_remover_pagar"):
