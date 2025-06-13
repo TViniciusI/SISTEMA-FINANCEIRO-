@@ -1094,6 +1094,8 @@ with st.expander("🗑️ Remover Registro"):
     if "lista_lancamentos" in st.session_state and st.session_state.lista_lancamentos:
         df_temp = pd.DataFrame(st.session_state.lista_lancamentos)
 
+        st.dataframe(df_temp, height=150)
+
         idx_rem = st.number_input(
             "Índice da linha para remover:",
             min_value=0,
@@ -1107,7 +1109,7 @@ with st.expander("🗑️ Remover Registro"):
                 st.session_state.lista_lancamentos.pop(idx_rem)
                 st.success("Registro removido da lista de lançamentos com sucesso!")
 
-                # Atualiza a visualização da tabela
+                # Atualiza visualização com nova lista
                 df_temp = pd.DataFrame(st.session_state.lista_lancamentos)
                 table_placeholder.dataframe(df_temp, height=250)
 
@@ -1115,7 +1117,6 @@ with st.expander("🗑️ Remover Registro"):
                 st.error(f"Erro ao remover registro: {e}")
     else:
         st.info("Nenhum lançamento temporário disponível para remoção.")
-
 
     with st.expander("📎 Anexar Documentos"):
         if not df_display.empty:
