@@ -1130,6 +1130,14 @@ with st.expander("🗑️ Remover Registro"):
                 st.error(f"Erro ao remover registro: {e}")
     else:
         st.info("Nenhum lançamento temporário disponível para remoção.")
+
+    if st.button("Remover", key="btn_remover_pagar"):
+    try:
+        st.session_state.lista_lancamentos.pop(idx_rem)
+        st.success("Registro removido da lista de lançamentos com sucesso!")
+        st.rerun()  # Força a atualização de toda a aplicação
+    except Exception as e:
+        st.error(f"Erro ao remover registro: {e}")
         
     with st.expander("📎 Anexar Documentos"):
         if not df_display.empty:
