@@ -495,6 +495,16 @@ st.markdown("""
 """, unsafe_allow_html=True)
 st.markdown("---")
 
+# Menu de navegação na sidebar
+with st.sidebar:
+    st.title("Menu")
+    page = st.radio(
+        "Selecione a página:",
+        ["Dashboard", "Contas a Pagar", "Contas a Receber"],
+        index=0  # Página inicial padrão
+    )
+    st.markdown("---")
+    st.markdown(f"🟢 Logado como: **{st.session_state.username}**")
 # Dashboard Modernizado
 if page == "Dashboard":
     if not os.path.isfile(EXCEL_PAGAR):
