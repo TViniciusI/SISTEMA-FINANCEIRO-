@@ -1135,18 +1135,32 @@ elif page == "Contas a Receber":
     default_idx = FULL_MONTHS.index(date.today().strftime("%m"))
     aba = st.selectbox("Selecione o mês:", FULL_MONTHS, index=default_idx)
 
-    # Carrega dados diretamente do Excel
+    # Carrega dados diretamente do Excel e numera
     df = load_data(EXCEL_RECEBER, aba).reset_index(drop=True)
     df.insert(0, "#", range(1, len(df) + 1))
 
-    # Filtros avançados
+    # ----- FILTROS AVANÇADOS -----
     with st.expander("🔍 Filtros Avançados", expanded=False):
         col1, col2 = st.columns(2)
         with col1:
-            clientes = ["Todos"] + sorted(df["fornecedor"].dropna().astype(str).unique().tolist())
+            clientes = ["Todos"] + sorted(
+                df["fornecedor"]
+                  .dropna()
+                  .astype(str)
+                  .unique()
+                  .tolist(),
+                key=str.lower
+            )
             cliente_filtro = st.selectbox("Cliente", clientes)
         with col2:
-            status_opts = ["Todos"] + sorted(df["status_pagamento"].dropna().unique().tolist())
+            status_opts = ["Todos"] + sorted(
+                df["status_pagamento"]
+                  .dropna()
+                  .astype(str)
+                  .unique()
+                  .tolist(),
+                key=str.lower
+            )
             status_filtro = st.selectbox("Status", status_opts)
 
     # Aplica filtros
@@ -1156,7 +1170,7 @@ elif page == "Contas a Receber":
     if status_filtro != "Todos":
         df_disp = df_disp[df_disp["status_pagamento"] == status_filtro]
 
-    # Exibe tabela
+    # ----- EXIBE A TABELA -----
     st.markdown("### 📋 Lançamentos")
     table_pl = st.empty()
     if df_disp.empty:
@@ -1165,9 +1179,8 @@ elif page == "Contas a Receber":
         df_exib = df_disp.copy()
         # Formatação de moeda e datas
         if "valor" in df_exib:
-            df_exib["valor"] = df_exib["valor"].apply(
-                lambda x: f"R$ {x:,.2f}" if pd.notna(x) else ""
-            )
+            df_exib["valor"] = df_exib["valor"]\
+                .apply(lambda x: f"R$ {x:,.2f}" if pd.notna(x) else "")
         if "vencimento" in df_exib:
             df_exib["vencimento"] = pd.to_datetime(
                 df_exib["vencimento"], errors="coerce"
@@ -1198,20 +1211,20 @@ elif page == "Contas a Receber":
                     ws.delete_rows(excel_row)
                     wb.save(EXCEL_RECEBER)
                     st.success(f"Registro #{sel} removido com sucesso!")
-                    # Recarrega dados e reexibe
+                    # Recarrega e reexibe
                     df = load_data(EXCEL_RECEBER, aba).reset_index(drop=True)
                     df.insert(0, "#", range(1, len(df) + 1))
+                    # reaplica filtros...
                     df_disp = df.copy()
                     if cliente_filtro != "Todos":
                         df_disp = df_disp[df_disp["fornecedor"] == cliente_filtro]
                     if status_filtro != "Todos":
                         df_disp = df_disp[df_disp["status_pagamento"] == status_filtro]
-                    # reexibe tabela
+                    # exibe de novo
                     df_exib = df_disp.copy()
                     if "valor" in df_exib:
-                        df_exib["valor"] = df_exib["valor"].apply(
-                            lambda x: f"R$ {x:,.2f}" if pd.notna(x) else ""
-                        )
+                        df_exib["valor"] = df_exib["valor"]\
+                            .apply(lambda x: f"R$ {x:,.2f}" if pd.notna(x) else "")
                     if "vencimento" in df_exib:
                         df_exib["vencimento"] = pd.to_datetime(
                             df_exib["vencimento"], errors="coerce"
@@ -1275,7 +1288,7 @@ elif page == "Contas a Receber":
                         st.success("Registro atualizado com sucesso!")
                     else:
                         st.error("Falha ao salvar alterações.")
-                    # Recarrega e reexibe
+                    # Recarrega e reexibe...
                     df = load_data(EXCEL_RECEBER, aba).reset_index(drop=True)
                     df.insert(0, "#", range(1, len(df) + 1))
                     df_disp = df.copy()
@@ -1285,9 +1298,8 @@ elif page == "Contas a Receber":
                         df_disp = df_disp[df_disp["status_pagamento"] == status_filtro]
                     df_exib = df_disp.copy()
                     if "valor" in df_exib:
-                        df_exib["valor"] = df_exib["valor"].apply(
-                            lambda x: f"R$ {x:,.2f}" if pd.notna(x) else ""
-                        )
+                        df_exib["valor"] = df_exib["valor"]\
+                            .apply(lambda x: f"R$ {x:,.2f}" if pd.notna(x) else "")
                     if "vencimento" in df_exib:
                         df_exib["vencimento"] = pd.to_datetime(
                             df_exib["vencimento"], errors="coerce"
@@ -1304,13 +1316,13 @@ elif page == "Contas a Receber":
     with st.expander("➕ Adicionar Nova Conta", expanded=False):
         col1, col2 = st.columns(2)
         with col1:
-            nf_data = st.date_input("Data N/F:", value=date.today())
-            nf_desc = st.text_input("Descrição:")
+            nf_data    = st.date_input("Data N/F:", value=date.today())
+            nf_desc    = st.text_input("Descrição:")
             nf_cliente = st.text_input("Cliente:")
         with col2:
-            nf_os = st.text_input("Documento/OS:")
-            nf_venc = st.date_input("Vencimento:", value=date.today())
-            nf_val = st.number_input("Valor (R$):", min_value=0.01, step=0.01)
+            nf_os     = st.text_input("Documento/OS:")
+            nf_venc   = st.date_input("Vencimento:", value=date.today())
+            nf_val    = st.number_input("Valor (R$):", min_value=0.01, step=0.01)
         nf_estado = st.selectbox("Estado:", ["A Receber", "Recebido"])
         nf_situ   = st.selectbox("Situação:", ["Em Atraso", "Recebido", "A Receber"])
 
@@ -1338,9 +1350,8 @@ elif page == "Contas a Receber":
                         df_disp = df_disp[df_disp["status_pagamento"] == status_filtro]
                     df_exib = df_disp.copy()
                     if "valor" in df_exib:
-                        df_exib["valor"] = df_exib["valor"].apply(
-                            lambda x: f"R$ {x:,.2f}" if pd.notna(x) else ""
-                        )
+                        df_exib["valor"] = df_exib["valor"]\
+                            .apply(lambda x: f"R$ {x:,.2f}" if pd.notna(x) else "")
                     if "vencimento" in df_exib:
                         df_exib["vencimento"] = pd.to_datetime(
                             df_exib["vencimento"], errors="coerce"
