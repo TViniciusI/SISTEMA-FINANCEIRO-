@@ -1093,11 +1093,17 @@ elif page == "Contas a Pagar":
                     index=0 if registro["estado"] == "Em Aberto" else 1,
                     key="edit_estado_pagar"
                 )
+                situ_options = ["Em Atraso", "Pago", "Em Aberto"]
+                atual_sit = registro.get("situacao", None)
+                if atual_sit in situ_options:
+                    default_sit_idx = situ_options.index(atual_sit)
+                else:
+                    default_sit_idx = 0
+    
                 nova_sit = st.selectbox(
                     "Situação:",
-                    ["Em Atraso", "Pago", "Em Aberto"],
-                    index=(["Em Atraso", "Pago", "Em Aberto"]
-                           .index(registro.get("situacao", "Em Atraso"))),
+                    situ_options,
+                    index=default_sit_idx,
                     key="edit_situacao_pagar"
                 )
 
