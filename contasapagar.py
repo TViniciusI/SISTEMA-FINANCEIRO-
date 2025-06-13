@@ -1092,7 +1092,9 @@ elif page == "Contas a Pagar":
                 else:
                     st.error("Erro ao salvar alterações.")
 
-  with st.expander("🗑️ Remover Registro"):
+# ----- CONTAS A PAGAR ------
+
+with st.expander("🗑️ Remover Registro"):
     if not df_display.empty:
         idx_rem = st.number_input(
             "Índice da linha para remover:",
@@ -1105,10 +1107,7 @@ elif page == "Contas a Pagar":
         if st.button("Remover", key="btn_remover_pagar"):
             try:
                 rec_rem = df_display.iloc[idx_rem]
-
-                # Assume que df_display representa fielmente o conteúdo da planilha
-                # e que a linha correspondente está na mesma ordem do Excel
-                linha_excel = idx_rem + 9  # 8 é o cabeçalho, 1 é o +1 do Excel (linha 1)
+                linha_excel = idx_rem + 9  # 8 do header + 1 para alinhar ao Excel (começa em 1)
 
                 wb = load_workbook(EXCEL_PAGAR)
                 ws = wb[aba]
