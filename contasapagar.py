@@ -1108,14 +1108,15 @@ with st.expander("🗑️ Remover Registro"):
             try:
                 rec_rem = df_display.iloc[idx_rem]
                 orig_idx = rec_rem.name
-                linha_excel = orig_idx + 9  # header na linha 8
+                linha_excel = orig_idx + 9  # header na 8, dados começam na 9
 
-                # Carrega e deleta linha
                 wb = load_workbook(EXCEL_PAGAR)
                 ws = wb[aba]
+
+                # Remove a linha real
                 ws.delete_rows(linha_excel)
 
-                # Salva com segurança
+                # Salvar de forma segura
                 temp_path = EXCEL_PAGAR.replace(".xlsx", "_temp.xlsx")
                 wb.save(temp_path)
                 wb.close()
@@ -1123,7 +1124,7 @@ with st.expander("🗑️ Remover Registro"):
 
                 st.success("Registro removido com sucesso!")
 
-                # Recarrega dados
+                # Recarrega os dados atualizados
                 df = load_data(EXCEL_PAGAR, aba)
 
                 # Reaplica filtros
@@ -1143,6 +1144,7 @@ with st.expander("🗑️ Remover Registro"):
 
             except Exception as e:
                 st.error(f"Erro ao remover registro: {e}")
+
 
     with st.expander("📎 Anexar Documentos"):
         if not df_display.empty:
