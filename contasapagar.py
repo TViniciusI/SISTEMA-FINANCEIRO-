@@ -988,6 +988,15 @@ if forn != "Todos":
 if status_sel != "Todos":
     df_display = df_display[df_display["estado"] == status_sel]
 
+df = load_data(EXCEL_PAGAR, aba)
+
+# Adiciona lançamentos temporários
+if "lista_lancamentos" in st.session_state:
+    df_temp = pd.DataFrame(st.session_state.lista_lancamentos)
+    df = pd.concat([df, df_temp], ignore_index=True)
+
+df_display = df.copy()
+
 # Exibe resultado
 st.markdown("<hr style='border:1px solid #ddd;'>", unsafe_allow_html=True)
 
@@ -1094,7 +1103,9 @@ with st.expander("🗑️ Remover Registro"):
     if "lista_lancamentos" in st.session_state and st.session_state.lista_lancamentos:
         df_lanc = pd.DataFrame(st.session_state.lista_lancamentos).reset_index(drop=True)
 
-        st.dataframe(df_lanc, height=150)
+        st.markdown("### 🧾 Lançamentos Temporários")
+        lanc_placeholder = st.empty()
+        lanc_placeholder.dataframe(df_lanc, height=150)
 
         idx_rem = st.number_input(
             "Índice da linha para remover:",
@@ -1109,15 +1120,14 @@ with st.expander("🗑️ Remover Registro"):
                 st.session_state.lista_lancamentos.pop(idx_rem)
                 st.success("Registro removido da lista de lançamentos com sucesso!")
 
-                # Atualiza a visualização
+                # Atualiza tabela de lançamentos
                 df_lanc = pd.DataFrame(st.session_state.lista_lancamentos).reset_index(drop=True)
-                table_placeholder.dataframe(df_lanc, height=250)
+                lanc_placeholder.dataframe(df_lanc, height=150)
 
             except Exception as e:
                 st.error(f"Erro ao remover registro: {e}")
     else:
         st.info("Nenhum lançamento temporário disponível para remoção.")
-
 
     with st.expander("📎 Anexar Documentos"):
         if not df_display.empty:
