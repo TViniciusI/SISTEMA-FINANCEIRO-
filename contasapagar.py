@@ -1140,27 +1140,36 @@ elif page == "Contas a Receber":
     df = load_data(EXCEL_RECEBER, aba).reset_index(drop=True)
     df.insert(0, "#", range(1, len(df) + 1))
 
-   with st.expander("🔍 Filtros Avançados", expanded=False):
+  # Adiciona numeração das linhas
+    df_display.insert(0, '#', range(1, len(df_display) + 1))
+
+    # ----- FILTROS AVANÇADOS -----
+    with st.expander("🔍 Filtros Avançados", expanded=False):
         col1, col2 = st.columns(2)
         with col1:
-            # Converte tudo para string antes de ordenar, evita TypeError
             clientes = ["Todos"] + sorted(
-                df["fornecedor"]
-                  .dropna()
-                  .astype(str)
-                  .unique()
-                  .tolist(),
+                df_display["fornecedor"]
+                    .dropna()
+                    .astype(str)
+                    .unique()
+                    .tolist(),
                 key=lambda x: x.lower()
             )
             cliente_filtro = st.selectbox("Cliente", clientes)
         with col2:
             status_list = ["Todos"] + sorted(
-                df["status_pagamento"]
-                  .dropna()
-                  .unique()
-                  .tolist()
+                df_display["status_pagamento"]
+                    .dropna()
+                    .unique()
+                    .tolist()
             )
             status_filtro = st.selectbox("Status", status_list)
+
+    # Aplica filtros
+    if cliente_filtro != "Todos":
+        df_display = df_display[df_display["fornecedor"] == cliente_filtro]
+    if status_filtro  != "Todos":
+        df_display = df_display[df_display["status_pagamento"] == status_filtro]
 
     # Exibe tabela
     st.markdown("### 📋 Lançamentos")
