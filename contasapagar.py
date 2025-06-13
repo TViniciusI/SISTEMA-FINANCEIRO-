@@ -1077,66 +1077,30 @@ elif page == "Contas a Pagar":
                     st.error("Erro ao salvar alterações.")
 
 with st.expander("🗑️ Remover Registro"):
-    if not df_display.empty:
+    if "lista_lancamentos" in st.session_state and st.session_state.lista_lancamentos:
+        df_temp = pd.DataFrame(st.session_state.lista_lancamentos)
+
         idx_rem = st.number_input(
             "Índice da linha para remover:",
             min_value=0,
-            max_value=len(df_display) - 1,
+            max_value=len(df_temp) - 1,
             step=1,
             key="remover_pagar"
         )
 
         if st.button("Remover", key="btn_remover_pagar"):
             try:
-                rec_rem = df_display.iloc[idx_rem]
-                orig_idx = rec_rem.name
+                st.session_state.lista_lancamentos.pop(idx_rem)
+                st.success("Registro removido da lista de lançamentos com sucesso!")
 
-                if "lista_lancamentos" in st.session_state:
-                    # Verifica se é um lançamento pendente
-                    lista_df = pd.DataFrame(st.session_state.lista_lancamentos)
-
-                    if orig_idx < len(lista_df):
-                        st.session_state.lista_lancamentos.pop(orig_idx)
-                        st.success("Lançamento removido da lista temporária!")
-                    else:
-                        # Remoção no Excel, como antes
-                        linha_excel = orig_idx + 9
-                        wb = load_workbook(EXCEL_PAGAR)
-                        ws = wb[aba]
-                        ws.delete_rows(linha_excel)
-
-                        temp_path = EXCEL_PAGAR.replace(".xlsx", "_temp.xlsx")
-                        wb.save(temp_path)
-                        wb.close()
-                        os.replace(temp_path, EXCEL_PAGAR)
-                        st.success("Registro removido do Excel com sucesso!")
-
-                # Recarrega os dados atualizados
-                df = load_data(EXCEL_PAGAR, aba)
-
-                # Adiciona os lançamentos temporários
-                if "lista_lancamentos" in st.session_state:
-                    temp_df = pd.DataFrame(st.session_state.lista_lancamentos)
-                    df = pd.concat([df, temp_df], ignore_index=True)
-
-                # Reaplica filtros
-                if view_sel == "Pagas":
-                    df_display = df[df["status_pagamento"] == "Pago"].copy()
-                elif view_sel == "Pendentes":
-                    df_display = df[df["status_pagamento"] != "Pago"].copy()
-                else:
-                    df_display = df.copy()
-
-                if forn != "Todos":
-                    df_display = df_display[df_display["fornecedor"] == forn]
-                if status_sel != "Todos":
-                    df_display = df_display[df_display["estado"] == status_sel]
-
-                table_placeholder.dataframe(df_display[cols_para_exibir], height=250)
+                # Atualiza a visualização da tabela
+                df_temp = pd.DataFrame(st.session_state.lista_lancamentos)
+                table_placeholder.dataframe(df_temp, height=250)
 
             except Exception as e:
                 st.error(f"Erro ao remover registro: {e}")
-
+    else:
+        st.info("Nenhum lançamento temporário disponível para remoção.")
 
 
     with st.expander("📎 Anexar Documentos"):
