@@ -415,7 +415,7 @@ def save_data(excel_path: str, sheet_name: str, df: pd.DataFrame) -> bool:
     except Exception as e:
         st.error(f"Erro ao salvar dados: {e}")
         return False
-
+        
 def add_record(excel_path: str, sheet_name: str, record: dict) -> bool:
     try:
         wb = load_workbook(excel_path)
@@ -452,17 +452,16 @@ def add_record(excel_path: str, sheet_name: str, record: dict) -> bool:
             col_pos[key] = idx + 2 if idx is not None else None
 
         col_forn = col_pos.get("fornecedor", 2)
-        
-        next_row = ws.max_row + 1
-        for r in range(header_row + 1, ws.max_row + 2):
-            if not ws.cell(row=r, column=col_forn).value:
-                next_row = r
-                break
+
+        # ✅ CORRIGIDO: encontra próxima linha vazia com base no fornecedor
+        next_row = header_row + 1
+        while ws.cell(row=next_row, column=col_forn).value:
+            next_row += 1
 
         for key, col in col_pos.items():
             if not col or key == "situacao":
                 continue
-                
+
             val = record.get(key, "")
             if key in ("data_nf", "vencimento"):
                 try:
@@ -483,25 +482,10 @@ def add_record(excel_path: str, sheet_name: str, record: dict) -> bool:
 
         wb.save(excel_path)
         return True
-        
+
     except Exception as e:
         st.error(f"Erro ao adicionar registro: {e}")
         return False
-
-# Garante pastas de anexos
-for pasta in ["Contas a Pagar", "Contas a Receber"]:
-    os.makedirs(os.path.join(ANEXOS_DIR, pasta), exist_ok=True)
-
-st.sidebar.markdown(
-    """
-    ## 📂 Navegação  
-    Selecione a seção desejada para visualizar e gerenciar  
-    suas contas a pagar e receber.  
-    """,
-    unsafe_allow_html=True
-)
-
-page = st.sidebar.radio("", ["Dashboard", "Contas a Pagar", "Contas a Receber"], index=0)
 
 st.markdown("""
 <div style="text-align: center; color: #4B8BBE; margin-bottom: 10px;">
@@ -1092,8 +1076,6 @@ elif page == "Contas a Pagar":
                 else:
                     st.error("Erro ao salvar alterações.")
 
-import os
-
 with st.expander("🗑️ Remover Registro"):
     if not df_display.empty:
         idx_rem = st.number_input(
@@ -1108,24 +1090,34 @@ with st.expander("🗑️ Remover Registro"):
             try:
                 rec_rem = df_display.iloc[idx_rem]
                 orig_idx = rec_rem.name
-                linha_excel = orig_idx + 9  # header na 8, dados começam na 9
 
-                wb = load_workbook(EXCEL_PAGAR)
-                ws = wb[aba]
+                if "lista_lancamentos" in st.session_state:
+                    # Verifica se é um lançamento pendente
+                    lista_df = pd.DataFrame(st.session_state.lista_lancamentos)
 
-                # Remove a linha real
-                ws.delete_rows(linha_excel)
+                    if orig_idx < len(lista_df):
+                        st.session_state.lista_lancamentos.pop(orig_idx)
+                        st.success("Lançamento removido da lista temporária!")
+                    else:
+                        # Remoção no Excel, como antes
+                        linha_excel = orig_idx + 9
+                        wb = load_workbook(EXCEL_PAGAR)
+                        ws = wb[aba]
+                        ws.delete_rows(linha_excel)
 
-                # Salvar de forma segura
-                temp_path = EXCEL_PAGAR.replace(".xlsx", "_temp.xlsx")
-                wb.save(temp_path)
-                wb.close()
-                os.replace(temp_path, EXCEL_PAGAR)
-
-                st.success("Registro removido com sucesso!")
+                        temp_path = EXCEL_PAGAR.replace(".xlsx", "_temp.xlsx")
+                        wb.save(temp_path)
+                        wb.close()
+                        os.replace(temp_path, EXCEL_PAGAR)
+                        st.success("Registro removido do Excel com sucesso!")
 
                 # Recarrega os dados atualizados
                 df = load_data(EXCEL_PAGAR, aba)
+
+                # Adiciona os lançamentos temporários
+                if "lista_lancamentos" in st.session_state:
+                    temp_df = pd.DataFrame(st.session_state.lista_lancamentos)
+                    df = pd.concat([df, temp_df], ignore_index=True)
 
                 # Reaplica filtros
                 if view_sel == "Pagas":
@@ -1144,6 +1136,7 @@ with st.expander("🗑️ Remover Registro"):
 
             except Exception as e:
                 st.error(f"Erro ao remover registro: {e}")
+
 
 
     with st.expander("📎 Anexar Documentos"):
