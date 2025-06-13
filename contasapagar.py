@@ -1123,7 +1123,6 @@ elif page == "Contas a Pagar":
                 st.error(f"Erro ao adicionar conta: {e}")
 
 
-
 elif page == "Contas a Receber":
     st.subheader("🗂️ Contas a Receber")
 
@@ -1138,10 +1137,10 @@ elif page == "Contas a Receber":
 
     # Carrega dados diretamente do Excel
     df = load_data(EXCEL_RECEBER, aba).reset_index(drop=True)
-    df.insert(0, "#", range(1, len(df) + 1))
 
-  # Adiciona numeração das linhas
-    df_display.insert(0, '#', range(1, len(df_display) + 1))
+    # Prepara df_display e numera as linhas
+    df_display = df.copy()
+    df_display.insert(0, "#", range(1, len(df_display) + 1))
 
     # ----- FILTROS AVANÇADOS -----
     with st.expander("🔍 Filtros Avançados", expanded=False):
@@ -1166,10 +1165,11 @@ elif page == "Contas a Receber":
             status_filtro = st.selectbox("Status", status_list)
 
     # Aplica filtros
+    df_disp = df_display.copy()
     if cliente_filtro != "Todos":
-        df_display = df_display[df_display["fornecedor"] == cliente_filtro]
-    if status_filtro  != "Todos":
-        df_display = df_display[df_display["status_pagamento"] == status_filtro]
+        df_disp = df_disp[df_disp["fornecedor"] == cliente_filtro]
+    if status_filtro != "Todos":
+        df_disp = df_disp[df_disp["status_pagamento"] == status_filtro]
 
     # Exibe tabela
     st.markdown("### 📋 Lançamentos")
@@ -1184,7 +1184,7 @@ elif page == "Contas a Receber":
         if "vencimento" in df_exib:
             df_exib["vencimento"] = pd.to_datetime(df_exib["vencimento"], errors="coerce").dt.strftime("%d/%m/%Y")
         if "data_nf" in df_exib:
-            df_exib["data_nf"]   = pd.to_datetime(df_exib["data_nf"], errors="coerce").dt.strftime("%d/%m/%Y")
+            df_exib["data_nf"] = pd.to_datetime(df_exib["data_nf"], errors="coerce").dt.strftime("%d/%m/%Y")
 
         cols_show = ["#", "data_nf", "fornecedor", "valor", "vencimento", "status_pagamento", "estado"]
         cols_show = [c for c in cols_show if c in df_exib.columns]
