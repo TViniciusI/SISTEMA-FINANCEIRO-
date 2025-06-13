@@ -45,7 +45,8 @@ if not st.session_state.logged_in:
 EXCEL_PAGAR = "Contas a pagar 2025.xlsx"
 EXCEL_RECEBER = "Contas a receber 2025.xlsx"
 ANEXOS_DIR = "anexos"  # Esta linha estava faltando
-FULL_MONTHS = [f"{i:02d}" for i in range(1, 13)]
+FULL_MONTHS = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", 
+               "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"]
 
 # Garante pastas de anexos (esta parte deve vir DEPOIS de definir ANEXOS_DIR)
 for pasta in ["Contas a Pagar", "Contas a Receber"]:
