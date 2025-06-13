@@ -962,54 +962,127 @@ elif page == "Contas a Pagar":
     else:
         df_display = df.copy()
     
-# Carrega dados do Excel
-df = load_data(EXCEL_PAGAR, aba)
+    # Adiciona lançamentos pendentes (temporários)
+    if "lista_lancamentos" in st.session_state:
+        df_temp = pd.DataFrame(st.session_state.lista_lancamentos)
+        df = pd.concat([df, df_temp], ignore_index=True)
 
-# Adiciona lançamentos pendentes (temporários)
-if "lista_lancamentos" in st.session_state:
-    df_temp = pd.DataFrame(st.session_state.lista_lancamentos)
-    df = pd.concat([df, df_temp], ignore_index=True)
+    # 🔍 Filtros
+    with st.expander("🔍 Filtros"):
+        colf1, colf2 = st.columns(2)
+        with colf1:
+            fornec_list = df["fornecedor"].dropna().astype(str).unique().tolist()
+            forn = st.selectbox("Fornecedor", ["Todos"] + sorted(fornec_list))
+        with colf2:
+            est_list = df["estado"].dropna().astype(str).unique().tolist()
+            status_sel = st.selectbox("Estado/Status", ["Todos"] + sorted(est_list))
 
-df_display = df.copy()
+    # Aplica filtros
+    if forn != "Todos":
+        df_display = df_display[df_display["fornecedor"] == forn]
+    if status_sel != "Todos":
+        df_display = df_display[df_display["estado"] == status_sel]
 
-# 🔍 Filtros
-with st.expander("🔍 Filtros"):
-    colf1, colf2 = st.columns(2)
-    with colf1:
-        fornec_list = df["fornecedor"].dropna().astype(str).unique().tolist()
-        forn = st.selectbox("Fornecedor", ["Todos"] + sorted(fornec_list))
-    with colf2:
-        est_list = df["estado"].dropna().astype(str).unique().tolist()
-        status_sel = st.selectbox("Estado/Status", ["Todos"] + sorted(est_list))
+    # Exibe resultado
+    st.markdown("<hr style='border:1px solid #ddd;'>", unsafe_allow_html=True)
 
-# Aplica filtros
-if forn != "Todos":
-    df_display = df_display[df_display["fornecedor"] == forn]
-if status_sel != "Todos":
-    df_display = df_display[df_display["estado"] == status_sel]
+    if df_display.empty:
+        st.warning("Nenhum registro para os filtros/visualização selecionados.")
+    else:
+        cols_esperadas = ["data_nf", "fornecedor", "valor", "vencimento", "estado", "status_pagamento"]
+        cols_para_exibir = [c for c in cols_esperadas if c in df_display.columns]
+        st.markdown("#### 📋 Lista de Lançamentos")
+        
+        # Prepara os dados para exibição
+        df_show = df_display[cols_para_exibir].copy()
+        df_show['Ações'] = ""  # Coluna para os botões
+        
+        # Cria uma tabela HTML com hover effect
+        st.markdown("""
+        <style>
+            .trash-icon {
+                visibility: hidden;
+                color: #ff4b4b;
+                cursor: pointer;
+            }
+            .hover-row:hover .trash-icon {
+                visibility: visible;
+            }
+            .hover-row {
+                transition: background-color 0.2s;
+            }
+            .hover-row:hover {
+                background-color: #f5f5f5;
+            }
+            .stDataFrame table {
+                width: 100%;
+            }
+        </style>
+        """, unsafe_allow_html=True)
+        
+        # Cria um placeholder para a tabela
+        table_placeholder = st.empty()
+        
+        # Gera a tabela HTML
+        def generate_table(df):
+            html = """
+            <table style="width:100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="background-color: #8e2de2; color: white;">
+            """
+            
+            # Cabeçalhos
+            for col in df.columns:
+                if col != 'Ações':
+                    html += f'<th style="padding: 8px; text-align: left;">{col}</th>'
+                else:
+                    html += '<th style="padding: 8px; text-align: center;">Ações</th>'
+            
+            html += "</tr></thead><tbody>"
+            
+            # Linhas
+            for idx, row in df.iterrows():
+                html += f'<tr class="hover-row" style="border-bottom: 1px solid #ddd;">'
+                for col in df.columns:
+                    if col != 'Ações':
+                        value = row[col]
+                        if pd.isna(value):
+                            value = ""
+                        elif isinstance(value, pd.Timestamp):
+                            value = value.strftime('%d/%m/%Y')
+                        html += f'<td style="padding: 8px;">{value}</td>'
+                    else:
+                        html += f"""
+                        <td style="padding: 8px; text-align: center;">
+                            <span class="trash-icon" onclick="removeRow({idx})">🗑️</span>
+                        </td>
+                        """
+                html += "</tr>"
+            
+            html += "</tbody></table>"
+            
+            # JavaScript para remover linha
+            html += """
+            <script>
+                function removeRow(idx) {
+                    const data = {index: idx};
+                    fetch('/remove_row', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify(data)
+                    }).then(response => {
+                        if (response.ok) {
+                            window.location.reload();
+                        }
+                    });
+                }
+            </script>
+            """
+            return html
+        
+        # Mostra a tabela
+        table_placeholder.markdown(generate_table(df_show), unsafe_allow_html=True)
 
-df = load_data(EXCEL_PAGAR, aba)
-
-# Adiciona lançamentos temporários
-if "lista_lancamentos" in st.session_state:
-    df_temp = pd.DataFrame(st.session_state.lista_lancamentos)
-    df = pd.concat([df, df_temp], ignore_index=True)
-
-df_display = df.copy()
-
-# Exibe resultado
-st.markdown("<hr style='border:1px solid #ddd;'>", unsafe_allow_html=True)
-
-if df_display.empty:
-    st.warning("Nenhum registro para os filtros/visualização selecionados.")
-else:
-    cols_esperadas = ["data_nf", "fornecedor", "valor", "vencimento", "estado", "status_pagamento"]
-    cols_para_exibir = [c for c in cols_esperadas if c in df_display.columns]
-    st.markdown("#### 📋 Lista de Lançamentos")
-    table_placeholder = st.empty()
-    table_placeholder.dataframe(df_display[cols_para_exibir], height=250)
-
-    
     st.markdown("---")
 
     with st.expander("✏️ Editar Registro"):
@@ -1080,84 +1153,10 @@ else:
                 
                 if save_data(EXCEL_PAGAR, aba, df):
                     st.success("Registro atualizado com sucesso!")
-                    df = load_data(EXCEL_PAGAR, aba)
-                    
-                    # Reaplica filtros
-                    if view_sel == "Pagas":
-                        df_display = df[df["status_pagamento"] == "Pago"].copy()
-                    elif view_sel == "Pendentes":
-                        df_display = df[df["status_pagamento"] != "Pago"].copy()
-                    else:
-                        df_display = df.copy()
-                    
-                    if forn != "Todos":
-                        df_display = df_display[df_display["fornecedor"] == forn]
-                    if status_sel != "Todos":
-                        df_display = df_display[df_display["estado"] == status_sel]
-                    
-                    table_placeholder.dataframe(df_display[cols_para_exibir], height=250)
+                    st.rerun()
                 else:
                     st.error("Erro ao salvar alterações.")
 
-with st.expander("🗑️ Remover Registro"):
-    if not df_display.empty:
-        st.write("Registros disponíveis:")
-        st.dataframe(df_display[['fornecedor', 'valor', 'vencimento', 'status_pagamento']])
-        
-        idx_rem = st.number_input(
-            "Índice da linha para remover (baseado na lista acima):",
-            min_value=0,
-            max_value=len(df_display) - 1,
-            step=1,
-            key="idx_remover_geral"
-        )
-
-        if st.button("Remover Registro Selecionado", key="btn_remover_geral"):
-            try:
-                # Obtém o registro completo que será removido
-                registro = df_display.iloc[idx_rem]
-                
-                # Carrega o arquivo Excel
-                wb = load_workbook(EXCEL_PAGAR)
-                ws = wb[aba]
-                
-                # Encontra a linha correspondente no Excel
-                # (assumindo que o DataFrame mantém os índices originais)
-                linha_excel = registro.name + 9  # 8 cabeçalhos + 1 para ajuste
-                
-                # Remove fisicamente a linha do Excel
-                ws.delete_rows(linha_excel)
-                wb.save(EXCEL_PAGAR)
-                
-                st.success(f"Registro removido: {registro['fornecedor']} - R$ {registro['valor']}")
-                
-                # Atualiza os dados exibidos
-                df = load_data(EXCEL_PAGAR, aba)  # Recarrega do arquivo atualizado
-                
-                # Reaplica filtros e visualização
-                if view_sel == "Pagas":
-                    df_display = df[df["status_pagamento"] == "Pago"].copy()
-                elif view_sel == "Pendentes":
-                    df_display = df[df["status_pagamento"] != "Pago"].copy()
-                else:
-                    df_display = df.copy()
-                
-                if forn != "Todos":
-                    df_display = df_display[df_display["fornecedor"] == forn]
-                if status_sel != "Todos":
-                    df_display = df_display[df_display["estado"] == status_sel]
-                
-                # Atualiza a tabela principal
-                table_placeholder.dataframe(df_display[cols_para_exibir], height=250)
-                
-                # Força atualização completa
-                st.rerun()
-                
-            except Exception as e:
-                st.error(f"Erro ao remover registro: {str(e)}")
-    else:
-        st.warning("Nenhum registro disponível para remoção")
-        
     with st.expander("📎 Anexar Documentos"):
         if not df_display.empty:
             idx2 = st.number_input(
@@ -1283,31 +1282,7 @@ with st.expander("🗑️ Remover Registro"):
 
             if add_record(EXCEL_PAGAR, aba, record):
                 st.success("Nova conta adicionada com sucesso!")
-                
-                if record.get("boleto"):
-                    with open(record["boleto"], "rb") as f:
-                        st.download_button(
-                            label="📥 Baixar Boleto",
-                            data=f.read(),
-                            file_name=os.path.basename(record["boleto"]),
-                            mime="application/octet-stream",
-                            key=f"dl_boleto_pagar_{aba}"
-                        )
-                if record.get("comprovante"):
-                    with open(record["comprovante"], "rb") as f:
-                        st.download_button(
-                            label="📥 Baixar Comprovante",
-                            data=f.read(),
-                            file_name=os.path.basename(record["comprovante"]),
-                            mime="application/octet-stream",
-                            key=f"dl_comprov_pagar_{aba}"
-                        )
-
-                # Recarrega dados
-                df = load_data(EXCEL_PAGAR, aba)
-                cols_show = ["data_nf", "fornecedor", "valor", "vencimento", "estado", "status_pagamento"]
-                cols_to_display = [c for c in cols_show if c in df.columns]
-                table_placeholder.dataframe(df[cols_to_display], height=250)
+                st.rerun()
             else:
                 st.error("Erro ao adicionar nova conta.")
 
@@ -1328,7 +1303,7 @@ with st.expander("🗑️ Remover Registro"):
     except Exception as e:
         st.error(f"Erro ao preparar download: {e}")
     st.markdown("---")
-
+    
 elif page == "Contas a Receber":
     st.subheader("🗂️ Contas a Receber")
     
