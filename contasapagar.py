@@ -947,196 +947,210 @@ if page == "Dashboard":
                     except Exception as e:
                         st.error(f"Erro ao preparar download: {e}")
 
-elif page == "Contas a Pagar":
-    st.subheader("🗂️ Contas a Pagar")
+# === Contas a Pagar ===
+st.subheader("🗂️ Contas a Pagar")
 
-    # Verifica se o arquivo existe
-    if not os.path.isfile(EXCEL_PAGAR):
-        st.error(f"Arquivo '{EXCEL_PAGAR}' não encontrado. Verifique o caminho.")
-        st.stop()
+if not os.path.isfile(EXCEL_PAGAR):
+    st.error(f"Arquivo '{EXCEL_PAGAR}' não encontrado. Verifique o caminho.")
+    st.stop()
 
-    # Seleção de mês
-    default_month = datetime.now().strftime("%m")
-    aba = st.selectbox(
-        "Selecione o mês:",
-        FULL_MONTHS,
-        index=FULL_MONTHS.index(default_month)
-    )
+# Select mês
+aba = st.selectbox("Selecione o mês:", FULL_MONTHS,
+                   index=FULL_MONTHS.index(date.today().strftime("%m")))
 
-    # Carrega dados do Excel
-    df_excel = load_data(EXCEL_PAGAR, aba).reset_index(drop=True)
+# Carrega dados do Excel
+df_excel = load_data(EXCEL_PAGAR, aba).reset_index(drop=True)
 
-    # Inicializa lista temporária
-    if "temp_pagar" not in st.session_state:
-        st.session_state.temp_pagar = []
-    df_temp = pd.DataFrame(st.session_state.temp_pagar)
-    df_temp = df_temp.reset_index(drop=True)
+# Inicializa lista temporária
+if "lista_lancamentos" not in st.session_state:
+    st.session_state.lista_lancamentos = []
 
-    # Concatena Excel + temporários
-    df_full = pd.concat([df_excel, df_temp], ignore_index=True).reset_index(drop=True)
-    df_full.insert(0, '#', df_full.index + 1)
+df_temp = pd.DataFrame(st.session_state.lista_lancamentos).reset_index(drop=True)
 
-    # Filtros avançados
-    with st.expander("🔍 Filtros Avançados", expanded=False):
+# Concatena Excel + temporários
+df = pd.concat([df_excel, df_temp], ignore_index=True)
+df.insert(0, "#", range(1, len(df) + 1))
+
+# Filtros avançados
+with st.expander("🔍 Filtros Avançados", expanded=False):
+    col1, col2 = st.columns(2)
+    with col1:
+        fns = ["Todos"] + sorted(df["fornecedor"].dropna().unique().tolist())
+        filtro_fn = st.selectbox("Fornecedor", fns)
+    with col2:
+        sts = ["Todos"] + sorted(df["status_pagamento"].dropna().unique().tolist())
+        filtro_st = st.selectbox("Status", sts)
+
+df_display = df.copy()
+if filtro_fn != "Todos":
+    df_display = df_display[df_display["fornecedor"] == filtro_fn]
+if filtro_st != "Todos":
+    df_display = df_display[df_display["status_pagamento"] == filtro_st]
+
+# Exibe tabela
+st.markdown("### 📋 Lançamentos")
+cols_pad = ['#','data_nf','fornecedor','valor','vencimento','status_pagamento','estado']
+cols_disp = [c for c in cols_pad if c in df_display.columns]
+df_exib = df_display[cols_disp].copy()
+# formata colunas
+if 'valor' in df_exib:
+    df_exib['valor'] = df_exib['valor'].apply(lambda x: f"R$ {x:,.2f}" if pd.notna(x) else "")
+if 'vencimento' in df_exib:
+    df_exib['vencimento'] = pd.to_datetime(df_exib['vencimento'],errors='coerce').dt.strftime('%d/%m/%Y')
+if 'data_nf' in df_exib:
+    df_exib['data_nf'] = pd.to_datetime(df_exib['data_nf'],errors='coerce').dt.strftime('%d/%m/%Y')
+table_placeholder = st.empty()
+table_placeholder.dataframe(df_exib, height=400, use_container_width=True)
+
+# === Remover Registro ===
+with st.expander("🗑️ Remover Registro", expanded=False):
+    if not df.empty:
+        idx = st.number_input("Número da linha para remover (#):",
+                              min_value=1, max_value=len(df), step=1, key="remove_idx_pagar")
+        if st.button("Remover Registro", key="btn_remove_pagar"):
+            try:
+                if idx <= len(df_excel):
+                    # remove do Excel
+                    wb = load_workbook(EXCEL_PAGAR)
+                    ws = wb[aba]
+                    header = 8
+                    ws.delete_rows(header + idx)  # a primeira linha de dados é header+1
+                    wb.save(EXCEL_PAGAR)
+                    st.success("Registro removido do Excel com sucesso!")
+                else:
+                    # remove da lista temporária
+                    temp_idx = idx - len(df_excel) - 1
+                    st.session_state.lista_lancamentos.pop(temp_idx)
+                    st.success("Registro removido da lista temporária!")
+                # recarrega tudo e atualiza a tabela
+                df_excel = load_data(EXCEL_PAGAR, aba).reset_index(drop=True)
+                df_temp  = pd.DataFrame(st.session_state.lista_lancamentos).reset_index(drop=True)
+                df = pd.concat([df_excel, df_temp], ignore_index=True)
+                df.insert(0, "#", range(1, len(df) + 1))
+                # reaplica filtros
+                df_display = df.copy()
+                if filtro_fn != "Todos":
+                    df_display = df_display[df_display["fornecedor"]==filtro_fn]
+                if filtro_st != "Todos":
+                    df_display = df_display[df_display["status_pagamento"]==filtro_st]
+                df_exib = df_display[cols_disp].copy()
+                if 'valor' in df_exib: df_exib['valor'] = df_exib['valor'].apply(lambda x: f"R$ {x:,.2f}" if pd.notna(x) else "")
+                if 'vencimento' in df_exib: df_exib['vencimento'] = pd.to_datetime(df_exib['vencimento'],errors='coerce').dt.strftime('%d/%m/%Y')
+                if 'data_nf' in df_exib: df_exib['data_nf'] = pd.to_datetime(df_exib['data_nf'],errors='coerce').dt.strftime('%d/%m/%Y')
+                table_placeholder.dataframe(df_exib, height=400, use_container_width=True)
+            except Exception as e:
+                st.error(f"Erro ao remover registro: {e}")
+    else:
+        st.info("Nenhum registro para remover.")
+
+# === Editar Registro ===
+with st.expander("✏️ Editar Registro", expanded=False):
+    if not df.empty:
+        idx = st.number_input("Número da linha para editar (#):",
+                              min_value=1, max_value=len(df), step=1, key="edit_idx_pagar")
+        rec = df.iloc[idx-1]
         col1, col2 = st.columns(2)
         with col1:
-            fornecedores = ["Todos"] + sorted(df_full["fornecedor"].dropna().unique())
-            sel_fornecedor = st.selectbox("Fornecedor", fornecedores)
+            novo_val = st.number_input("Valor (R$):",
+                                       value=float(rec['valor']) if pd.notna(rec['valor']) else 0.0,
+                                       step=0.01, key="edit_valor_pagar")
+            novo_venc = st.date_input("Vencimento:",
+                                      value=pd.to_datetime(rec['vencimento'],errors='coerce').date() if pd.notna(rec['vencimento']) else date.today(),
+                                      key="edit_vencimento_pagar")
         with col2:
-            status_opts = ["Todos"] + sorted(df_full["status_pagamento"].dropna().unique())
-            sel_status = st.selectbox("Status", status_opts)
+            novo_est = st.selectbox("Estado:", ["Em Aberto","Pago"],
+                                    index=0 if rec['estado']=="Em Aberto" else 1,
+                                    key="edit_estado_pagar")
+            opts = ["Em Atraso","Pago","Em Aberto"]
+            try:
+                sit_idx = opts.index(rec.get('situacao',opts[0]))
+            except ValueError:
+                sit_idx = 0
+            nova_sit = st.selectbox("Situação:", opts, index=sit_idx, key="edit_situacao_pagar")
+        if st.button("💾 Salvar Alterações", key="btn_save_edit_pagar"):
+            try:
+                if idx <= len(df_excel):
+                    # salva no Excel
+                    df_excel.at[idx-1,'valor']      = novo_val
+                    df_excel.at[idx-1,'vencimento'] = novo_venc
+                    df_excel.at[idx-1,'estado']     = novo_est
+                    df_excel.at[idx-1,'situacao']   = nova_sit
+                    save_data(EXCEL_PAGAR,aba,df_excel)
+                    st.success("Registro do Excel atualizado!")
+                else:
+                    # salva na lista temporária
+                    t = idx - len(df_excel) - 1
+                    st.session_state.lista_lancamentos[t].update({
+                        "valor": novo_val,
+                        "vencimento": novo_venc,
+                        "estado": novo_est,
+                        "situacao": nova_sit
+                    })
+                    st.success("Registro temporário atualizado!")
+                # recarrega interface
+                df_temp  = pd.DataFrame(st.session_state.lista_lancamentos).reset_index(drop=True)
+                df        = pd.concat([df_excel, df_temp], ignore_index=True)
+                df.insert(0,"#",range(1,len(df)+1))
+                df_display = df.copy()
+                if filtro_fn!="Todos": df_display = df_display[df_display["fornecedor"]==filtro_fn]
+                if filtro_st!="Todos": df_display = df_display[df_display["status_pagamento"]==filtro_st]
+                df_exib = df_display[cols_disp].copy()
+                if 'valor' in df_exib: df_exib['valor']=df_exib['valor'].apply(lambda x:f"R$ {x:,.2f}" if pd.notna(x) else "")
+                if 'vencimento' in df_exib: df_exib['vencimento']=pd.to_datetime(df_exib['vencimento'],errors='coerce').dt.strftime('%d/%m/%Y')
+                if 'data_nf' in df_exib: df_exib['data_nf']=pd.to_datetime(df_exib['data_nf'],errors='coerce').dt.strftime('%d/%m/%Y')
+                table_placeholder.dataframe(df_exib, height=400, use_container_width=True)
+            except Exception as e:
+                st.error(f"Erro ao editar registro: {e}")
 
-    df_display = df_full.copy()
-    if sel_fornecedor != "Todos":
-        df_display = df_display[df_display["fornecedor"] == sel_fornecedor]
-    if sel_status != "Todos":
-        df_display = df_display[df_display["status_pagamento"] == sel_status]
+# === Adicionar Nova Conta (temporária) ===
+with st.expander("➕ Adicionar Nova Conta", expanded=False):
+    c1,c2 = st.columns(2)
+    with c1:
+        nd_nf = st.date_input("Data N/F:", value=date.today())
+        nd_desc = st.text_input("Descrição:")
+        nd_forn = st.text_input("Fornecedor:")
+    with c2:
+        nd_os = st.text_input("Documento/OS:")
+        nd_venc = st.date_input("Vencimento:", value=date.today())
+        nd_val = st.number_input("Valor (R$):", min_value=0.01,step=0.01)
+    nd_est = st.selectbox("Estado:",["Em Aberto","Pago"])
+    nd_sit = st.selectbox("Situação:",["Em Atraso","Pago","Em Aberto"])
+    if st.button("➕ Adicionar Conta", key="btn_add_temp_pagar"):
+        registro = {
+            "data_nf": nd_nf, "forma_pagamento": nd_desc,
+            "fornecedor": nd_forn, "os": nd_os,
+            "vencimento": nd_venc, "valor": nd_val,
+            "estado": nd_est, "situacao": nd_sit,
+            "status_pagamento": "Pago" if nd_est=="Pago" else "Pendente"
+        }
+        st.session_state.lista_lancamentos.append(registro)
+        st.success("Conta adicionada temporariamente!")
+        # atualiza    df_temp, df, df_display, df_exib
+        df_temp = pd.DataFrame(st.session_state.lista_lancamentos).reset_index(drop=True)
+        df      = pd.concat([df_excel, df_temp], ignore_index=True)
+        df.insert(0,"#",range(1,len(df)+1))
+        df_display = df.copy()
+        if filtro_fn!="Todos": df_display = df_display[df_display["fornecedor"]==filtro_fn]
+        if filtro_st!="Todos": df_display = df_display[df_display["status_pagamento"]==filtro_st]
+        df_exib = df_display[cols_disp].copy()
+        if 'valor' in df_exib: df_exib['valor']=df_exib['valor'].apply(lambda x:f"R$ {x:,.2f}" if pd.notna(x) else "")
+        if 'vencimento' in df_exib: df_exib['vencimento']=pd.to_datetime(df_exib['vencimento'],errors='coerce').dt.strftime('%d/%m/%Y')
+        if 'data_nf' in df_exib: df_exib['data_nf']=pd.to_datetime(df_exib['data_nf'],errors='coerce').dt.strftime('%d/%m/%Y')
+        table_placeholder.dataframe(df_exib, height=400, use_container_width=True)
 
-    # Exibe tabela
-    st.markdown("### 📋 Lançamentos")
-    if df_display.empty:
-        st.warning("Nenhum registro encontrado com os filtros selecionados.")
-    else:
-        df_view = df_display.copy()
-        # Formatação
-        if 'valor' in df_view:
-            df_view['valor'] = df_view['valor'].apply(lambda x: f"R$ {float(x):,.2f}" if pd.notna(x) else "")
-        if 'vencimento' in df_view:
-            df_view['vencimento'] = pd.to_datetime(df_view['vencimento'], errors='coerce').dt.strftime('%d/%m/%Y')
-        if 'data_nf' in df_view:
-            df_view['data_nf'] = pd.to_datetime(df_view['data_nf'], errors='coerce').dt.strftime('%d/%m/%Y')
-        table_placeholder = st.empty()
-        table_placeholder.dataframe(df_view, height=400, use_container_width=True)
+# === Botão Salvar temporários no Excel ===
+if st.session_state.lista_lancamentos:
+    if st.button("💾 Salvar todos lançamentos no Excel"):
+        ok = True
+        for reg in st.session_state.lista_lancamentos:
+            if not add_record(EXCEL_PAGAR, aba, reg):
+                ok = False
+        if ok:
+            st.success("Todos lançamentos salvos no Excel!")
+            st.session_state.lista_lancamentos = []
+        else:
+            st.error("Erro ao salvar alguns lançamentos.")
 
-    # Remover registro (Excel ou temporário)
-    with st.expander("🗑️ Remover Registro", expanded=False):
-        if not df_full.empty:
-            idx_remove = st.number_input(
-                "Número da linha para remover (#):",
-                min_value=1,
-                max_value=len(df_full),
-                step=1,
-                key="remove_idx_pagar"
-            )
-            if st.button("Remover Registro", key="btn_remove_pagar"):
-                try:
-                    if idx_remove <= len(df_excel):
-                        # Deleta linha do Excel
-                        wb = load_workbook(EXCEL_PAGAR)
-                        ws = wb[aba]
-                        ws.delete_rows(idx_remove + 8)
-                        wb.save(EXCEL_PAGAR)
-                        st.success("Registro removido do Excel com sucesso!")
-                    else:
-                        # Remove da lista temporária
-                        temp_idx = idx_remove - len(df_excel) - 1
-                        st.session_state.temp_pagar.pop(temp_idx)
-                        st.success("Registro removido da lista temporária!")
-                    st.experimental_rerun()
-                except Exception as e:
-                    st.error(f"Erro ao remover registro: {e}")
-
-    # Editar registro (Excel ou temporário)
-    with st.expander("✏️ Editar Registro", expanded=False):
-        if not df_full.empty:
-            idx_edit = st.number_input(
-                "Número da linha para editar (#):",
-                min_value=1,
-                max_value=len(df_full),
-                step=1,
-                key="edit_idx_pagar"
-            )
-            rec = df_full.iloc[idx_edit - 1]
-            col1, col2 = st.columns(2)
-            with col1:
-                new_val = st.number_input(
-                    "Valor:",
-                    value=float(rec.get('valor', 0) or 0),
-                    step=0.01,
-                    key="edit_valor_pagar"
-                )
-                new_venc = st.date_input(
-                    "Vencimento:",
-                    value=pd.to_datetime(rec.get('vencimento'), errors='coerce').date() if pd.notna(rec.get('vencimento')) else date.today(),
-                    key="edit_venc_pagar"
-                )
-            with col2:
-                new_est = st.selectbox(
-                    "Estado:",
-                    ["Em Aberto", "Pago"],
-                    index=0 if rec.get('estado') == "Em Aberto" else 1,
-                    key="edit_estado_pagar"
-                )
-                new_sit = st.selectbox(
-                    "Situação:",
-                    ["Em Atraso", "Pago", "Em Aberto"],
-                    index=["Em Atraso","Pago","Em Aberto"].index(rec.get('situacao', "Em Atraso")),
-                    key="edit_situacao_pagar"
-                )
-            if st.button("💾 Salvar Alterações", key="btn_save_pagar"):
-                try:
-                    if idx_edit <= len(df_excel):
-                        df_excel.at[idx_edit - 1, 'valor'] = new_val
-                        df_excel.at[idx_edit - 1, 'vencimento'] = new_venc
-                        df_excel.at[idx_edit - 1, 'estado'] = new_est
-                        df_excel.at[idx_edit - 1, 'situacao'] = new_sit
-                        save_data(EXCEL_PAGAR, aba, df_excel)
-                        st.success("Registro do Excel atualizado!")
-                    else:
-                        tmp = idx_edit - len(df_excel) - 1
-                        st.session_state.temp_pagar[tmp].update({
-                            'valor': new_val,
-                            'vencimento': new_venc,
-                            'estado': new_est,
-                            'situacao': new_sit
-                        })
-                        st.success("Registro temporário atualizado!")
-                    st.experimental_rerun()
-                except Exception as e:
-                    st.error(f"Erro ao editar registro: {e}")
-
-    # Adicionar nova conta (temporário)
-    with st.expander("➕ Adicionar Nova Conta", expanded=False):
-        c1, c2 = st.columns(2)
-        with c1:
-            d_nf = st.date_input("Data N/F:", value=date.today())
-            desc = st.text_input("Descrição:")
-            forn = st.text_input("Fornecedor:")
-        with c2:
-            os_ = st.text_input("Documento/OS:")
-            venc = st.date_input("Vencimento:", value=date.today())
-            val = st.number_input("Valor (R$):", min_value=0.01, step=0.01)
-        est = st.selectbox("Estado:", ["Em Aberto", "Pago"], key="add_estado_pagar")
-        sit = st.selectbox("Situação:", ["Em Atraso", "Pago", "Em Aberto"], key="add_situacao_pagar")
-        if st.button("Adicionar Conta", key="btn_add_pagar"):
-            novo = {
-                'data_nf': d_nf,
-                'forma_pagamento': desc,
-                'fornecedor': forn,
-                'os': os_,
-                'vencimento': venc,
-                'valor': val,
-                'estado': est,
-                'situacao': sit,
-                'status_pagamento': 'Pago' if est == 'Pago' else 'Em Aberto'
-            }
-            st.session_state.temp_pagar.append(novo)
-            st.success("Conta adicionada temporariamente!")
-            st.experimental_rerun()
-
-    # Salvar temporários no Excel
-    if st.session_state.temp_pagar:
-        if st.button("💾 Salvar lançamentos no Excel", key="save_temp_pagar"):
-            ok = True
-            for registro in st.session_state.temp_pagar:
-                if not add_record(EXCEL_PAGAR, aba, registro):
-                    ok = False
-            if ok:
-                st.session_state.temp_pagar.clear()
-                st.success("Todos os lançamentos salvos no Excel!")
-                st.experimental_rerun()
-            else:
-                st.error("Erro ao salvar alguns lançamentos no Excel.")
 
 elif page == "Contas a Receber":
     st.subheader("🗂️ Contas a Receber")
