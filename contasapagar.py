@@ -1092,75 +1092,77 @@ elif page == "Contas a Pagar":
                 else:
                     st.error("Erro ao salvar alterações.")
 
-    with st.expander("🗑️ Remover Registro"):
-        if not df_display.empty:
-            idx_rem = st.number_input(
-                "Índice da linha para remover:",
-                min_value=0,
-                max_value=len(df_display) - 1,
-                step=1,
-                key="remover_pagar"
-            )
+with st.expander("🗑️ Remover Registro"):
+    if not df_display.empty:
+        idx_rem = st.number_input(
+            "Índice da linha para remover:",
+            min_value=0,
+            max_value=len(df_display) - 1,
+            step=1,
+            key="remover_pagar"
+        )
 
-            if st.button("Remover", key="btn_remover_pagar"):
-                try:
-                    rec_rem = df_display.iloc[idx_rem]
-                    linha_excel = idx_rem + 9  # 8 do header + 1 para alinhar ao Excel
+        if st.button("Remover", key="btn_remover_pagar"):
+            try:
+                rec_rem = df_display.iloc[idx_rem]
+                orig_idx = rec_rem.name  # índice real no Excel
+                linha_excel = orig_idx + 9
 
-                    wb = load_workbook(EXCEL_PAGAR)
-                    ws = wb[aba]
-                    header_row = 8
+                wb = load_workbook(EXCEL_PAGAR)
+                ws = wb[aba]
+                header_row = 8
 
-                    headers = [
-                        str(ws.cell(row=header_row, column=col).value).strip().lower()
-                        for col in range(2, ws.max_column + 1)
-                    ]
+                headers = [
+                    str(ws.cell(row=header_row, column=col).value).strip().lower()
+                    for col in range(2, ws.max_column + 1)
+                ]
 
-                    field_map = {
-                        "data_nf": ["data_nf", "data documento", "data da nota fiscal"],
-                        "forma_pagamento": ["forma_pagamento", "descrição"],
-                        "fornecedor": ["fornecedor"],
-                        "os": ["os", "documento"],
-                        "vencimento": ["vencimento"],
-                        "valor": ["valor"],
-                        "estado": ["estado"],
-                        "boleto": ["boleto"],
-                        "comprovante": ["comprovante"]
-                    }
+                field_map = {
+                    "data_nf": ["data_nf", "data documento", "data da nota fiscal"],
+                    "forma_pagamento": ["forma_pagamento", "descrição"],
+                    "fornecedor": ["fornecedor"],
+                    "os": ["os", "documento"],
+                    "vencimento": ["vencimento"],
+                    "valor": ["valor"],
+                    "estado": ["estado"],
+                    "boleto": ["boleto"],
+                    "comprovante": ["comprovante"]
+                }
 
-                    cols_to_clear = []
-                    for key, names in field_map.items():
-                        for i, h in enumerate(headers):
-                            if h in names:
-                                cols_to_clear.append(i + 2)
-                                break
+                cols_to_clear = []
+                for key, names in field_map.items():
+                    for i, h in enumerate(headers):
+                        if h in names:
+                            cols_to_clear.append(i + 2)
+                            break
 
-                    for col in cols_to_clear:
-                        ws.cell(row=linha_excel, column=col, value=None)
+                for col in cols_to_clear:
+                    ws.cell(row=linha_excel, column=col, value=None)
 
-                    wb.save(EXCEL_PAGAR)
-                    st.success("Registro removido com sucesso!")
+                wb.save(EXCEL_PAGAR)
+                st.success("Registro removido com sucesso!")
 
-                    # Recarrega os dados atualizados
-                    df = load_data(EXCEL_PAGAR, aba)
+                # Recarrega os dados atualizados
+                df = load_data(EXCEL_PAGAR, aba)
 
-                    # Reaplica os filtros de visualização
-                    if view_sel == "Pagas":
-                        df_display = df[df["status_pagamento"] == "Pago"].copy()
-                    elif view_sel == "Pendentes":
-                        df_display = df[df["status_pagamento"] != "Pago"].copy()
-                    else:
-                        df_display = df.copy()
+                # Reaplica os filtros de visualização
+                if view_sel == "Pagas":
+                    df_display = df[df["status_pagamento"] == "Pago"].copy()
+                elif view_sel == "Pendentes":
+                    df_display = df[df["status_pagamento"] != "Pago"].copy()
+                else:
+                    df_display = df.copy()
 
-                    if forn != "Todos":
-                        df_display = df_display[df_display["fornecedor"] == forn]
-                    if status_sel != "Todos":
-                        df_display = df_display[df_display["estado"] == status_sel]
+                if forn != "Todos":
+                    df_display = df_display[df_display["fornecedor"] == forn]
+                if status_sel != "Todos":
+                    df_display = df_display[df_display["estado"] == status_sel]
 
-                    table_placeholder.dataframe(df_display[cols_para_exibir], height=250)
+                table_placeholder.dataframe(df_display[cols_para_exibir], height=250)
 
-                except Exception as e:
-                    st.error(f"Erro ao remover registro: {e}")
+            except Exception as e:
+                st.error(f"Erro ao remover registro: {e}")
+
 
     with st.expander("📎 Anexar Documentos"):
         if not df_display.empty:
