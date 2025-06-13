@@ -495,6 +495,12 @@ st.markdown("""
 """, unsafe_allow_html=True)
 st.markdown("---")
 
+# 👤 Mostra usuário logado
+st.sidebar.markdown(f"**Logado:** {st.session_state.username}")
+
+# 🔘 NAVEGAÇÃO
+page = st.sidebar.radio("Ir para:", ["Dashboard", "Contas a Pagar", "Contas a Receber"])
+
 # Dashboard Modernizado
 if page == "Dashboard":
     if not os.path.isfile(EXCEL_PAGAR):
