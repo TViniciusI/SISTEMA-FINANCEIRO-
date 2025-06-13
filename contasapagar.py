@@ -1092,6 +1092,8 @@ elif page == "Contas a Pagar":
                 else:
                     st.error("Erro ao salvar alterações.")
 
+import os
+
 with st.expander("🗑️ Remover Registro"):
     if not df_display.empty:
         idx_rem = st.number_input(
@@ -1105,21 +1107,26 @@ with st.expander("🗑️ Remover Registro"):
         if st.button("Remover", key="btn_remover_pagar"):
             try:
                 rec_rem = df_display.iloc[idx_rem]
-                orig_idx = rec_rem.name  # índice real no df original
+                orig_idx = rec_rem.name
                 linha_excel = orig_idx + 9  # header na linha 8
 
+                # Carrega e deleta linha
                 wb = load_workbook(EXCEL_PAGAR)
                 ws = wb[aba]
+                ws.delete_rows(linha_excel)
 
-                ws.delete_rows(linha_excel)  # <-- remove a linha de verdade
+                # Salva com segurança
+                temp_path = EXCEL_PAGAR.replace(".xlsx", "_temp.xlsx")
+                wb.save(temp_path)
+                wb.close()
+                os.replace(temp_path, EXCEL_PAGAR)
 
-                wb.save(EXCEL_PAGAR)
                 st.success("Registro removido com sucesso!")
 
-                # Recarrega os dados atualizados
+                # Recarrega dados
                 df = load_data(EXCEL_PAGAR, aba)
 
-                # Reaplica os filtros
+                # Reaplica filtros
                 if view_sel == "Pagas":
                     df_display = df[df["status_pagamento"] == "Pago"].copy()
                 elif view_sel == "Pendentes":
@@ -1136,7 +1143,6 @@ with st.expander("🗑️ Remover Registro"):
 
             except Exception as e:
                 st.error(f"Erro ao remover registro: {e}")
-
 
     with st.expander("📎 Anexar Documentos"):
         if not df_display.empty:
