@@ -1101,13 +1101,12 @@ else:
 
 with st.expander("🗑️ Remover Registro"):
     if "lista_lancamentos" in st.session_state and st.session_state.lista_lancamentos:
-        # Atualiza o dataframe com os dados mais recentes
+        # Cria um dataframe apenas com os lançamentos temporários
         df_lanc = pd.DataFrame(st.session_state.lista_lancamentos).reset_index(drop=True)
-
-        # Usa um placeholder para o dataframe também dentro do expander
-        df_placeholder = st.empty()
-        df_placeholder.dataframe(df_lanc, height=150)
-
+        
+        # Exibe a tabela de lançamentos temporários
+        st.dataframe(df_lanc, height=150)
+        
         idx_rem = st.number_input(
             "Índice da linha para remover:",
             min_value=0,
@@ -1118,26 +1117,34 @@ with st.expander("🗑️ Remover Registro"):
 
         if st.button("Remover", key="btn_remover_pagar"):
             try:
+                # Remove o registro da lista temporária
                 st.session_state.lista_lancamentos.pop(idx_rem)
-                st.success("Registro removido da lista de lançamentos com sucesso!")
-
-                # Atualiza ambos os dataframes (dentro e fora do expander)
-                df_lanc = pd.DataFrame(st.session_state.lista_lancamentos).reset_index(drop=True)
-                df_placeholder.dataframe(df_lanc, height=150)  # Atualiza dentro do expander
-                table_placeholder.dataframe(df_lanc, height=250)  # Atualiza fora do expander
-
+                st.success("Registro removido com sucesso!")
+                
+                # Atualiza os dados exibidos
+                df = load_data(EXCEL_PAGAR, aba)
+                
+                # Se ainda houver lançamentos temporários, concatena
+                if "lista_lancamentos" in st.session_state and st.session_state.lista_lancamentos:
+                    df_temp = pd.DataFrame(st.session_state.lista_lancamentos)
+                    df = pd.concat([df, df_temp], ignore_index=True)
+                
+                # Aplica filtros novamente
+                if forn != "Todos":
+                    df = df[df["fornecedor"] == forn]
+                if status_sel != "Todos":
+                    df = df[df["estado"] == status_sel]
+                
+                # Atualiza a tabela principal
+                table_placeholder.dataframe(df[cols_para_exibir], height=250)
+                
+                # Força atualização da página
+                st.rerun()
+                
             except Exception as e:
                 st.error(f"Erro ao remover registro: {e}")
     else:
         st.info("Nenhum lançamento temporário disponível para remoção.")
-
-    if st.button("Remover", key="btn_remover_pagar"):
-    try:
-        st.session_state.lista_lancamentos.pop(idx_rem)
-        st.success("Registro removido da lista de lançamentos com sucesso!")
-        st.rerun()  # Força a atualização de toda a aplicação
-    except Exception as e:
-        st.error(f"Erro ao remover registro: {e}")
         
     with st.expander("📎 Anexar Documentos"):
         if not df_display.empty:
