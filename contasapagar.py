@@ -1101,11 +1101,12 @@ else:
 
 with st.expander("🗑️ Remover Registro"):
     if "lista_lancamentos" in st.session_state and st.session_state.lista_lancamentos:
+        # Atualiza o dataframe com os dados mais recentes
         df_lanc = pd.DataFrame(st.session_state.lista_lancamentos).reset_index(drop=True)
 
-        st.markdown("### 🧾 Lançamentos Temporários")
-        lanc_placeholder = st.empty()
-        lanc_placeholder.dataframe(df_lanc, height=150)
+        # Usa um placeholder para o dataframe também dentro do expander
+        df_placeholder = st.empty()
+        df_placeholder.dataframe(df_lanc, height=150)
 
         idx_rem = st.number_input(
             "Índice da linha para remover:",
@@ -1120,15 +1121,16 @@ with st.expander("🗑️ Remover Registro"):
                 st.session_state.lista_lancamentos.pop(idx_rem)
                 st.success("Registro removido da lista de lançamentos com sucesso!")
 
-                # Atualiza tabela de lançamentos
+                # Atualiza ambos os dataframes (dentro e fora do expander)
                 df_lanc = pd.DataFrame(st.session_state.lista_lancamentos).reset_index(drop=True)
-                lanc_placeholder.dataframe(df_lanc, height=150)
+                df_placeholder.dataframe(df_lanc, height=150)  # Atualiza dentro do expander
+                table_placeholder.dataframe(df_lanc, height=250)  # Atualiza fora do expander
 
             except Exception as e:
                 st.error(f"Erro ao remover registro: {e}")
     else:
         st.info("Nenhum lançamento temporário disponível para remoção.")
-
+        
     with st.expander("📎 Anexar Documentos"):
         if not df_display.empty:
             idx2 = st.number_input(
