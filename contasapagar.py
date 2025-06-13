@@ -952,6 +952,21 @@ if page == "Dashboard":
 elif page == "Contas a Pagar":
     st.subheader("🗂️ Contas a Pagar")
     
+    # Adicione esta função no início do seu código (com as outras funções)
+    def remove_row(index):
+        if "lista_lancamentos" in st.session_state:
+            try:
+                # Remove o item pelo índice
+                del st.session_state.lista_lancamentos[index]
+                st.rerun()  # Atualiza a interface
+            except IndexError:
+                st.error("Índice inválido")
+        else:
+            st.error("Nenhum dado temporário para remover")
+    
+    # Registra a função para ser chamada pelo JavaScript
+    st.session_state['remove_row'] = remove_row
+
     if not os.path.isfile(EXCEL_PAGAR):
         st.error(f"Arquivo '{EXCEL_PAGAR}' não encontrado. Verifique o caminho.")
         st.stop()
@@ -973,7 +988,10 @@ elif page == "Contas a Pagar":
         df_display = df.copy()
     
     # Adiciona lançamentos pendentes (temporários)
-    if "lista_lancamentos" in st.session_state:
+    if "lista_lancamentos" not in st.session_state:
+        st.session_state.lista_lancamentos = []
+    
+    if st.session_state.lista_lancamentos:
         df_temp = pd.DataFrame(st.session_state.lista_lancamentos)
         df = pd.concat([df, df_temp], ignore_index=True)
 
@@ -1050,58 +1068,41 @@ elif page == "Contas a Pagar":
             
             html += "</tr></thead><tbody>"
             
-# Linhas
-for idx, row in df.iterrows():
-    html += f'<tr class="hover-row" style="border-bottom: 1px solid #ddd;">'
-    for col in df.columns:
-        if col != 'Ações':
-            value = row[col]
-            if pd.isna(value):
-                value = ""
-            elif isinstance(value, pd.Timestamp):
-                value = value.strftime('%d/%m/%Y')
-            html += f'<td style="padding: 8px;">{value}</td>'
-        else:
-            html += f"""
-            <td style="padding: 8px; text-align: center;">
-                <span class="trash-icon" onclick="removeRow({idx})">🗑️</span>
-            </td>
+            # Linhas
+            for idx, row in df.iterrows():
+                html += f'<tr class="hover-row" style="border-bottom: 1px solid #ddd;">'
+                for col in df.columns:
+                    if col != 'Ações':
+                        value = row[col]
+                        if pd.isna(value):
+                            value = ""
+                        elif isinstance(value, pd.Timestamp):
+                            value = value.strftime('%d/%m/%Y')
+                        html += f'<td style="padding: 8px;">{value}</td>'
+                    else:
+                        html += f"""
+                        <td style="padding: 8px; text-align: center;">
+                            <span class="trash-icon" onclick="removeRow({idx})">🗑️</span>
+                        </td>
+                        """
+                html += "</tr>"
+            
+            html += "</tbody></table>"
+            
+            # JavaScript para remover linha
+            html += """
+            <script>
+                function removeRow(idx) {
+                    if (confirm('Tem certeza que deseja remover este registro?')) {
+                        parent.window.streamlitScriptRunner.run('remove_row', {index: idx});
+                    }
+                }
+            </script>
             """
-    html += "</tr>"
-
-html += "</tbody></table>"
-
-# JavaScript para remover linha - VERSÃO CORRIGIDA
-html += """
-<script>
-    function removeRow(idx) {
-        if (confirm('Tem certeza que deseja remover este registro?')) {
-            // Usa a API do Streamlit para comunicação com o Python
-            parent.window.streamlitScriptRunner.run('remove_row', {index: idx});
-        }
-    }
-</script>
-"""
-return html
-
-# Adicione isto ANTES de mostrar a tabela (no início do seu código principal)
-def remove_row(index):
-    if "lista_lancamentos" in st.session_state:
-        try:
-            # Remove o item pelo índice
-            del st.session_state.lista_lancamentos[index]
-            st.rerun()  # Atualiza a interface
-        except IndexError:
-            st.error("Índice inválido")
-    else:
-        st.error("Nenhum dado temporário para remover")
-
-# Registra a função para ser chamada pelo JavaScript
-st.session_state['remove_row'] = remove_row
-
-# Mostra a tabela
-table_placeholder.markdown(generate_table(df_show), unsafe_allow_html=True)
-st.markdown("---")
+            return html
+        
+        # Mostra a tabela
+        table_placeholder.markdown(generate_table(df_show), unsafe_allow_html=True)
 
     with st.expander("✏️ Editar Registro"):
         if not df_display.empty:
