@@ -1105,39 +1105,13 @@ with st.expander("🗑️ Remover Registro"):
         if st.button("Remover", key="btn_remover_pagar"):
             try:
                 rec_rem = df_display.iloc[idx_rem]
-                orig_idx = rec_rem.name  # índice real no Excel
-                linha_excel = orig_idx + 9
+                orig_idx = rec_rem.name  # índice real no df original
+                linha_excel = orig_idx + 9  # header na linha 8
 
                 wb = load_workbook(EXCEL_PAGAR)
                 ws = wb[aba]
-                header_row = 8
 
-                headers = [
-                    str(ws.cell(row=header_row, column=col).value).strip().lower()
-                    for col in range(2, ws.max_column + 1)
-                ]
-
-                field_map = {
-                    "data_nf": ["data_nf", "data documento", "data da nota fiscal"],
-                    "forma_pagamento": ["forma_pagamento", "descrição"],
-                    "fornecedor": ["fornecedor"],
-                    "os": ["os", "documento"],
-                    "vencimento": ["vencimento"],
-                    "valor": ["valor"],
-                    "estado": ["estado"],
-                    "boleto": ["boleto"],
-                    "comprovante": ["comprovante"]
-                }
-
-                cols_to_clear = []
-                for key, names in field_map.items():
-                    for i, h in enumerate(headers):
-                        if h in names:
-                            cols_to_clear.append(i + 2)
-                            break
-
-                for col in cols_to_clear:
-                    ws.cell(row=linha_excel, column=col, value=None)
+                ws.delete_rows(linha_excel)  # <-- remove a linha de verdade
 
                 wb.save(EXCEL_PAGAR)
                 st.success("Registro removido com sucesso!")
@@ -1145,7 +1119,7 @@ with st.expander("🗑️ Remover Registro"):
                 # Recarrega os dados atualizados
                 df = load_data(EXCEL_PAGAR, aba)
 
-                # Reaplica os filtros de visualização
+                # Reaplica os filtros
                 if view_sel == "Pagas":
                     df_display = df[df["status_pagamento"] == "Pago"].copy()
                 elif view_sel == "Pendentes":
