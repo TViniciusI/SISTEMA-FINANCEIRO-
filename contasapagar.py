@@ -1550,6 +1550,11 @@ elif page == "Contas a Receber":
     else:
         df_display = df.copy()
     
+    # Adicionar lançamentos temporários da sessão
+    if "lista_lancamentos" in st.session_state:
+        df_temp = pd.DataFrame(st.session_state.lista_lancamentos)
+        df = pd.concat([df, df_temp], ignore_index=True)
+
     # Seção de Filtros
     with st.expander("🔍 Filtros Avançados"):
         col1, col2 = st.columns(2)
@@ -1557,14 +1562,14 @@ elif page == "Contas a Receber":
             clientes = ["Todos"] + sorted(df["fornecedor"].dropna().astype(str).unique().tolist())
             cliente_selecionado = st.selectbox("Cliente", clientes)
         with col2:
-            status = ["Todos"] + sorted(df["status_pagamento"].dropna().unique().tolist())
-            status_selecionado = st.selectbox("Status", status)
+            estados = ["Todos"] + sorted(df["estado"].dropna().astype(str).unique().tolist())
+            estado_selecionado = st.selectbox("Estado/Status", estados)
 
     # Aplicar filtros
     if cliente_selecionado != "Todos":
         df_display = df_display[df_display["fornecedor"] == cliente_selecionado]
-    if status_selecionado != "Todos":
-        df_display = df_display[df_display["status_pagamento"] == status_selecionado]
+    if estado_selecionado != "Todos":
+        df_display = df_display[df_display["estado"] == estado_selecionado]
 
     # Exibir resultados
     st.markdown("<hr>", unsafe_allow_html=True)
@@ -1591,36 +1596,32 @@ elif page == "Contas a Receber":
                 "Índice do registro para editar:",
                 min_value=0,
                 max_value=len(df_display)-1,
-                step=1,
-                key="edit_receber"
+                step=1
             )
             
             registro = df_display.iloc[idx_edicao]
             
             col1, col2 = st.columns(2)
             with col1:
-                novo_valor = st.number_input("Valor:", value=float(registro["valor"]), key="valor_receber"
+                novo_valor = st.number_input("Valor:", value=float(registro["valor"]))
                 novo_vencimento = st.date_input(
                     "Vencimento:",
-                    value=registro["vencimento"].date() if pd.notna(registro["vencimento"]) else date.today(),
-                    key="venc_receber"
+                    value=registro["vencimento"].date() if pd.notna(registro["vencimento"]) else date.today()
                 )
             with col2:
                 novo_estado = st.selectbox(
                     "Estado:",
                     options=["A Receber", "Recebido"],
-                    index=0 if registro["estado"] == "A Receber" else 1,
-                    key="estado_receber"
+                    index=0 if registro["estado"] == "A Receber" else 1
                 )
                 nova_situacao = st.selectbox(
                     "Situação:",
                     options=["Em Atraso", "Recebido", "A Receber"],
                     index=["Em Atraso", "Recebido", "A Receber"].index(registro["situacao"]) 
-                    if registro["situacao"] in ["Em Atraso", "Recebido", "A Receber"] else 0,
-                    key="situacao_receber"
+                    if registro["situacao"] in ["Em Atraso", "Recebido", "A Receber"] else 0
                 )
             
-            if st.button("💾 Salvar Alterações", key="save_receber"):
+            if st.button("💾 Salvar Alterações"):
                 # Atualizar DataFrame
                 df.loc[registro.name] = {
                     **df.loc[registro.name].to_dict(),
@@ -1636,27 +1637,6 @@ elif page == "Contas a Receber":
                 else:
                     st.error("Erro ao salvar alterações.")
 
-    # Seção de Remoção
-    with st.expander("🗑️ Remover Registro", expanded=False):
-        if not df_display.empty:
-            idx_remocao = st.number_input(
-                "Índice do registro para remover:",
-                min_value=0,
-                max_value=len(df_display)-1,
-                step=1,
-                key="remove_receber"
-            )
-            
-            if st.button("Remover Registro", key="btn_remove_receber"):
-                registro = df_display.iloc[idx_remocao]
-                df = df.drop(registro.name)
-                
-                if save_data(EXCEL_RECEBER, aba, df):
-                    st.success("Registro removido com sucesso!")
-                    st.rerun()
-                else:
-                    st.error("Erro ao remover registro.")
-
     # Seção de Anexos
     with st.expander("📎 Anexar Documentos", expanded=False):
         if not df_display.empty:
@@ -1664,14 +1644,12 @@ elif page == "Contas a Receber":
                 "Índice do registro para anexar:",
                 min_value=0,
                 max_value=len(df_display)-1,
-                step=1,
-                key="anexo_receber"
+                step=1
             )
             
             arquivo = st.file_uploader(
                 "Selecione o documento (PDF, JPG, PNG):",
-                type=["pdf", "jpg", "png"],
-                key="upload_receber"
+                type=["pdf", "jpg", "png"]
             )
             
             if arquivo:
@@ -1686,22 +1664,22 @@ elif page == "Contas a Receber":
 
     # Seção de Adição de Novos Registros
     with st.expander("➕ Adicionar Nova Conta", expanded=False):
-        with st.form(key="form_nova_conta_receber"):
+        with st.form(key="form_nova_conta"):
             col1, col2 = st.columns(2)
             with col1:
-                nova_data = st.date_input("Data N/F:", value=date.today(), key="data_receber")
-                nova_descricao = st.text_input("Descrição:", key="desc_receber")
-                novo_cliente = st.text_input("Cliente:", key="cliente_receber")
+                nova_data = st.date_input("Data N/F:", value=date.today())
+                nova_descricao = st.text_input("Descrição:")
+                novo_cliente = st.text_input("Cliente:")
             with col2:
-                novo_documento = st.text_input("Documento/OS:", key="doc_receber")
-                novo_vencimento = st.date_input("Vencimento:", value=date.today(), key="venc_receber2")
-                novo_valor = st.number_input("Valor (R$):", min_value=0.0, format="%.2f", key="valor_receber2")
+                novo_documento = st.text_input("Documento/OS:")
+                novo_vencimento = st.date_input("Vencimento:", value=date.today())
+                novo_valor = st.number_input("Valor (R$):", min_value=0.0, format="%.2f")
             
-            novo_estado = st.selectbox("Estado:", options=["A Receber", "Recebido"], key="estado_receber2")
-            nova_situacao = st.selectbox("Situação:", options=["Em Atraso", "Recebido", "A Receber"], key="situacao_receber2")
+            novo_estado = st.selectbox("Estado:", options=["A Receber", "Recebido"])
+            nova_situacao = st.selectbox("Situação:", options=["Em Atraso", "Recebido", "A Receber"])
             
-            arquivo_boleto = st.file_uploader("Boleto (opcional):", type=["pdf", "jpg", "png"], key="boleto_receber")
-            arquivo_comprovante = st.file_uploader("Comprovante (opcional):", type=["pdf", "jpg", "png"], key="comprov_receber")
+            arquivo_boleto = st.file_uploader("Boleto (opcional):", type=["pdf", "jpg", "png"])
+            arquivo_comprovante = st.file_uploader("Comprovante (opcional):", type=["pdf", "jpg", "png"])
             
             if st.form_submit_button("Adicionar Conta"):
                 novo_registro = {
