@@ -962,30 +962,44 @@ elif page == "Contas a Pagar":
     else:
         df_display = df.copy()
     
-    with st.expander("🔍 Filtros"):
-        colf1, colf2 = st.columns(2)
-        with colf1:
-            fornec_list = df["fornecedor"].dropna().astype(str).unique().tolist()
-            forn = st.selectbox("Fornecedor", ["Todos"] + sorted(fornec_list))
-        with colf2:
-            est_list = df["estado"].dropna().astype(str).unique().tolist()
-            status_sel = st.selectbox("Estado/Status", ["Todos"] + sorted(est_list))
-    
-    if forn != "Todos":
-        df_display = df_display[df_display["fornecedor"] == forn]
-    if status_sel != "Todos":
-        df_display = df_display[df_display["estado"] == status_sel]
-    
-    st.markdown("<hr style='border:1px solid #ddd;'>", unsafe_allow_html=True)
-    
-    if df_display.empty:
-        st.warning("Nenhum registro para os filtros/visualização selecionados.")
-    else:
-        cols_esperadas = ["data_nf", "fornecedor", "valor", "vencimento", "estado", "status_pagamento"]
-        cols_para_exibir = [c for c in cols_esperadas if c in df_display.columns]
-        st.markdown("#### 📋 Lista de Lançamentos")
-        table_placeholder = st.empty()
-        table_placeholder.dataframe(df_display[cols_para_exibir], height=250)
+# Carrega dados do Excel
+df = load_data(EXCEL_PAGAR, aba)
+
+# Adiciona lançamentos pendentes (temporários)
+if "lista_lancamentos" in st.session_state:
+    df_temp = pd.DataFrame(st.session_state.lista_lancamentos)
+    df = pd.concat([df, df_temp], ignore_index=True)
+
+df_display = df.copy()
+
+# 🔍 Filtros
+with st.expander("🔍 Filtros"):
+    colf1, colf2 = st.columns(2)
+    with colf1:
+        fornec_list = df["fornecedor"].dropna().astype(str).unique().tolist()
+        forn = st.selectbox("Fornecedor", ["Todos"] + sorted(fornec_list))
+    with colf2:
+        est_list = df["estado"].dropna().astype(str).unique().tolist()
+        status_sel = st.selectbox("Estado/Status", ["Todos"] + sorted(est_list))
+
+# Aplica filtros
+if forn != "Todos":
+    df_display = df_display[df_display["fornecedor"] == forn]
+if status_sel != "Todos":
+    df_display = df_display[df_display["estado"] == status_sel]
+
+# Exibe resultado
+st.markdown("<hr style='border:1px solid #ddd;'>", unsafe_allow_html=True)
+
+if df_display.empty:
+    st.warning("Nenhum registro para os filtros/visualização selecionados.")
+else:
+    cols_esperadas = ["data_nf", "fornecedor", "valor", "vencimento", "estado", "status_pagamento"]
+    cols_para_exibir = [c for c in cols_esperadas if c in df_display.columns]
+    st.markdown("#### 📋 Lista de Lançamentos")
+    table_placeholder = st.empty()
+    table_placeholder.dataframe(df_display[cols_para_exibir], height=250)
+
     
     st.markdown("---")
 
