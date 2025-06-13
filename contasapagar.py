@@ -53,6 +53,17 @@ for pasta in ["Contas a Pagar", "Contas a Receber"]:
 
 
 st.markdown("""
+
+with st.sidebar:
+    st.title("Menu")
+    page = st.radio(
+        "Selecione a página:",
+        ["Dashboard", "Contas a Pagar", "Contas a Receber"],
+        index=0  # Página inicial padrão
+    )
+    st.markdown("---")
+    st.markdown(f"🟢 Logado como: **{st.session_state.username}**")
+# --------------------------- #
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
 
