@@ -1163,7 +1163,7 @@ elif page == "Contas a Receber":
     if df_disp.empty:
         st.warning("Nenhum registro encontrado com os filtros selecionados.")
     else:
-        # 1) cópia para exibição
+        # 1) copia
         df_exib = df_disp.copy()
 
         # 2) renomeia FORNECEDOR → Cliente
@@ -1187,11 +1187,11 @@ elif page == "Contas a Receber":
                   .fillna("")
             )
 
-        # 4) monta lista de colunas já renomeadas
+        # 4) monta lista de colunas **já renomeadas**
         cols_show = [
             "#",
             "data_nf",
-            "Cliente",    # aqui agora existe
+            "Cliente",            # <— aqui usamos o novo nome
             "valor",
             "vencimento",
             "status_pagamento",
@@ -1201,7 +1201,8 @@ elif page == "Contas a Receber":
 
         # 5) exibe
         table_pr.dataframe(df_exib[cols_show], height=400, use_container_width=True)
-        
+
+
     # ----- REMOVER REGISTRO -----
     with st.expander("🗑️ Remover Registro", expanded=False):
         if not df_disp.empty:
