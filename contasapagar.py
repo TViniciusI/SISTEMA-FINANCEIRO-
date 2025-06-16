@@ -1134,16 +1134,16 @@ elif page == "Contas a Receber":
     try:
         default_idx = FULL_MONTHS.index(date.today().strftime("%m"))
     except ValueError:
-        default_idx = 0  # Fallback para o primeiro mês se não encontrar
+        default_idx = 0
     aba = st.selectbox("Selecione o mês:", FULL_MONTHS, index=default_idx)
 
-    # Carrega dados direto do Excel com tratamento de erros
+    # Carrega dados com tratamento robusto
     try:
         df = load_data(EXCEL_RECEBER, aba).reset_index(drop=True)
         if not df.empty:
             df.insert(0, "#", range(1, len(df) + 1))
         else:
-            df["#"] = []  # Adiciona coluna vazia se DataFrame estiver vazio
+            df["#"] = pd.Series(dtype='int')  # Coluna vazia tipada corretamente
     except Exception as e:
         st.error(f"Erro ao carregar dados: {e}")
         df = pd.DataFrame(columns=["#", "data_nf", "fornecedor", "valor", "vencimento", "status_pagamento", "estado"])
@@ -1164,36 +1164,35 @@ elif page == "Contas a Receber":
             ) if not df.empty else ["Todos"]
             filtro_st = st.selectbox("Status", status_opts)
 
-    # Aplica filtros com tratamento para DataFrame vazio
+    # Aplica filtros com cópia segura
     df_disp = df.copy()
     if not df.empty:
         if filtro_cl != "Todos":
-            df_disp = df_disp[df_disp["fornecedor"] == filtro_cl]
+            df_disp = df_disp[df_disp["fornecedor"].astype(str) == str(filtro_cl)]
         if filtro_st != "Todos":
-            df_disp = df_disp[df_disp["status_pagamento"] == filtro_st]
+            df_disp = df_disp[df_disp["status_pagamento"].astype(str) == str(filtro_st)]
 
-    # Exibe tabela com tratamento para valores nulos
+    # Exibe tabela com formatação segura
     st.markdown("### 📋 Lançamentos")
     table_pl = st.empty()
     if df_disp.empty:
         st.warning("Nenhum registro encontrado com os filtros selecionados.")
     else:
         df_exib = df_disp.copy()
-        # Formatação segura para valores nulos
-        if "valor" in df_exib:
-            df_exib["valor"] = df_exib["valor"].apply(
-                lambda x: f"R$ {float(x):,.2f}" if pd.notna(x) else "R$ 0,00"
-            )
-        if "vencimento" in df_exib:
-            df_exib["vencimento"] = pd.to_datetime(
-                df_exib["vencimento"], errors="coerce"
-            ).dt.strftime("%d/%m/%Y")
-            df_exib["vencimento"] = df_exib["vencimento"].fillna("")
-        if "data_nf" in df_exib:
-            df_exib["data_nf"] = pd.to_datetime(
-                df_exib["data_nf"], errors="coerce"
-            ).dt.strftime("%d/%m/%Y")
-            df_exib["data_nf"] = df_exib["data_nf"].fillna("")
+        # Formatação robusta
+        numeric_cols = ["valor"]
+        date_cols = ["vencimento", "data_nf"]
+        
+        for col in numeric_cols:
+            if col in df_exib:
+                df_exib[col] = df_exib[col].apply(
+                    lambda x: f"R$ {float(x):,.2f}" if pd.notna(x) and str(x).replace('.','',1).isdigit() else "R$ 0,00"
+                )
+        
+        for col in date_cols:
+            if col in df_exib:
+                df_exib[col] = pd.to_datetime(df_exib[col], errors='coerce').dt.strftime('%d/%m/%Y')
+                df_exib[col] = df_exib[col].replace('NaT', '')
 
         cols_show = ["#", "data_nf", "fornecedor", "valor", "vencimento", "status_pagamento", "estado"]
         cols_show = [c for c in cols_show if c in df_exib.columns]
@@ -1295,45 +1294,66 @@ elif page == "Contas a Receber":
 
     # ----- ADICIONAR NOVO REGISTRO (CORREÇÃO DO ERRO) -----
     with st.expander("➕ Adicionar Nova Conta", expanded=False):
-        col1, col2 = st.columns(2)
-        with col1:
-            nf_data = st.date_input("Data N/F:", value=date.today())
-            nf_desc = st.text_input("Descrição:", value="")
-            nf_cliente = st.text_input("Cliente:", value="")
-        with col2:
-            nf_os = st.text_input("Documento/OS:", value="")
-            nf_venc = st.date_input("Vencimento:", value=date.today())
-            nf_val = st.number_input("Valor (R$):", min_value=0.01, step=0.01, value=0.01)
-        
-        nf_estado = st.selectbox("Estado:", ["A Receber", "Recebido"])
-        nf_situ = st.selectbox("Situação:", ["Em Atraso", "Recebido", "A Receber"])
-
-        if st.button("➕ Adicionar Conta", key="btn_add_receber"):
-            # Validação dos campos obrigatórios
-            if not nf_cliente or not nf_val:
-                st.error("Preencha pelo menos Cliente e Valor!")
-            else:
-                novo = {
-                    "data_nf": nf_data,
-                    "forma_pagamento": nf_desc,
-                    "fornecedor": nf_cliente,
-                    "os": nf_os,
-                    "vencimento": nf_venc,
-                    "valor": float(nf_val),  # Garante que é float
-                    "estado": nf_estado,
-                    "situacao": nf_situ,
-                    "status_pagamento": "Recebido" if nf_estado == "Recebido" else "A Receber"
+        with st.form(key='form_add_receber'):
+            col1, col2 = st.columns(2)
+            with col1:
+                nova_data = st.date_input("Data N/F*:", value=date.today())
+                nova_descricao = st.text_input("Descrição:", value="")
+                novo_cliente = st.text_input("Cliente*:", value="")
+            with col2:
+                novo_documento = st.text_input("Documento/OS:", value="")
+                novo_vencimento = st.date_input("Vencimento*:", value=date.today())
+                novo_valor = st.number_input("Valor (R$)*:", 
+                                           min_value=0.01, 
+                                           step=0.01, 
+                                           value=0.01,
+                                           format="%.2f")
+            
+            novo_estado = st.selectbox("Estado*:", ["A Receber", "Recebido"])
+            nova_situacao = st.selectbox("Situação:", ["Em Atraso", "Recebido", "A Receber"])
+            
+            submitted = st.form_submit_button("➕ Adicionar Conta")
+            
+            if submitted:
+                # Validação dos campos obrigatórios
+                campos_obrigatorios = {
+                    "Cliente": novo_cliente,
+                    "Valor": novo_valor,
+                    "Data N/F": nova_data,
+                    "Vencimento": novo_vencimento
                 }
                 
-                try:
-                    if add_record(EXCEL_RECEBER, aba, novo):
-                        st.success("Conta adicionada com sucesso!")
-                        st.experimental_rerun()  # Recarrega a página para atualizar os dados
-                    else:
-                        st.error("Erro ao adicionar conta.")
-                except Exception as e:
-                    st.error(f"Erro ao adicionar conta: {str(e)}")
-
+                campos_faltantes = [campo for campo, valor in campos_obrigatorios.items() if not valor]
+                
+                if campos_faltantes:
+                    st.error(f"Campos obrigatórios faltando: {', '.join(campos_faltantes)}")
+                else:
+                    try:
+                        # Prepara o registro com tipos garantidos
+                        novo_registro = {
+                            "data_nf": nova_data.strftime("%Y-%m-%d"),
+                            "forma_pagamento": nova_descricao,
+                            "fornecedor": novo_cliente,
+                            "os": novo_documento,
+                            "vencimento": novo_vencimento.strftime("%Y-%m-%d"),
+                            "valor": float(novo_valor),
+                            "estado": novo_estado,
+                            "situacao": nova_situacao,
+                            "status_pagamento": "Recebido" if novo_estado == "Recebido" else "A Receber"
+                        }
+                        
+                        # Adiciona usando a função corrigida
+                        if add_record(EXCEL_RECEBER, aba, novo_registro):
+                            st.success("✅ Conta adicionada com sucesso!")
+                            time.sleep(1)
+                            st.experimental_rerun()
+                        else:
+                            st.error("❌ Falha ao adicionar conta. Verifique o arquivo Excel.")
+                    
+                    except ValueError as ve:
+                        st.error(f"❌ Erro de valor: {str(ve)}")
+                    except Exception as e:
+                        st.error(f"❌ Erro inesperado: {str(e)}")
 st.markdown("""
 <div style="text-align: center; font-size:12px; color:gray; margin-top: 20px;">
     <p>© 2025 Desenvolvido por Vinicius Magalhães</p>
