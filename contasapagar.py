@@ -1145,34 +1145,32 @@ elif page == "Contas a Receber":
 
     # 3) Carrega dados e numera linhas
     df = load_data(EXCEL_RECEBER, aba).reset_index(drop=True)
-    
-    # 👇 Normaliza cabeçalhos e garante que 'cliente' seja tratado como 'fornecedor'
+
+    # 🔧 Normaliza colunas e renomeia 'cliente' para 'fornecedor' se necessário
     df.columns = [c.lower().strip() for c in df.columns]
     if "cliente" in df.columns and "fornecedor" not in df.columns:
         df.rename(columns={"cliente": "fornecedor"}, inplace=True)
 
     df.insert(0, "#", range(1, len(df) + 1))
 
-    # 4) Preparação para filtros e tabelas
-    df_disp = df.copy()
-
-    # 5) Filtros avançados
+    # 4) Filtros avançados
     with st.expander("🔍 Filtros Avançados", expanded=False):
         col1, col2 = st.columns(2)
         with col1:
             clientes = ["Todos"] + sorted(df["fornecedor"].dropna().unique().tolist())
             filtro_cl = st.selectbox("Cliente", clientes)
         with col2:
-            status_opts = ["Todos"] + sorted(df_disp["status_pagamento"].dropna().unique().tolist())
+            status_opts = ["Todos"] + sorted(df["status_pagamento"].dropna().unique().tolist())
             filtro_st = st.selectbox("Status", status_opts)
 
-    # 6) Aplica filtros
+    # 5) Aplica filtros
+    df_disp = df.copy()
     if filtro_cl != "Todos":
         df_disp = df_disp[df_disp["fornecedor"] == filtro_cl]
     if filtro_st != "Todos":
         df_disp = df_disp[df_disp["status_pagamento"] == filtro_st]
 
-    # 7) Exibe tabela (rename “fornecedor” → “Cliente” apenas para exibição)
+    # 6) Exibe tabela (renomeando apenas visualmente)
     st.markdown("### 📋 Lançamentos")
     table_pr = st.empty()
     if df_disp.empty:
@@ -1181,13 +1179,14 @@ elif page == "Contas a Receber":
         df_exib = df_disp.copy()
         df_exib.rename(columns={"fornecedor": "Cliente"}, inplace=True)
 
-        # formata moeda
-        df_exib["valor"] = df_exib["valor"].apply(lambda x: f"R$ {x:,.2f}" if pd.notna(x) else "")
-        # formata datas
-        for col in ("vencimento", "data_nf"):
-            if col in df_exib:
-                df_exib[col] = (
-                    pd.to_datetime(df_exib[col], errors="coerce")
+        if "valor" in df_exib:
+            df_exib["valor"] = df_exib["valor"].apply(
+                lambda x: f"R$ {x:,.2f}" if pd.notna(x) else ""
+            )
+        for d in ("vencimento", "data_nf"):
+            if d in df_exib:
+                df_exib[d] = (
+                    pd.to_datetime(df_exib[d], errors="coerce")
                       .dt.strftime("%d/%m/%Y")
                       .fillna("")
                 )
