@@ -17,7 +17,7 @@ st.set_page_config(
 # Mapeamento de credenciais e nomes de exibição
 VALID_USERS = {
     "Vinicius": "vinicius4223",
-    "Flavio":   "1234",
+    "Flavio":   "Fpp@3737",
     "ADMfpp":   "Fpeng@37",
 }
 DISPLAY_NAMES = {
