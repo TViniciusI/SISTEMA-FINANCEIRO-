@@ -1151,7 +1151,7 @@ elif page == "Contas a Receber":
     # Aplica filtros
     df_disp = df.copy()
     if filtro_fn != "Todos":
-        df_disp = df_disp[df_disp["clientes"] == filtro_fn]
+        df_disp = df_disp[df_disp["fornecedor"] == filtro_fn]
     if filtro_st != "Todos":
         df_disp = df_disp[df_disp["status_pagamento"] == filtro_st]
 
