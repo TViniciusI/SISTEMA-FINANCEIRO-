@@ -1151,7 +1151,7 @@ elif page == "Contas a Receber":
     if "cliente" in df.columns and "fornecedor" not in df.columns:
         df.rename(columns={"cliente": "fornecedor"}, inplace=True)
 
-df.insert(0, "#", range(1, len(df) + 1))
+    df.insert(0, "#", range(1, len(df) + 1))
 
     # 4) Preparação para filtros e tabelas
     df_disp = df.copy()
