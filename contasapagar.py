@@ -1219,26 +1219,33 @@ with st.expander("✏️ Editar Registro", expanded=False):
         except Exception as e:
             st.error(f"Erro ao editar registro: {e}")
 
-# ----- ADICIONAR NOVO REGISTRO -----
-with st.expander("➕ Adicionar Nova Conta", expanded=False):
-    # ... seus inputs ...
-    if st.button("➕ Adicionar Conta", key="btn_add_receber"):
-        novo = {
-            "data_nf":        nf_data,
-            "forma_pagamento": nf_desc,
-            "fornecedor":     nf_cliente,
-            "os":             nf_os,
-            "vencimento":     nf_venc,
-            "valor":          nf_val,
-            "estado":         nf_estado,
-            "situacao":       nf_situ
-        }
-        if add_record(EXCEL_RECEBER, aba, novo):
-            st.success("Conta adicionada com sucesso!")
-            if hasattr(st, "experimental_rerun"):
+    # 9) Adicionar novo registro
+    with st.expander("➕ Adicionar Nova Conta", expanded=False):
+        nf_data    = st.date_input("Data N/F:", value=date.today())
+        nf_desc    = st.text_input("Descrição:")
+        nf_cliente = st.text_input("Cliente:")
+        nf_os      = st.text_input("Documento/OS:")
+        nf_venc    = st.date_input("Vencimento:", value=date.today())
+        nf_val     = st.number_input("Valor (R$):", min_value=0.01, step=0.01)
+        nf_estado  = st.selectbox("Estado:", ["A Receber", "Recebido"])
+        nf_situ    = st.selectbox("Situação:", ["Em Atraso", "Recebido", "A Receber"])
+
+        if st.button("➕ Adicionar Conta", key="btn_add_receber"):
+            novo = {
+                "data_nf":        nf_data,
+                "forma_pagamento": nf_desc,
+                "fornecedor":     nf_cliente,   # <-- aqui é sempre 'fornecedor'
+                "os":             nf_os,
+                "vencimento":     nf_venc,
+                "valor":          nf_val,
+                "estado":         nf_estado,
+                "situacao":       nf_situ
+            }
+            if add_record(EXCEL_RECEBER, aba, novo):
+                st.success("Conta adicionada com sucesso!")
                 st.experimental_rerun()
-        else:
-            st.error("Erro ao adicionar conta. Verifique o Excel.")
+            else:
+                st.error("Erro ao adicionar conta. Verifique o Excel.")
             
 st.markdown("""
 <div style="text-align: center; font-size:12px; color:gray; margin-top: 20px;">
