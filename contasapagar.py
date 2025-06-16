@@ -1143,11 +1143,10 @@ elif page == "Contas a Receber":
     default_idx = FULL_MONTHS.index(date.today().strftime("%m"))
     aba = st.selectbox("Selecione o mês:", FULL_MONTHS, index=default_idx)
 
-    # 3) Carrega dados e numera linhas
+    # 3) Carrega dados e normaliza colunas
     df = load_data(EXCEL_RECEBER, aba).reset_index(drop=True)
-
-    # 🔧 Normaliza colunas e renomeia 'cliente' para 'fornecedor' se necessário
     df.columns = [c.lower().strip() for c in df.columns]
+
     if "cliente" in df.columns and "fornecedor" not in df.columns:
         df.rename(columns={"cliente": "fornecedor"}, inplace=True)
 
@@ -1160,7 +1159,7 @@ elif page == "Contas a Receber":
             clientes = ["Todos"] + sorted(df["fornecedor"].dropna().unique().tolist())
             filtro_cl = st.selectbox("Cliente", clientes)
         with col2:
-            status_opts = ["Todos"] + sorted(df["status_pagamento"].dropna().unique().tolist())
+            status_opts = ["Todos"] + sorted(df["status_pagamento"].dropna().unique().tolist()) if "status_pagamento" in df.columns else ["Todos"]
             filtro_st = st.selectbox("Status", status_opts)
 
     # 5) Aplica filtros
@@ -1170,7 +1169,7 @@ elif page == "Contas a Receber":
     if filtro_st != "Todos":
         df_disp = df_disp[df_disp["status_pagamento"] == filtro_st]
 
-    # 6) Exibe tabela (renomeando apenas visualmente)
+    # 6) Exibe tabela
     st.markdown("### 📋 Lançamentos")
     table_pr = st.empty()
     if df_disp.empty:
@@ -1180,15 +1179,13 @@ elif page == "Contas a Receber":
         df_exib.rename(columns={"fornecedor": "Cliente"}, inplace=True)
 
         if "valor" in df_exib:
-            df_exib["valor"] = df_exib["valor"].apply(
-                lambda x: f"R$ {x:,.2f}" if pd.notna(x) else ""
-            )
+            df_exib["valor"] = df_exib["valor"].apply(lambda x: f"R$ {x:,.2f}" if pd.notna(x) else "")
         for d in ("vencimento", "data_nf"):
             if d in df_exib:
                 df_exib[d] = (
                     pd.to_datetime(df_exib[d], errors="coerce")
-                      .dt.strftime("%d/%m/%Y")
-                      .fillna("")
+                    .dt.strftime("%d/%m/%Y")
+                    .fillna("")
                 )
 
         cols_show = ["#", "data_nf", "Cliente", "valor", "vencimento", "status_pagamento", "estado"]
