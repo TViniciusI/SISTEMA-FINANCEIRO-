@@ -1184,25 +1184,60 @@ elif page == "Contas a Receber":
         cols_show = [c for c in cols_show if c in df_exib.columns]
         table_pr.dataframe(df_exib[cols_show], height=400, use_container_width=True)
 
-    # 7) Remover registro
-    with st.expander("🗑️ Remover Registro", expanded=False):
-        if not df_disp.empty:
-            sel = st.selectbox("Selecione o nº da linha (#) para remover:",
-                               df_disp["#"].tolist(), key="remove_idx_receber")
-            if st.button("Remover Registro", key="btn_remove_receber"):
-                try:
-                    idx_full = df[df["#"] == sel].index[0]
-                    excel_row = 8 + 1 + idx_full
-                    wb = load_workbook(EXCEL_RECEBER)
-                    ws = wb[aba]
-                    ws.delete_rows(excel_row)
-                    wb.save(EXCEL_RECEBER)
-                    st.success(f"Registro #{sel} removido com sucesso!")
-                    st.experimental_rerun()
-                except Exception as e:
-                    st.error(f"Erro ao remover registro: {e}")
-        else:
-            st.info("Nenhum registro para remover.")
+# ----- REMOVER REGISTRO -----
+with st.expander("🗑️ Remover Registro", expanded=False):
+    if not df_disp.empty:
+        sel = st.selectbox(
+            "Selecione o número da linha (#) para remover:",
+            df_disp["#"].tolist(),
+            key="remove_idx_receber"
+        )
+        if st.button("Remover Registro", key="btn_remove_receber"):
+            try:
+                # encontra o índice real no df completo
+                idx_full = df[df["#"] == sel].index[0]
+                excel_row = 8 + 1 + idx_full  # 8 = linha de cabeçalho, +1 porque data começa logo abaixo
+
+                # apaga do Excel
+                wb = load_workbook(EXCEL_RECEBER)
+                ws = wb[aba]
+                ws.delete_rows(excel_row)
+                wb.save(EXCEL_RECEBER)
+
+                st.success(f"Registro #{sel} removido com sucesso!")
+
+                # — Recarrega os dados e reaplica tudo —
+                df = load_data(EXCEL_RECEBER, aba).reset_index(drop=True)
+                df.insert(0, "#", range(1, len(df) + 1))
+
+                # reaplica filtros
+                df_disp = df.copy()
+                if filtro_cl != "Todos":
+                    df_disp = df_disp[df_disp["fornecedor"] == filtro_cl]
+                if filtro_st != "Todos":
+                    df_disp = df_disp[df_disp["status_pagamento"] == filtro_st]
+
+                # formata e exibe
+                df_exib = df_disp.copy()
+                if "valor" in df_exib:
+                    df_exib["valor"] = df_exib["valor"].apply(
+                        lambda x: f"R$ {x:,.2f}" if pd.notna(x) else ""
+                    )
+                if "vencimento" in df_exib:
+                    df_exib["vencimento"] = pd.to_datetime(
+                        df_exib["vencimento"], errors="coerce"
+                    ).dt.strftime("%d/%m/%Y")
+                if "data_nf" in df_exib:
+                    df_exib["data_nf"] = pd.to_datetime(
+                        df_exib["data_nf"], errors="coerce"
+                    ).dt.strftime("%d/%m/%Y")
+
+                table_pr.dataframe(df_exib[cols_show], height=400, use_container_width=True)
+
+            except Exception as e:
+                st.error(f"Erro ao remover registro: {e}")
+    else:
+        st.info("Nenhum registro para remover.")
 
 # ----- EDITAR REGISTRO -----
 with st.expander("✏️ Editar Registro", expanded=False):
