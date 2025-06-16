@@ -372,15 +372,15 @@ def save_data(excel_path: str, sheet_name: str, df: pd.DataFrame) -> bool:
         ]
 
         field_map = {
-            "data_nf": ["data documento", "data_nf", "data n/f", "data da nota fiscal"],
-            "forma_pagamento": ["descrição", "forma_pagamento", "forma de pagamento"],
-            "fornecedor": ["fornecedor"],
-            "os": ["documento", "os", "os interna"],
-            "vencimento": ["vencimento"],
-            "valor": ["valor"],
-            "estado": ["estado"],
-            "boleto": ["boleto", "boleto anexo"],
-            "comprovante": ["comprovante", "comprovante de pagto"]
+            "data_nf":        ["data documento", "data_nf", "data n/f", "data da nota fiscal"],
+            "forma_pagamento":["descrição", "forma_pagamento", "forma de pagamento"],
+            "fornecedor":     ["fornecedor", "cliente"],      # <- aqui
+            "os":             ["documento", "os", "os interna"],
+            "vencimento":     ["vencimento"],
+            "valor":          ["valor"],
+            "estado":         ["estado"],
+            "boleto":         ["boleto", "boleto anexo"],
+            "comprovante":    ["comprovante", "comprovante de pagto"]
         }
 
         col_pos = {}
