@@ -14,10 +14,14 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# Mapeamento de credenciais e nomes de exibição
 VALID_USERS = {
     "Vinicius": "vinicius4223",
-    "Flavio": "1234",
-    "ADMfpp": "Fpeng@37",
+    "Flavio":   "1234",
+    "ADMfpp":   "Fpeng@37",
+}
+DISPLAY_NAMES = {
+    "ADMfpp": "Emily"
 }
 
 def check_login(username: str, password: str) -> bool:
@@ -37,10 +41,12 @@ if not st.session_state.logged_in:
         if st.button("Entrar"):
             if check_login(username_input, password_input):
                 st.session_state.logged_in = True
-                st.session_state.username = username_input
+                # Usa o nome de exibição, ou cai no próprio usuário
+                st.session_state.username = DISPLAY_NAMES.get(username_input, username_input)
             else:
                 st.error("Usuário ou senha inválidos.")
     st.stop()
+
 
 # Constantes no início do arquivo (após as imports)
 EXCEL_PAGAR = "Contas a pagar 2025.xlsx"
@@ -502,7 +508,7 @@ st.markdown("""
 st.markdown("---")
 
 # 👤 Mostra usuário logado
-st.sidebar.markdown(f"**Logado:** {st.session_state.username}")
+st.sidebar.markdown(f"**Bem Vindo(a):** {st.session_state.username}")
 
 # 🔘 NAVEGAÇÃO
 page = st.sidebar.radio("Ir para:", ["Dashboard", "Contas a Pagar", "Contas a Receber"])
