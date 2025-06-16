@@ -1142,22 +1142,22 @@ elif page == "Contas a Receber":
     with st.expander("🔍 Filtros Avançados", expanded=False):
         col1, col2 = st.columns(2)
         with col1:
-            fornecedores = ["Todos"] + sorted(df["fornecedor"].dropna().unique().tolist())
-            filtro_fn = st.selectbox("Fornecedor", fornecedores)
+            clientes = ["Todos"] + sorted(df["fornecedor"].dropna().unique().tolist())
+            filtro_cl = st.selectbox("Cliente", clientes)
         with col2:
             status_opts = ["Todos"] + sorted(df["status_pagamento"].dropna().unique().tolist())
             filtro_st = st.selectbox("Status", status_opts)
 
     # Aplica filtros
     df_disp = df.copy()
-    if filtro_fn != "Todos":
-        df_disp = df_disp[df_disp["fornecedor"] == filtro_fn]
+    if filtro_cl != "Todos":
+        df_disp = df_disp[df_disp["fornecedor"] == filtro_cl]
     if filtro_st != "Todos":
         df_disp = df_disp[df_disp["status_pagamento"] == filtro_st]
 
     # Exibe tabela
     st.markdown("### 📋 Lançamentos")
-    table_pl = st.empty()
+    table_pr = st.empty()
     if df_disp.empty:
         st.warning("Nenhum registro encontrado com os filtros selecionados.")
     else:
@@ -1166,45 +1166,48 @@ elif page == "Contas a Receber":
         if "valor" in df_exib:
             df_exib["valor"] = df_exib["valor"].apply(lambda x: f"R$ {x:,.2f}" if pd.notna(x) else "")
         if "vencimento" in df_exib:
-            df_exib["vencimento"] = pd.to_datetime(df_exib["vencimento"], errors="coerce").dt.strftime("%d/%m/%Y")
+            df_exib["vencimento"] = pd.to_datetime(df_exib["vencimento"], errors="coerce")\
+                                      .dt.strftime("%d/%m/%Y")
         if "data_nf" in df_exib:
-            df_exib["data_nf"] = pd.to_datetime(df_exib["data_nf"], errors="coerce").dt.strftime("%d/%m/%Y")
+            df_exib["data_nf"] = pd.to_datetime(df_exib["data_nf"], errors="coerce")\
+                                    .dt.strftime("%d/%m/%Y")
 
-        cols_show = ["#", "data_nf", "cliente", "valor", "vencimento", "status_pagamento", "estado"]
+        cols_show = ["#", "data_nf", "fornecedor", "valor", "vencimento", "status_pagamento", "estado"]
         cols_show = [c for c in cols_show if c in df_exib.columns]
-        table_pl.dataframe(df_exib[cols_show], height=400, use_container_width=True)
+        table_pr.dataframe(df_exib[cols_show], height=400, use_container_width=True)
 
     # ----- REMOVER REGISTRO -----
     with st.expander("🗑️ Remover Registro", expanded=False):
         if not df_disp.empty:
-            sel = st.selectbox("Selecione o número da linha (#) para remover:", df_disp["#"].tolist(), key="remove_idx_pagar")
-            if st.button("Remover Registro", key="btn_remove_pagar"):
+            sel = st.selectbox("Selecione o número da linha (#) para remover:", df_disp["#"].tolist(), key="remove_idx_receber")
+            if st.button("Remover Registro", key="btn_remove_receber"):
                 try:
-                    # índice no DataFrame completo
                     idx_full = df[df["#"] == sel].index[0]
-                    excel_row = 8 + 1 + idx_full  # cabeçalho está na linha 8
+                    excel_row = 8 + 1 + idx_full
                     wb = load_workbook(EXCEL_RECEBER)
                     ws = wb[aba]
                     ws.delete_rows(excel_row)
                     wb.save(EXCEL_RECEBER)
                     st.success(f"Registro #{sel} removido com sucesso!")
                     # Recarrega tabela
-                    df = load_data(EXCEL_PAGAR, aba).reset_index(drop=True)
+                    df = load_data(EXCEL_RECEBER, aba).reset_index(drop=True)
                     df.insert(0, "#", range(1, len(df) + 1))
                     # reaplica filtros e reexibe
                     df_disp = df.copy()
-                    if filtro_fn != "Todos":
-                        df_disp = df_disp[df_disp["fornecedor"] == filtro_fn]
+                    if filtro_cl != "Todos":
+                        df_disp = df_disp[df_disp["fornecedor"] == filtro_cl]
                     if filtro_st != "Todos":
                         df_disp = df_disp[df_disp["status_pagamento"] == filtro_st]
                     df_exib = df_disp.copy()
                     if "valor" in df_exib:
                         df_exib["valor"] = df_exib["valor"].apply(lambda x: f"R$ {x:,.2f}" if pd.notna(x) else "")
                     if "vencimento" in df_exib:
-                        df_exib["vencimento"] = pd.to_datetime(df_exib["vencimento"], errors="coerce").dt.strftime("%d/%m/%Y")
+                        df_exib["vencimento"] = pd.to_datetime(df_exib["vencimento"], errors="coerce")\
+                                                  .dt.strftime("%d/%m/%Y")
                     if "data_nf" in df_exib:
-                        df_exib["data_nf"] = pd.to_datetime(df_exib["data_nf"], errors="coerce").dt.strftime("%d/%m/%Y")
-                    table_pl.dataframe(df_exib[cols_show], height=400, use_container_width=True)
+                        df_exib["data_nf"] = pd.to_datetime(df_exib["data_nf"], errors="coerce")\
+                                                .dt.strftime("%d/%m/%Y")
+                    table_pr.dataframe(df_exib[cols_show], height=400, use_container_width=True)
                 except Exception as e:
                     st.error(f"Erro ao remover registro: {e}")
         else:
@@ -1213,41 +1216,61 @@ elif page == "Contas a Receber":
     # ----- EDITAR REGISTRO -----
     with st.expander("✏️ Editar Registro", expanded=False):
         if not df_disp.empty:
-            sel = st.selectbox("Selecione o nº da linha (#) para editar:", df_disp["#"].tolist(), key="edit_idx_pagar")
+            sel = st.selectbox("Selecione o nº da linha (#) para editar:", df_disp["#"].tolist(), key="edit_idx_receber")
             idx_full = df[df["#"] == sel].index[0]
             rec = df.loc[idx_full]
             col1, col2 = st.columns(2)
             with col1:
-                novo_valor = st.number_input("Valor (R$):", value=float(rec["valor"]) if pd.notna(rec["valor"]) else 0.0, step=0.01, key="edit_valor_pagar")
-                novo_venc = st.date_input("Vencimento:", value=rec["vencimento"].date() if pd.notna(rec["vencimento"]) else date.today(), key="edit_venc_pagar")
+                novo_valor = st.number_input(
+                    "Valor (R$):",
+                    value=float(rec["valor"]) if pd.notna(rec["valor"]) else 0.0,
+                    step=0.01,
+                    key="edit_valor_receber"
+                )
+                novo_venc = st.date_input(
+                    "Vencimento:", 
+                    value=rec["vencimento"].date() if pd.notna(rec["vencimento"]) else date.today(),
+                    key="edit_venc_receber"
+                )
             with col2:
-                novo_estado = st.selectbox("Estado:", ["Em Aberto", "Pago"], index=0 if rec["estado"] == "Em Aberto" else 1, key="edit_estado_pagar")
-                sit_opts = ["Em Atraso", "Recebido", "Em Aberto"]
+                novo_estado = st.selectbox(
+                    "Estado:",
+                    ["A Receber", "Recebido"],
+                    index=0 if rec["estado"] == "A Receber" else 1,
+                    key="edit_estado_receber"
+                )
+                sit_opts = ["Em Atraso", "Recebido", "A Receber"]
                 idx_sit = sit_opts.index(rec.get("situacao", "Em Atraso")) if rec.get("situacao") in sit_opts else 0
-                nova_sit = st.selectbox("Situação:", sit_opts, index=idx_sit, key="edit_situacao_pagar")
+                nova_sit = st.selectbox("Situação:", sit_opts, index=idx_sit, key="edit_situacao_receber")
 
-            if st.button("💾 Salvar Alterações", key="btn_save_edit_pagar"):
+            if st.button("💾 Salvar Alterações", key="btn_save_edit_receber"):
                 try:
-                    # atualiza DataFrame e salva
                     df.at[idx_full, "valor"] = novo_valor
                     df.at[idx_full, "vencimento"] = novo_venc
                     df.at[idx_full, "estado"] = novo_estado
                     df.at[idx_full, "situacao"] = nova_sit
-                    if save_data(EXCEL_PAGAR, aba, df):
+                    if save_data(EXCEL_RECEBER, aba, df):
                         st.success("Registro atualizado com sucesso!")
                     else:
                         st.error("Falha ao salvar alterações.")
-                    # Recarrega e reexibe tabela
+                    # Recarrega tabela (mesmo processo de display)
                     df = load_data(EXCEL_RECEBER, aba).reset_index(drop=True)
                     df.insert(0, "#", range(1, len(df) + 1))
                     df_disp = df.copy()
-                    if filtro_fn != "Todos": df_disp = df_disp[df_disp["fornecedor"] == filtro_fn]
-                    if filtro_st != "Todos": df_disp = df_disp[df_disp["status_pagamento"] == filtro_st]
+                    if filtro_cl != "Todos":
+                        df_disp = df_disp[df_disp["fornecedor"] == filtro_cl]
+                    if filtro_st != "Todos":
+                        df_disp = df_disp[df_disp["status_pagamento"] == filtro_st]
                     df_exib = df_disp.copy()
-                    if "valor" in df_exib: df_exib["valor"] = df_exib["valor"].apply(lambda x: f"R$ {x:,.2f}" if pd.notna(x) else "")
-                    if "vencimento" in df_exib: df_exib["vencimento"] = pd.to_datetime(df_exib["vencimento"], errors="coerce").dt.strftime("%d/%m/%Y")
-                    if "data_nf" in df_exib: df_exib["data_nf"] = pd.to_datetime(df_exib["data_nf"], errors="coerce").dt.strftime("%d/%m/%Y")
-                    table_pl.dataframe(df_exib[cols_show], height=400, use_container_width=True)
+                    if "valor" in df_exib:
+                        df_exib["valor"] = df_exib["valor"].apply(lambda x: f"R$ {x:,.2f}" if pd.notna(x) else "")
+                    if "vencimento" in df_exib:
+                        df_exib["vencimento"] = pd.to_datetime(df_exib["vencimento"], errors="coerce")\
+                                                  .dt.strftime("%d/%m/%Y")
+                    if "data_nf" in df_exib:
+                        df_exib["data_nf"] = pd.to_datetime(df_exib["data_nf"], errors="coerce")\
+                                                .dt.strftime("%d/%m/%Y")
+                    table_pr.dataframe(df_exib[cols_show], height=400, use_container_width=True)
                 except Exception as e:
                     st.error(f"Erro ao editar registro: {e}")
         else:
@@ -1259,19 +1282,19 @@ elif page == "Contas a Receber":
         with col1:
             nf_data = st.date_input("Data N/F:", value=date.today())
             nf_desc = st.text_input("Descrição:")
-            nf_forn = st.text_input("Cliente:")
+            nf_cliente = st.text_input("Cliente:")
         with col2:
             nf_os = st.text_input("Documento/OS:")
             nf_venc = st.date_input("Vencimento:", value=date.today())
             nf_val = st.number_input("Valor (R$):", min_value=0.01, step=0.01)
-        nf_estado = st.selectbox("Estado:", ["Em Aberto", "Pago"])
-        nf_situ   = st.selectbox("Situação:", ["Em Atraso", "Pago", "Em Aberto"])
+        nf_estado = st.selectbox("Estado:", ["A Receber", "Recebido"])
+        nf_situ   = st.selectbox("Situação:", ["Em Atraso", "Recebido", "A Receber"])
 
-        if st.button("➕ Adicionar Conta", key="btn_add_pagar"):
+        if st.button("➕ Adicionar Conta", key="btn_add_receber"):
             novo = {
                 "data_nf": nf_data,
                 "forma_pagamento": nf_desc,
-                "fornecedor": nf_forn,
+                "fornecedor": nf_cliente,
                 "os": nf_os,
                 "vencimento": nf_venc,
                 "valor": nf_val,
@@ -1279,23 +1302,31 @@ elif page == "Contas a Receber":
                 "situacao": nf_situ
             }
             try:
-                if add_record(EXCEL_PAGAR, aba, novo):
+                if add_record(EXCEL_RECEBER, aba, novo):
                     st.success("Conta adicionada com sucesso!")
                     # Recarrega e reexibe tabela
-                    df = load_data(EXCEL_PAGAR, aba).reset_index(drop=True)
+                    df = load_data(EXCEL_RECEBER, aba).reset_index(drop=True)
                     df.insert(0, "#", range(1, len(df) + 1))
                     df_disp = df.copy()
-                    if filtro_fn != "Todos": df_disp = df_disp[df_disp["fornecedor"] == filtro_fn]
-                    if filtro_st != "Todos": df_disp = df_disp[df_disp["status_pagamento"] == filtro_st]
+                    if filtro_cl != "Todos":
+                        df_disp = df_disp[df_disp["fornecedor"] == filtro_cl]
+                    if filtro_st != "Todos":
+                        df_disp = df_disp[df_disp["status_pagamento"] == filtro_st]
                     df_exib = df_disp.copy()
-                    if "valor" in df_exib: df_exib["valor"] = df_exib["valor"].apply(lambda x: f"R$ {x:,.2f}" if pd.notna(x) else "")
-                    if "vencimento" in df_exib: df_exib["vencimento"] = pd.to_datetime(df_exib["vencimento"], errors="coerce").dt.strftime("%d/%m/%Y")
-                    if "data_nf" in df_exib: df_exib["data_nf"] = pd.to_datetime(df_exib["data_nf"], errors="coerce").dt.strftime("%d/%m/%Y")
-                    table_pl.dataframe(df_exib[cols_show], height=400, use_container_width=True)
+                    if "valor" in df_exib:
+                        df_exib["valor"] = df_exib["valor"].apply(lambda x: f"R$ {x:,.2f}" if pd.notna(x) else "")
+                    if "vencimento" in df_exib:
+                        df_exib["vencimento"] = pd.to_datetime(df_exib["vencimento"], errors="coerce")\
+                                                  .dt.strftime("%d/%m/%Y")
+                    if "data_nf" in df_exib:
+                        df_exib["data_nf"] = pd.to_datetime(df_exib["data_nf"], errors="coerce")\
+                                                .dt.strftime("%d/%m/%Y")
+                    table_pr.dataframe(df_exib[cols_show], height=400, use_container_width=True)
                 else:
                     st.error("Erro ao adicionar conta.")
             except Exception as e:
                 st.error(f"Erro ao adicionar conta: {e}")
+
 st.markdown("""
 <div style="text-align: center; font-size:12px; color:gray; margin-top: 20px;">
     <p>© 2025 Desenvolvido por Vinicius Magalhães</p>
