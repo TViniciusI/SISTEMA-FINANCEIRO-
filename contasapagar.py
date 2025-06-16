@@ -1203,7 +1203,23 @@ elif page == "Contas a Receber":
                     ws.delete_rows(excel_row)
                     wb.save(EXCEL_RECEBER)
                     st.success(f"Registro #{sel} removido com sucesso!")
-                    # Recarrega e reexibe a tabela (mesmos passos acima)
+                    # Recarrega e reexibe a tabela
+                    df = load_data(EXCEL_RECEBER, aba).reset_index(drop=True)
+                    df.insert(0, "#", range(1, len(df) + 1))
+                    # reaplica filtros e atualiza display (reuso do código acima)
+                    df_disp = df.copy()
+                    if filtro_cl != "Todos":
+                        df_disp = df_disp[df_disp["fornecedor"] == filtro_cl]
+                    if filtro_st != "Todos":
+                        df_disp = df_disp[df_disp["status_pagamento"] == filtro_st]
+                    df_exib = df_disp.copy()
+                    if "valor" in df_exib:
+                        df_exib["valor"] = df_exib["valor"].apply(lambda x: f"R$ {x:,.2f}" if pd.notna(x) else "")
+                    if "vencimento" in df_exib:
+                        df_exib["vencimento"] = pd.to_datetime(df_exib["vencimento"], errors="coerce").dt.strftime("%d/%m/%Y")
+                    if "data_nf" in df_exib:
+                        df_exib["data_nf"] = pd.to_datetime(df_exib["data_nf"], errors="coerce").dt.strftime("%d/%m/%Y")
+                    table_pl.dataframe(df_exib[cols_show], height=400, use_container_width=True)
                 except Exception as e:
                     st.error(f"Erro ao remover registro: {e}")
         else:
@@ -1258,7 +1274,7 @@ elif page == "Contas a Receber":
                         st.success("Registro atualizado com sucesso!")
                     else:
                         st.error("Falha ao salvar alterações.")
-                    # Recarrega a tabela (mesmos passos de exibição acima)
+                    # Recarrega a tabela (mesmo processo de display)
                 except Exception as e:
                     st.error(f"Erro ao editar registro: {e}")
         else:
@@ -1268,15 +1284,15 @@ elif page == "Contas a Receber":
     with st.expander("➕ Adicionar Nova Conta", expanded=False):
         col1, col2 = st.columns(2)
         with col1:
-            nf_data    = st.date_input("Data N/F:", value=date.today())
-            nf_desc    = st.text_input("Descrição:")
+            nf_data = st.date_input("Data N/F:", value=date.today())
+            nf_desc = st.text_input("Descrição:")
             nf_cliente = st.text_input("Cliente:")
         with col2:
-            nf_os      = st.text_input("Documento/OS:")
-            nf_venc    = st.date_input("Vencimento:", value=date.today())
-            nf_val     = st.number_input("Valor (R$):", min_value=0.01, step=0.01)
+            nf_os = st.text_input("Documento/OS:")
+            nf_venc = st.date_input("Vencimento:", value=date.today())
+            nf_val = st.number_input("Valor (R$):", min_value=0.01, step=0.01)
         nf_estado = st.selectbox("Estado:", ["A Receber", "Recebido"])
-        nf_situ   = st.selectbox("Situação:", ["Em Atraso", "Recebido", "A Receber"])
+        nf_situ = st.selectbox("Situação:", ["Em Atraso", "Recebido", "A Receber"])
 
         if st.button("➕ Adicionar Conta", key="btn_add_receber"):
             novo = {
@@ -1297,6 +1313,7 @@ elif page == "Contas a Receber":
                     st.error("Erro ao adicionar conta.")
             except Exception as e:
                 st.error(f"Erro ao adicionar conta: {e}")
+
 
 st.markdown("""
 <div style="text-align: center; font-size:12px; color:gray; margin-top: 20px;">
