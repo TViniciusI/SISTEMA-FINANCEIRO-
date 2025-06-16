@@ -1154,7 +1154,7 @@ elif page == "Contas a Receber":
     with st.expander("🔍 Filtros Avançados", expanded=False):
         col1, col2 = st.columns(2)
         with col1:
-            clientes = ["Todos"] + sorted(df_disp["fornecedor"].dropna().unique().tolist())
+            clientes = ["Todos"] + sorted(df["fornecedor"].dropna().unique().tolist())
             filtro_cl = st.selectbox("Cliente", clientes)
         with col2:
             status_opts = ["Todos"] + sorted(df_disp["status_pagamento"].dropna().unique().tolist())
