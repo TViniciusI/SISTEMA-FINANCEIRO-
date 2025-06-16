@@ -17,6 +17,7 @@ st.set_page_config(
 VALID_USERS = {
     "Vinicius": "vinicius4223",
     "Flavio": "1234",
+    "ADMfpp": "Fpeng@37",
 }
 
 def check_login(username: str, password: str) -> bool:
