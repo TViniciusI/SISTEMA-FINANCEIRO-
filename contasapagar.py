@@ -1131,12 +1131,22 @@ elif page == "Contas a Receber":
         st.stop()
 
     # Seleciona o mês atual (padrão)
-    default_idx = FULL_MONTHS.index(date.today().strftime("%m"))
+    try:
+        default_idx = FULL_MONTHS.index(date.today().strftime("%m"))
+    except ValueError:
+        default_idx = 0  # Fallback para o primeiro mês se não encontrar
     aba = st.selectbox("Selecione o mês:", FULL_MONTHS, index=default_idx)
 
-    # Carrega dados direto do Excel
-    df = load_data(EXCEL_RECEBER, aba).reset_index(drop=True)
-    df.insert(0, "#", range(1, len(df) + 1))
+    # Carrega dados direto do Excel com tratamento de erros
+    try:
+        df = load_data(EXCEL_RECEBER, aba).reset_index(drop=True)
+        if not df.empty:
+            df.insert(0, "#", range(1, len(df) + 1))
+        else:
+            df["#"] = []  # Adiciona coluna vazia se DataFrame estiver vazio
+    except Exception as e:
+        st.error(f"Erro ao carregar dados: {e}")
+        df = pd.DataFrame(columns=["#", "data_nf", "fornecedor", "valor", "vencimento", "status_pagamento", "estado"])
 
     # ----- FILTROS AVANÇADOS -----
     with st.expander("🔍 Filtros Avançados", expanded=False):
@@ -1145,42 +1155,45 @@ elif page == "Contas a Receber":
             clientes = ["Todos"] + sorted(
                 df["fornecedor"].dropna().astype(str).unique().tolist(),
                 key=str.lower
-            )
+            ) if not df.empty else ["Todos"]
             filtro_cl = st.selectbox("Cliente", clientes)
         with col2:
             status_opts = ["Todos"] + sorted(
                 df["status_pagamento"].dropna().astype(str).unique().tolist(),
                 key=str.lower
-            )
+            ) if not df.empty else ["Todos"]
             filtro_st = st.selectbox("Status", status_opts)
 
-    # Aplica filtros
+    # Aplica filtros com tratamento para DataFrame vazio
     df_disp = df.copy()
-    if filtro_cl != "Todos":
-        df_disp = df_disp[df_disp["fornecedor"] == filtro_cl]
-    if filtro_st != "Todos":
-        df_disp = df_disp[df_disp["status_pagamento"] == filtro_st]
+    if not df.empty:
+        if filtro_cl != "Todos":
+            df_disp = df_disp[df_disp["fornecedor"] == filtro_cl]
+        if filtro_st != "Todos":
+            df_disp = df_disp[df_disp["status_pagamento"] == filtro_st]
 
-    # Exibe tabela
+    # Exibe tabela com tratamento para valores nulos
     st.markdown("### 📋 Lançamentos")
     table_pl = st.empty()
     if df_disp.empty:
         st.warning("Nenhum registro encontrado com os filtros selecionados.")
     else:
         df_exib = df_disp.copy()
-        # Formatação de moeda e datas
+        # Formatação segura para valores nulos
         if "valor" in df_exib:
             df_exib["valor"] = df_exib["valor"].apply(
-                lambda x: f"R$ {x:,.2f}" if pd.notna(x) else ""
+                lambda x: f"R$ {float(x):,.2f}" if pd.notna(x) else "R$ 0,00"
             )
         if "vencimento" in df_exib:
             df_exib["vencimento"] = pd.to_datetime(
                 df_exib["vencimento"], errors="coerce"
             ).dt.strftime("%d/%m/%Y")
+            df_exib["vencimento"] = df_exib["vencimento"].fillna("")
         if "data_nf" in df_exib:
             df_exib["data_nf"] = pd.to_datetime(
                 df_exib["data_nf"], errors="coerce"
             ).dt.strftime("%d/%m/%Y")
+            df_exib["data_nf"] = df_exib["data_nf"].fillna("")
 
         cols_show = ["#", "data_nf", "fornecedor", "valor", "vencimento", "status_pagamento", "estado"]
         cols_show = [c for c in cols_show if c in df_exib.columns]
@@ -1280,40 +1293,46 @@ elif page == "Contas a Receber":
         else:
             st.info("Nenhum registro para editar.")
 
-    # ----- ADICIONAR NOVO REGISTRO -----
+    # ----- ADICIONAR NOVO REGISTRO (CORREÇÃO DO ERRO) -----
     with st.expander("➕ Adicionar Nova Conta", expanded=False):
         col1, col2 = st.columns(2)
         with col1:
             nf_data = st.date_input("Data N/F:", value=date.today())
-            nf_desc = st.text_input("Descrição:")
-            nf_cliente = st.text_input("Cliente:")
+            nf_desc = st.text_input("Descrição:", value="")
+            nf_cliente = st.text_input("Cliente:", value="")
         with col2:
-            nf_os = st.text_input("Documento/OS:")
+            nf_os = st.text_input("Documento/OS:", value="")
             nf_venc = st.date_input("Vencimento:", value=date.today())
-            nf_val = st.number_input("Valor (R$):", min_value=0.01, step=0.01)
+            nf_val = st.number_input("Valor (R$):", min_value=0.01, step=0.01, value=0.01)
+        
         nf_estado = st.selectbox("Estado:", ["A Receber", "Recebido"])
         nf_situ = st.selectbox("Situação:", ["Em Atraso", "Recebido", "A Receber"])
 
         if st.button("➕ Adicionar Conta", key="btn_add_receber"):
-            novo = {
-                "data_nf": nf_data,
-                "forma_pagamento": nf_desc,
-                "fornecedor": nf_cliente,
-                "os": nf_os,
-                "vencimento": nf_venc,
-                "valor": nf_val,
-                "estado": nf_estado,
-                "situacao": nf_situ
-            }
-            try:
-                if add_record(EXCEL_RECEBER, aba, novo):
-                    st.success("Conta adicionada com sucesso!")
-                    # Recarrega e reexibe a tabela
-                else:
-                    st.error("Erro ao adicionar conta.")
-            except Exception as e:
-                st.error(f"Erro ao adicionar conta: {e}")
-
+            # Validação dos campos obrigatórios
+            if not nf_cliente or not nf_val:
+                st.error("Preencha pelo menos Cliente e Valor!")
+            else:
+                novo = {
+                    "data_nf": nf_data,
+                    "forma_pagamento": nf_desc,
+                    "fornecedor": nf_cliente,
+                    "os": nf_os,
+                    "vencimento": nf_venc,
+                    "valor": float(nf_val),  # Garante que é float
+                    "estado": nf_estado,
+                    "situacao": nf_situ,
+                    "status_pagamento": "Recebido" if nf_estado == "Recebido" else "A Receber"
+                }
+                
+                try:
+                    if add_record(EXCEL_RECEBER, aba, novo):
+                        st.success("Conta adicionada com sucesso!")
+                        st.experimental_rerun()  # Recarrega a página para atualizar os dados
+                    else:
+                        st.error("Erro ao adicionar conta.")
+                except Exception as e:
+                    st.error(f"Erro ao adicionar conta: {str(e)}")
 
 st.markdown("""
 <div style="text-align: center; font-size:12px; color:gray; margin-top: 20px;">
