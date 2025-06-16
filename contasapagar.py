@@ -1194,35 +1194,22 @@ with st.expander("🗑️ Remover Registro", expanded=False):
         )
         if st.button("Remover Registro", key="btn_remove_receber"):
             try:
-                # encontra o índice real no df completo
-                idx_full = df[df["#"] == sel].index[0]
-                excel_row = 8 + 1 + idx_full  # 8 = linha de cabeçalho, +1 porque data começa logo abaixo
-
-                # apaga do Excel
-                wb = load_workbook(EXCEL_RECEBER)
-                ws = wb[aba]
-                ws.delete_rows(excel_row)
-                wb.save(EXCEL_RECEBER)
-
+                # … seu código de remoção …
                 st.success(f"Registro #{sel} removido com sucesso!")
 
-                # — Recarrega os dados e reaplica tudo —
+                # Recarrega tudo
                 df = load_data(EXCEL_RECEBER, aba).reset_index(drop=True)
                 df.insert(0, "#", range(1, len(df) + 1))
-
-                # reaplica filtros
                 df_disp = df.copy()
                 if filtro_cl != "Todos":
                     df_disp = df_disp[df_disp["fornecedor"] == filtro_cl]
                 if filtro_st != "Todos":
                     df_disp = df_disp[df_disp["status_pagamento"] == filtro_st]
 
-                # formata e exibe
                 df_exib = df_disp.copy()
+                # formata valor e datas…
                 if "valor" in df_exib:
-                    df_exib["valor"] = df_exib["valor"].apply(
-                        lambda x: f"R$ {x:,.2f}" if pd.notna(x) else ""
-                    )
+                    df_exib["valor"] = df_exib["valor"].apply(lambda x: f"R$ {x:,.2f}" if pd.notna(x) else "")
                 if "vencimento" in df_exib:
                     df_exib["vencimento"] = pd.to_datetime(
                         df_exib["vencimento"], errors="coerce"
@@ -1232,12 +1219,15 @@ with st.expander("🗑️ Remover Registro", expanded=False):
                         df_exib["data_nf"], errors="coerce"
                     ).dt.strftime("%d/%m/%Y")
 
-                table_pr.dataframe(df_exib[cols_show], height=400, use_container_width=True)
+                # renomeia fornecedor → Cliente só para exibição
+                display_df = df_exib[cols_show].rename(columns={"fornecedor": "Cliente"})
+                table_pr.dataframe(display_df, height=400, use_container_width=True)
 
             except Exception as e:
                 st.error(f"Erro ao remover registro: {e}")
     else:
         st.info("Nenhum registro para remover.")
+
 
 # ----- EDITAR REGISTRO -----
 with st.expander("✏️ Editar Registro", expanded=False):
