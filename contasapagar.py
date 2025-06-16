@@ -1163,24 +1163,43 @@ elif page == "Contas a Receber":
     if df_disp.empty:
         st.warning("Nenhum registro encontrado com os filtros selecionados.")
     else:
+        # 1) cópia para exibição
         df_exib = df_disp.copy()
 
-        # renomeia coluna só para exibição
-        df_exib = df_exib.rename(columns={"fornecedor": "Cliente"})
+        # 2) renomeia FORNECEDOR → Cliente
+        df_exib.rename(columns={"fornecedor": "Cliente"}, inplace=True)
 
-        # Formatação de moeda e datas
+        # 3) formata moeda e datas
         if "valor" in df_exib:
-            df_exib["valor"] = df_exib["valor"].apply(lambda x: f"R$ {x:,.2f}" if pd.notna(x) else "")
+            df_exib["valor"] = df_exib["valor"].apply(
+                lambda x: f"R$ {x:,.2f}" if pd.notna(x) else ""
+            )
         if "vencimento" in df_exib:
-            df_exib["vencimento"] = pd.to_datetime(df_exib["vencimento"], errors="coerce") \
-                                      .dt.strftime("%d/%m/%Y")
+            df_exib["vencimento"] = (
+                pd.to_datetime(df_exib["vencimento"], errors="coerce")
+                  .dt.strftime("%d/%m/%Y")
+                  .fillna("")
+            )
         if "data_nf" in df_exib:
-            df_exib["data_nf"] = pd.to_datetime(df_exib["data_nf"], errors="coerce") \
-                                    .dt.strftime("%d/%m/%Y")
+            df_exib["data_nf"] = (
+                pd.to_datetime(df_exib["data_nf"], errors="coerce")
+                  .dt.strftime("%d/%m/%Y")
+                  .fillna("")
+            )
 
-        # apresenta "Cliente" no lugar de "fornecedor"
-        cols_show = ["#", "data_nf", "Cliente", "valor", "vencimento", "status_pagamento", "estado"]
+        # 4) monta lista de colunas já renomeadas
+        cols_show = [
+            "#",
+            "data_nf",
+            "Cliente",    # aqui agora existe
+            "valor",
+            "vencimento",
+            "status_pagamento",
+            "estado",
+        ]
         cols_show = [c for c in cols_show if c in df_exib.columns]
+
+        # 5) exibe
         table_pr.dataframe(df_exib[cols_show], height=400, use_container_width=True)
         
     # ----- REMOVER REGISTRO -----
