@@ -1241,18 +1241,94 @@ with st.expander("🗑️ Remover Registro", expanded=False):
 
 # ----- EDITAR REGISTRO -----
 with st.expander("✏️ Editar Registro", expanded=False):
-    # ... seu código de edição ...
-    if st.button("💾 Salvar Alterações", key="btn_save_edit_receber"):
-        try:
-            # ... atualiza df e salva ...
-            if save_data(EXCEL_RECEBER, aba, df):
-                st.success("Registro atualizado com sucesso!")
-                if hasattr(st, "experimental_rerun"):
-                    st.experimental_rerun()
-            else:
-                st.error("Falha ao salvar alterações.")
-        except Exception as e:
-            st.error(f"Erro ao editar registro: {e}")
+    if not df_disp.empty:
+        # Seleção da linha
+        sel = st.selectbox(
+            "Selecione o nº da linha (#) para editar:",
+            df_disp["#"].tolist(),
+            key="edit_idx_receber"
+        )
+        # Encontra o índice real no DataFrame completo
+        idx_full = df[df["#"] == sel].index[0]
+        rec = df.loc[idx_full]
+
+        # Campos de edição
+        col1, col2 = st.columns(2)
+        with col1:
+            novo_valor = st.number_input(
+                "Valor (R$):",
+                value=float(rec["valor"]) if pd.notna(rec["valor"]) else 0.0,
+                step=0.01,
+                key="edit_valor_receber"
+            )
+            novo_venc = st.date_input(
+                "Vencimento:",
+                value=rec["vencimento"].date() if pd.notna(rec["vencimento"]) else date.today(),
+                key="edit_venc_receber"
+            )
+        with col2:
+            novo_estado = st.selectbox(
+                "Estado:",
+                ["A Receber", "Recebido"],
+                index=0 if rec["estado"] == "A Receber" else 1,
+                key="edit_estado_receber"
+            )
+            sit_opts = ["Em Atraso", "Recebido", "A Receber"]
+            idx_sit = sit_opts.index(rec.get("situacao", "Em Atraso")) if rec.get("situacao") in sit_opts else 0
+            nova_sit = st.selectbox(
+                "Situação:",
+                sit_opts,
+                index=idx_sit,
+                key="edit_situacao_receber"
+            )
+
+        # Botão de salvar
+        if st.button("💾 Salvar Alterações", key="btn_save_edit_receber"):
+            try:
+                # Atualiza nosso DataFrame em memória
+                df.at[idx_full, "valor"] = novo_valor
+                df.at[idx_full, "vencimento"] = novo_venc
+                df.at[idx_full, "estado"] = novo_estado
+                df.at[idx_full, "situacao"] = nova_sit
+
+                # Persiste no Excel
+                if save_data(EXCEL_RECEBER, aba, df):
+                    st.success("Registro atualizado com sucesso!")
+
+                    # — Recarrega e reaplica tudo —
+                    df = load_data(EXCEL_RECEBER, aba).reset_index(drop=True)
+                    df.insert(0, "#", range(1, len(df) + 1))
+
+                    # reaplica filtros
+                    df_disp = df.copy()
+                    if filtro_cl != "Todos":
+                        df_disp = df_disp[df_disp["fornecedor"] == filtro_cl]
+                    if filtro_st != "Todos":
+                        df_disp = df_disp[df_disp["status_pagamento"] == filtro_st]
+
+                    # formata e exibe tabela
+                    df_exib = df_disp.copy()
+                    if "valor" in df_exib:
+                        df_exib["valor"] = df_exib["valor"].apply(
+                            lambda x: f"R$ {x:,.2f}" if pd.notna(x) else ""
+                        )
+                    if "vencimento" in df_exib:
+                        df_exib["vencimento"] = pd.to_datetime(
+                            df_exib["vencimento"], errors="coerce"
+                        ).dt.strftime("%d/%m/%Y")
+                    if "data_nf" in df_exib:
+                        df_exib["data_nf"] = pd.to_datetime(
+                            df_exib["data_nf"], errors="coerce"
+                        ).dt.strftime("%d/%m/%Y")
+
+                    table_pr.dataframe(df_exib[cols_show], height=400, use_container_width=True)
+
+                else:
+                    st.error("Falha ao salvar alterações.")
+            except Exception as e:
+                st.error(f"Erro ao editar registro: {e}")
+    else:
+        st.info("Nenhum registro para editar.")
 
 # ----- ADICIONAR NOVO REGISTRO -----
 with st.expander("➕ Adicionar Nova Conta", expanded=False):
