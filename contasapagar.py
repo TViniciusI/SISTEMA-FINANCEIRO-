@@ -1145,7 +1145,13 @@ elif page == "Contas a Receber":
 
     # 3) Carrega dados e numera linhas
     df = load_data(EXCEL_RECEBER, aba).reset_index(drop=True)
-    df.insert(0, "#", range(1, len(df) + 1))
+    
+    # 👇 Normaliza cabeçalhos e garante que 'cliente' seja tratado como 'fornecedor'
+    df.columns = [c.lower().strip() for c in df.columns]
+    if "cliente" in df.columns and "fornecedor" not in df.columns:
+        df.rename(columns={"cliente": "fornecedor"}, inplace=True)
+
+df.insert(0, "#", range(1, len(df) + 1))
 
     # 4) Preparação para filtros e tabelas
     df_disp = df.copy()
