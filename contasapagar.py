@@ -372,15 +372,15 @@ def save_data(excel_path: str, sheet_name: str, df: pd.DataFrame) -> bool:
         ]
 
         field_map = {
-            "data_nf":        ["data documento", "data_nf", "data n/f", "data da nota fiscal"],
-            "forma_pagamento":["descrição", "forma_pagamento", "forma de pagamento"],
-            "fornecedor":     ["fornecedor", "cliente"],      # <- aqui
-            "os":             ["documento", "os", "os interna"],
-            "vencimento":     ["vencimento"],
-            "valor":          ["valor"],
-            "estado":         ["estado"],
-            "boleto":         ["boleto", "boleto anexo"],
-            "comprovante":    ["comprovante", "comprovante de pagto"]
+            "data_nf":         ["data documento", "data_nf", "data n/f", "data da nota fiscal"],
+            "forma_pagamento": ["descrição", "forma_pagamento", "forma de pagamento"],
+            "fornecedor":      ["fornecedor", "cliente"],      # <- incluímos "cliente" aqui
+            "os":              ["documento", "os", "os interna"],
+            "vencimento":      ["vencimento"],
+            "valor":           ["valor"],
+            "estado":          ["estado"],
+            "boleto":          ["boleto", "boleto anexo"],
+            "comprovante":     ["comprovante", "comprovante de pagto"]
         }
 
         col_pos = {}
@@ -418,7 +418,8 @@ def save_data(excel_path: str, sheet_name: str, df: pd.DataFrame) -> bool:
     except Exception as e:
         st.error(f"Erro ao salvar dados: {e}")
         return False
-        
+
+
 def add_record(excel_path: str, sheet_name: str, record: dict) -> bool:
     try:
         wb = load_workbook(excel_path)
@@ -438,15 +439,15 @@ def add_record(excel_path: str, sheet_name: str, record: dict) -> bool:
         ]
 
         field_map = {
-            "data_nf": ["data documento", "data_nf", "data n/f", "data da nota fiscal"],
+            "data_nf":         ["data documento", "data_nf", "data n/f", "data da nota fiscal"],
             "forma_pagamento": ["descrição", "forma_pagamento", "forma de pagamento"],
-            "fornecedor": ["fornecedor"],
-            "os": ["documento", "os", "os interna"],
-            "vencimento": ["vencimento"],
-            "valor": ["valor"],
-            "estado": ["estado"],
-            "boleto": ["boleto", "boleto anexo"],
-            "comprovante": ["comprovante", "comprovante de pagto"]
+            "fornecedor":      ["fornecedor", "cliente"],  # <- e aqui também
+            "os":              ["documento", "os", "os interna"],
+            "vencimento":      ["vencimento"],
+            "valor":           ["valor"],
+            "estado":          ["estado"],
+            "boleto":          ["boleto", "boleto anexo"],
+            "comprovante":     ["comprovante", "comprovante de pagto"]
         }
 
         col_pos = {}
@@ -456,7 +457,7 @@ def add_record(excel_path: str, sheet_name: str, record: dict) -> bool:
 
         col_forn = col_pos.get("fornecedor", 2)
 
-        # ✅ CORRIGIDO: encontra próxima linha vazia com base no fornecedor
+        # encontra próxima linha vazia com base no fornecedor/cliente
         next_row = header_row + 1
         while ws.cell(row=next_row, column=col_forn).value:
             next_row += 1
@@ -489,6 +490,7 @@ def add_record(excel_path: str, sheet_name: str, record: dict) -> bool:
     except Exception as e:
         st.error(f"Erro ao adicionar registro: {e}")
         return False
+
 
 st.markdown("""
 <div style="text-align: center; color: #4B8BBE; margin-bottom: 10px;">
@@ -1162,20 +1164,25 @@ elif page == "Contas a Receber":
         st.warning("Nenhum registro encontrado com os filtros selecionados.")
     else:
         df_exib = df_disp.copy()
+
+        # renomeia coluna só para exibição
+        df_exib = df_exib.rename(columns={"fornecedor": "Cliente"})
+
         # Formatação de moeda e datas
         if "valor" in df_exib:
             df_exib["valor"] = df_exib["valor"].apply(lambda x: f"R$ {x:,.2f}" if pd.notna(x) else "")
         if "vencimento" in df_exib:
-            df_exib["vencimento"] = pd.to_datetime(df_exib["vencimento"], errors="coerce")\
+            df_exib["vencimento"] = pd.to_datetime(df_exib["vencimento"], errors="coerce") \
                                       .dt.strftime("%d/%m/%Y")
         if "data_nf" in df_exib:
-            df_exib["data_nf"] = pd.to_datetime(df_exib["data_nf"], errors="coerce")\
+            df_exib["data_nf"] = pd.to_datetime(df_exib["data_nf"], errors="coerce") \
                                     .dt.strftime("%d/%m/%Y")
 
-        cols_show = ["#", "data_nf", "fornecedor", "valor", "vencimento", "status_pagamento", "estado"]
+        # apresenta "Cliente" no lugar de "fornecedor"
+        cols_show = ["#", "data_nf", "Cliente", "valor", "vencimento", "status_pagamento", "estado"]
         cols_show = [c for c in cols_show if c in df_exib.columns]
         table_pr.dataframe(df_exib[cols_show], height=400, use_container_width=True)
-
+        
     # ----- REMOVER REGISTRO -----
     with st.expander("🗑️ Remover Registro", expanded=False):
         if not df_disp.empty:
