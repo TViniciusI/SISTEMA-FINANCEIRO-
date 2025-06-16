@@ -1132,15 +1132,15 @@ elif page == "Contas a Receber":
         st.error(f"Arquivo '{EXCEL_RECEBER}' não encontrado. Verifique o caminho.")
         st.stop()
 
-    # Select mês (padrão atual)
+    # Seleciona o mês atual (padrão)
     default_idx = FULL_MONTHS.index(date.today().strftime("%m"))
     aba = st.selectbox("Selecione o mês:", FULL_MONTHS, index=default_idx)
 
-    # Carrega dados diretamente do Excel
+    # Carrega dados
     df = load_data(EXCEL_RECEBER, aba).reset_index(drop=True)
     df.insert(0, "#", range(1, len(df) + 1))
 
-    # Filtros avançados
+    # ----- FILTROS AVANÇADOS -----
     with st.expander("🔍 Filtros Avançados", expanded=False):
         col1, col2 = st.columns(2)
         with col1:
@@ -1157,19 +1157,18 @@ elif page == "Contas a Receber":
     if filtro_st != "Todos":
         df_disp = df_disp[df_disp["status_pagamento"] == filtro_st]
 
-    # Exibe tabela
+    # ----- EXIBE TABELA -----
     st.markdown("### 📋 Lançamentos")
     table_pr = st.empty()
     if df_disp.empty:
         st.warning("Nenhum registro encontrado com os filtros selecionados.")
     else:
-        # 1) copia
         df_exib = df_disp.copy()
 
-        # 2) renomeia FORNECEDOR → Cliente
+        # Renomeia somente para exibição
         df_exib.rename(columns={"fornecedor": "Cliente"}, inplace=True)
 
-        # 3) formata moeda e datas
+        # Formatação de moeda e datas
         if "valor" in df_exib:
             df_exib["valor"] = df_exib["valor"].apply(
                 lambda x: f"R$ {x:,.2f}" if pd.notna(x) else ""
@@ -1187,21 +1186,9 @@ elif page == "Contas a Receber":
                   .fillna("")
             )
 
-        # 4) monta lista de colunas **já renomeadas**
-        cols_show = [
-            "#",
-            "data_nf",
-            "Cliente",            # <— aqui usamos o novo nome
-            "valor",
-            "vencimento",
-            "status_pagamento",
-            "estado",
-        ]
+        cols_show = ["#", "data_nf", "Cliente", "valor", "vencimento", "status_pagamento", "estado"]
         cols_show = [c for c in cols_show if c in df_exib.columns]
-
-        # 5) exibe
         table_pr.dataframe(df_exib[cols_show], height=400, use_container_width=True)
-
 
     # ----- REMOVER REGISTRO -----
     with st.expander("🗑️ Remover Registro", expanded=False):
