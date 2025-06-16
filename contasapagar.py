@@ -1143,49 +1143,54 @@ elif page == "Contas a Receber":
     default_idx = FULL_MONTHS.index(date.today().strftime("%m"))
     aba = st.selectbox("Selecione o mês:", FULL_MONTHS, index=default_idx)
 
-    # 3) Carrega dados e normaliza colunas
+    # 3) Carrega dados e numera linhas
     df = load_data(EXCEL_RECEBER, aba).reset_index(drop=True)
-    df.columns = [c.lower().strip() for c in df.columns]
-
-    if "cliente" in df.columns and "fornecedor" not in df.columns:
-        df.rename(columns={"cliente": "fornecedor"}, inplace=True)
-
     df.insert(0, "#", range(1, len(df) + 1))
 
     # 4) Filtros avançados
     with st.expander("🔍 Filtros Avançados", expanded=False):
         col1, col2 = st.columns(2)
         with col1:
-            clientes = ["Todos"] + sorted(df["fornecedor"].dropna().unique().tolist())
+            if "fornecedor" in df.columns:
+                clientes = ["Todos"] + sorted(df["fornecedor"].dropna().unique().tolist())
+            else:
+                clientes = ["Todos"]
             filtro_cl = st.selectbox("Cliente", clientes)
         with col2:
-            status_opts = ["Todos"] + sorted(df["status_pagamento"].dropna().unique().tolist()) if "status_pagamento" in df.columns else ["Todos"]
+            status_opts = ["Todos"]
+            if "status_pagamento" in df.columns:
+                status_opts += sorted(df["status_pagamento"].dropna().unique().tolist())
             filtro_st = st.selectbox("Status", status_opts)
 
     # 5) Aplica filtros
     df_disp = df.copy()
-    if filtro_cl != "Todos":
+    if filtro_cl != "Todos" and "fornecedor" in df_disp.columns:
         df_disp = df_disp[df_disp["fornecedor"] == filtro_cl]
-    if filtro_st != "Todos":
+    if filtro_st != "Todos" and "status_pagamento" in df_disp.columns:
         df_disp = df_disp[df_disp["status_pagamento"] == filtro_st]
 
-    # 6) Exibe tabela
+    # 6) Exibe tabela (renomeando só pra exibição)
     st.markdown("### 📋 Lançamentos")
     table_pr = st.empty()
     if df_disp.empty:
         st.warning("Nenhum registro encontrado com os filtros selecionados.")
     else:
         df_exib = df_disp.copy()
-        df_exib.rename(columns={"fornecedor": "Cliente"}, inplace=True)
+        # renomeia apenas visualmente
+        if "fornecedor" in df_exib.columns:
+            df_exib.rename(columns={"fornecedor": "Cliente"}, inplace=True)
 
+        # formata valores e datas
         if "valor" in df_exib:
-            df_exib["valor"] = df_exib["valor"].apply(lambda x: f"R$ {x:,.2f}" if pd.notna(x) else "")
+            df_exib["valor"] = df_exib["valor"].apply(
+                lambda x: f"R$ {x:,.2f}" if pd.notna(x) else ""
+            )
         for d in ("vencimento", "data_nf"):
             if d in df_exib:
                 df_exib[d] = (
                     pd.to_datetime(df_exib[d], errors="coerce")
-                    .dt.strftime("%d/%m/%Y")
-                    .fillna("")
+                      .dt.strftime("%d/%m/%Y")
+                      .fillna("")
                 )
 
         cols_show = ["#", "data_nf", "Cliente", "valor", "vencimento", "status_pagamento", "estado"]
